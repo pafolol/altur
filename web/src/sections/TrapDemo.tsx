@@ -15,7 +15,7 @@ export function TrapDemo() {
 
       <div className="demo" data-mode={mode}>
         <div className="demo-head">
-          <p>{demo.meta}</p>
+          <p>{d.meta}</p>
           <div className="switch" role="group" aria-label={demo.switchLabel}>
             {modes.map((m) => (
               <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}>{demo.buttons[m]}</button>
@@ -43,7 +43,7 @@ export function TrapDemo() {
             ))}
             <div className="verdict">
               {'{\n  '}<span className="k">"is_synthetic"</span>: <span className="v">{String(d.verdict.is_synthetic)}</span>
-              {',\n  '}<span className="k">"confidence"</span>: <span className="v">{d.verdict.confidence.toFixed(2)}</span>
+              {',\n  '}<span className="k">"confidence"</span>: <span className="v">{d.verdict.confidence.toFixed(3)}</span>
               {'\n}'}
             </div>
           </div>

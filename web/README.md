@@ -63,8 +63,10 @@ Paragraph-level fields (`lede`, `text`, `note`, list items, spec text) may conta
 HTML — `&nbsp;`, `<i>`, `<code>` — exactly as in the prototype; they are injected via
 [`src/lib/Html.tsx`](src/lib/Html.tsx). Headings and labels are plain strings.
 
-Every invented metric (0.71 / 0.83 / 0.95, 4.2 s, 310 ms, and the demo's 0.18 / 0.09 /
-0.04, 0.94, 0.87) is marked `// TODO: replace with real eval numbers` where it lives.
+Every number on the page is read from the repository's own reports (README.md Results,
+reports/ACOUSTIC_LEARNING_SUMMARY.md, behaviour/reports/, semantic/AUDIT.md). The demo's two
+callers are real held-out calls (`call_569ffb0869eb`, `call_0847d7417bb1`) with the scores every
+layer produced for them; the long version with sources is `reports/ISISI_PRESENTER_GUIDE.pdf`.
 The page `<title>` and `<meta name="description">` are in [`index.html`](index.html).
 
 ## Reduced motion

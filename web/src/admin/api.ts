@@ -79,10 +79,10 @@ function makeCalls(now: number): Call[] {
     const channels: 1 | 2 = r() < 0.9 ? 2 : 1
     let evidence: Evidence, confidence: number, trap: Trap
     if (verdict === 'synthetic') {
-      evidence = { acoustic: 0.5 + g() * 0.45, conversational: 0.55 + g() * 0.4, semantic: 0.7 + g() * 0.29, decided_at_s: 2.5 + g() * 4 }
+      evidence = { acoustic: 0.5 + g() * 0.45, conversational: 0.55 + g() * 0.4, semantic: 0.7 + g() * 0.29, decided_at_s: 14 + g() * 16 }
       confidence = 0.74 + g() * 0.22; trap = r() < 0.78 ? 'answered' : 'none'
     } else if (verdict === 'human') {
-      evidence = { acoustic: g() * 0.32, conversational: g() * 0.25, semantic: g() * 0.15, decided_at_s: 2 + g() * 4 }
+      evidence = { acoustic: g() * 0.32, conversational: g() * 0.25, semantic: g() * 0.15, decided_at_s: 14 + g() * 16 }
       confidence = 0.82 + g() * 0.16; trap = r() < 0.6 ? 'refused' : 'none'
     } else {
       evidence = { acoustic: 0.3 + g() * 0.4, conversational: 0.3 + g() * 0.4, semantic: 0.3 + g() * 0.3, decided_at_s: null }
@@ -91,9 +91,9 @@ function makeCalls(now: number): Call[] {
     if (channels === 1) evidence.conversational = 0
     out.push({
       at: new Date(now - age).toISOString(),
-      duration_s: Math.round(20 + g() * 400),
+      duration_s: Math.round(60 + g() * 210),   // the dataset's calls run 61–274 s
       channels, verdict, confidence, evidence,
-      latency_ms: Math.round(200 + Math.exp(g() * 1.7) * 47),   // median ≈ 310 ms with a tail, matching the landing's placeholder
+      latency_ms: Math.round(880 + Math.exp(g() * 1.2) * 120),  // median ≈ 1.0 s with a tail: the primaries settle most calls in ~1.0 s (README.md)
       trap,
       queue: QUEUES[Math.floor(r() * QUEUES.length)],
     })
@@ -102,10 +102,11 @@ function makeCalls(now: number): Call[] {
   return out.map((c, i) => ({ id: String(538 - i).padStart(4, '0'), ...c }))
 }
 
-// TODO: replace with real eval numbers — the sample verdicts reuse the landing's placeholders
+// The same two real held-out calls the landing's demo shows (README.md, the five escalations). `decided_at_s`
+// is computed by the server from the acoustic chunks and was not recorded for these, so it stays null.
 const SAMPLE: Record<'human' | 'synthetic', DetectResponse> = {
-  synthetic: { is_synthetic: true, confidence: 0.87, evidence: { acoustic: 0.71, conversational: 0.83, semantic: 0.95, decided_at_s: 4.2 } },
-  human: { is_synthetic: false, confidence: 0.94, evidence: { acoustic: 0.18, conversational: 0.09, semantic: 0.04, decided_at_s: 3.1 } },
+  synthetic: { is_synthetic: true, confidence: 0.748, evidence: { acoustic: 1.0, conversational: 0.435, semantic: 0.952, decided_at_s: null } },
+  human: { is_synthetic: false, confidence: 0.575, evidence: { acoustic: 0.0, conversational: 0.964, semantic: 0.046, decided_at_s: null } },
 }
 
 export const mockApi: IsisiApi = {
@@ -114,14 +115,15 @@ export const mockApi: IsisiApi = {
   async stats() {
     await sleep(120)
     const r = rng(23)
-    return { latency_series: Array.from({ length: 48 }, (_, i) => Math.round(300 + 38 * Math.sin((i / 48) * Math.PI * 2 - 1.2) + (r() - 0.5) * 36)) }
+    return { latency_series: Array.from({ length: 48 }, (_, i) => Math.round(1000 + 60 * Math.sin((i / 48) * Math.PI * 2 - 1.2) + (r() - 0.5) * 80)) }
   },
   async health() {
     await sleep(90)
-    return { endpoint: 'up', model: 'isisi-fusion-0.4.1', calibrated_on: '2026-09-08', streaming: true, uptime_24h: 99.96, queue_depth: 3, checked_at: new Date().toISOString() }
+    // Same shape and the same two honest fields the real /api/health returns: no streaming, no queue.
+    return { endpoint: 'up', model: 'acoustic 0.50 + behaviour 0.50 + semantic 0.15', calibrated_on: '2026-09-12', streaming: false, uptime_24h: 100, queue_depth: 0, checked_at: new Date().toISOString() }
   },
   async detect(audio) {
-    await sleep(280 + Math.random() * 90)   // TODO: replace with real eval numbers (the mock's ~310 ms round trip)
+    await sleep(950 + Math.random() * 150)   // ~1.0 s, what a call the primaries settle takes (README.md)
     return SAMPLE[audio.includes('synthetic') ? 'synthetic' : 'human']
   },
 }

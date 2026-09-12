@@ -4,6 +4,10 @@
  * fields (`lede`, `text`, `note`, list items) may carry inline HTML —
  * &nbsp;, <i>, <code> — exactly as in the prototype.
  * The <title> and <meta name="description"> live in /index.html.
+ *
+ * Every number here is read from the repository's own reports: README.md (Results),
+ * reports/ACOUSTIC_LEARNING_SUMMARY.md, behaviour/reports/, semantic/AUDIT.md.
+ * The long version, with sources, is reports/ISISI_PRESENTER_GUIDE.pdf.
  */
 
 export const nav = {
@@ -16,7 +20,7 @@ export const nav = {
 
 export const hero = {
   title: 'Your voice stopped being a password.',
-  sub: 'Six seconds of public audio is enough to clone anyone well enough to pass — for a human listener, and for a machine.',
+  sub: 'A few seconds of public audio is enough to clone anyone well enough to pass — for a human listener, and for a machine.',
   tapHint: 'Tap the lock',
   /** Accessible name of the tap zone. */
   tapLabel: 'Break the lock',
@@ -34,93 +38,91 @@ export type Diagram = 'spec' | 'overlap' | 'sem'
 
 export const signals = {
   heading: 'Three ways a machine gives itself away on a phone call.',
-  lede: 'The brief says depth beats breadth, so each of these is built to stand alone and be argued for. They are fused at the end, but any one of them can carry a verdict when the other two are unsure.',
+  lede: 'Three independent detectors read the same call and fail in different places. The acoustic and behaviour layers decide every call, half and half. The semantic layer is the expensive one, so it is asked only when the first two do not settle it.',
   /** Labels drawn inside the card diagrams. */
   diagramLabels: {
     overlap: { bargeIn: 'BARGE-IN' },
-    sem: { asked: 'ASKED', missing: 'DOES NOT EXIST' },
+    sem: { asked: 'ASKED', missing: 'NO HESITATION' },
   },
   cards: [
     {
       diagram: 'spec' as Diagram,
       what: 'SIGNAL 01 — ACOUSTIC',
-      title: 'What the codec cannot hide',
-      text: 'An 8&nbsp;kHz line throws away everything above 4&nbsp;kHz, which is exactly where most deepfake detectors do their work. So we look lower: at band ratios a vocoder cannot get right, and at what is missing between the words.',
+      title: 'What the voice is made of',
+      text: 'Only the caller&rsquo;s channel, only where a voice activity detector hears speech, cut into chunks of at most 4&nbsp;s. Each chunk goes through a frozen Spanish speech model, Wav2Vec2 pretrained on VoxPopuli, and a small classifier reads its fifth hidden layer. Nothing in the backbone was trained on this data.',
       points: [
-        'Breath, lip noise and room tone in the gaps — synths leave them digitally clean',
-        'Jitter and shimmer in sustained vowels, measured per turn',
-        'Phase coherence across the 300–3400&nbsp;Hz passband',
+        'Chunk scores are averaged in log-odds, so the running verdict can be read at any point in the call',
+        'Chosen on a stress test, not the clean split: 10 channel perturbations, mean AUC 0.9998',
+        'A second model, hardened on real telephone codecs, is one flag away',
       ],
     },
     {
       diagram: 'overlap' as Diagram,
-      what: 'SIGNAL 02 — CONVERSATIONAL',
-      title: 'Recovery is a fingerprint',
-      text: 'Every call in the set has moments where the agent cuts in, goes quiet, or talks over the caller. A person recovers instantly and messily. A pipeline recovers the same way every time, and sameness is the tell.',
+      what: 'SIGNAL 02 — BEHAVIOUR',
+      title: 'When the caller speaks, yields and answers',
+      text: 'Both channels through a voice activity detector; turns, pauses and overlaps become 24 timing features, scored by a logistic regression with 40 parameters. It never hears a word. In this data the machines were not the steady ones: their reply timing varied <i>more</i> than the humans&rsquo;.',
       points: [
-        'Barge-in latency: how long until the caller yields the floor',
-        'Variance of turn-taking gaps, not their mean',
-        'Whether a restarted sentence restarts from the top or mid-phrase',
+        'Response latency after the agent stops, and its spread, not just its mean',
+        'What happens when the agent barges in: does the caller stop, and how fast',
+        'Who speaks after a long silence',
       ],
     },
     {
       diagram: 'sem' as Diagram,
       what: 'SIGNAL 03 — SEMANTIC',
-      title: 'The question with no answer',
-      text: 'The agent asks the caller to confirm a product that does not exist. A person pushes back — confused, slightly annoyed. A language model, trained to be helpful, fills the hole with something plausible.',
+      title: 'How the answer is spoken',
+      text: 'The caller&rsquo;s words, transcribed with a confidence per word, plus a rubric an LLM fills in from the transcript. The traps the agent plants turned out to be weak evidence. What carries this layer is how a caller talks: a clean synthetic voice is transcribed with unnatural certainty, and its answers arrive complete, formal and without a single filler.',
       points: [
-        "Trap questions planted in the agent's own turns",
-        'Confabulation on details never mentioned in the call',
-        'Fluent recital of digits a real customer would fumble',
+        'Transcription confidence per word: the strongest family of features',
+        'Fillers, false starts and colloquialisms a person produces and a pipeline does not',
+        'Over-completeness and formal register, the two rubric dimensions that survived validation',
       ],
     },
   ],
 }
 
 export const demo = {
-  heading: 'The same trap, asked twice.',
-  lede: 'One exchange from the middle of a collections call. The agent asks about the <i>Platino&nbsp;Plus</i> card, a product that does not exist. Switch the caller and watch the three signals move.',
-  meta: 'Call 0412 · 00:47 → 01:02 · channel 0 isolated',
+  heading: 'Two real calls from the held-out set.',
+  lede: 'Both callers reach Marina, the same agent, with the same script: a digit read back wrong, an interruption, a question about a product they never mentioned. One caller is a volunteer; the other is a text-to-speech pipeline. The bars are the scores the three layers actually produced. The verdict is the fused one.',
   switchLabel: 'Choose caller',
   buttons: { human: 'Real caller', synthetic: 'Cloned voice' },
 }
 
 export const pipeline = {
   heading: 'Between the audio arriving and the verdict leaving.',
-  lede: 'The stereo file is split at the door. Channel&nbsp;1 — the agent — is never classified; it is used to find the moments worth looking at on channel&nbsp;0, which is the whole reason both sides are in the file.',
+  lede: 'Two stages. The acoustic and behaviour layers score every call, half and half, in about a second on a CPU. If together they reach 80% confidence, that is the verdict. If not, the semantic service is asked, and its vote is added at 0.15.',
   steps: [
     {
       label: 'STEP 1',
-      title: 'Split and align',
-      text: 'Channels separated, voice activity marked on both, turn boundaries built from the overlap between them.',
+      title: 'Split and segment',
+      text: 'Channel&nbsp;0 is the caller, channel&nbsp;1 is the agent. Voice activity is marked on both. The caller&rsquo;s speech is cut into chunks of at most 4&nbsp;s, level-normalised and resampled to 16&nbsp;kHz for the speech model.',
     },
     {
       label: 'STEP 2',
-      title: 'Find the pressure points',
-      text: "The agent's track shows where it interrupted, went silent, or asked a trap question. Those windows get the attention.",
+      title: 'Two primaries, in parallel',
+      text: 'Acoustic: frozen Wav2Vec2 Spanish, layer 5, a small MLP. Behaviour: 24 timing features from the turns, a logistic regression. Each returns a calibrated probability, or abstains when it has nothing to go on.',
     },
     {
       label: 'STEP 3',
-      title: 'Score in parallel',
-      text: 'The three heads run at the same time, each returning a probability and a reliability weight.',
+      title: 'Gate at 80%',
+      text: 'The two are averaged 50/50. If the confidence in the result is at least 0.80, the answer leaves now. On the held-out set that is 66 calls of 71.',
     },
     {
       label: 'STEP 4',
-      title: 'Fuse and commit',
-      text: 'A calibrated layer weights each head by how much evidence it actually saw, then emits a confidence that means something.',
+      title: 'Verifier, only when needed',
+      text: 'The rest go to the semantic service: transcription with per-word confidence, text features, an LLM rubric. Its vote is added at 0.15 and the three re-combine. On the held-out set, 5 calls.',
     },
   ],
   timeline: {
-    heading: 'Confidence crosses the commit threshold before the call is five seconds old.',
-    /** Position of the verdict line, as a percent of the axis below. */
-    verdictAt: 34, // TODO: replace with real eval numbers
+    heading: 'A confident call answers in about a second. An escalated one, in about four.',
+    /** Position of the verdict line, as a percent of the axis below (5 s wide). */
+    verdictAt: 20,
     markers: [
-      { at: 12, label: 'first caller turn' },
-      { at: 34, label: 'verdict · 4.2 s' }, // TODO: replace with real eval numbers
-      { at: 60, label: 'trap answered' },
+      { at: 20, label: 'verdict · 1.0 s' },
+      { at: 78, label: 'with verifier · 3.9 s' },
     ],
-    axis: ['0 s', '6 s', '12 s'],
-    note: 'Acoustic scoring needs roughly 1.8&nbsp;s of caller speech. The conversational head needs one interruption, which the agent can provoke deliberately if the score is still ambiguous. The semantic head is the slowest and the most certain, so it is allowed to overturn an early verdict rather than delay one.',
+    axis: ['0 s', '2.5 s', '5 s'],
+    note: 'The acoustic layer scores a call in about 120&nbsp;ms on a GPU. The behaviour layer needs about 860&nbsp;ms on a CPU, almost all of it voice activity detection. The semantic layer is a paid transcription and a paid LLM call, about 2.6&nbsp;s of network, so it is spent only on the calls the primaries could not settle. Nothing is streamed: the detector scores a complete call.',
   },
 }
 
@@ -133,37 +135,39 @@ export const endpoint = {
   status: '→ 200 OK',
   copy: 'Copy',
   copied: 'Copied',
+  /** The real answer for call_0847d7417bb1, one of the five held-out escalations (README.md, Results). */
   response: {
     is_synthetic: true,
-    confidence: 0.87, // TODO: replace with real eval numbers
-    evidence: {
-      acoustic: 0.71, // TODO: replace with real eval numbers
-      conversational: 0.83, // TODO: replace with real eval numbers
-      semantic: 0.95, // TODO: replace with real eval numbers
-      decided_at_s: 4.2, // TODO: replace with real eval numbers
+    confidence: 0.748,
+    decisive: true,
+    settled_by_primaries: false,
+    verifiers_consulted: true,
+    details: {
+      branches: { acoustic: 1.0, behaviour: 0.435, semantic: 0.952 },
+      weights: { acoustic: 0.5, behaviour: 0.5, semantic: 0.15 },
+      acoustic_model: 'wav2vec2_spanish',
     },
   },
   specs: [
     {
       label: 'REQUIRED',
-      text: '<code>is_synthetic</code> and <code>confidence</code>. Everything under <code>evidence</code> is extra — it is there so a fraud analyst can see which signal made the call.',
+      text: '<code>is_synthetic</code> and <code>confidence</code>, the challenge contract. <code>confidence</code> is the probability that the verdict is right. Everything under <code>details</code> is extra: each layer&rsquo;s probability, its weight, and whether it was even asked.',
     },
     {
       label: 'INPUT',
-      text: 'Stereo WAV, 8 kHz, base64. Channel 0 is classified, channel 1 is context. Mono still works; the conversational head abstains and the fusion re-weights.',
+      text: 'Stereo WAV, 8&nbsp;kHz, base64. Channel&nbsp;0 is classified; channel&nbsp;1 is the agent and gives the timing its context. Mono still works: the behaviour layer abstains and its weight goes to the others.',
     },
     {
       label: 'LATENCY',
-      // TODO: replace with real eval numbers
-      text: 'Median 310 ms on a 15-second clip, CPU only. Streaming mode emits a running verdict every 500 ms.',
+      text: 'About 1.0&nbsp;s when the primaries settle it, which they did on 66 of 71 held-out calls. About 3.9&nbsp;s when the semantic verifier is consulted. No streaming: it scores a complete call.',
     },
     {
       label: 'CALIBRATION',
-      text: 'Confidence is isotonic-fitted on held-out calls, so 0.87 means right about 87% of the time at that score — not just "quite sure".',
+      text: 'Every layer returns a calibrated probability: Platt scaling for the acoustic score, fitted under 11 channel conditions; a sigmoid on out-of-fold logits for behaviour; Platt for semantic. So 0.75 means about 75%, not &ldquo;quite sure&rdquo;.',
     },
     {
       label: 'ABSTAINING',
-      text: 'Under 1.2 s of caller speech it returns the prior rather than guessing. A wrong confident answer costs a bank more than a slow one.',
+      text: 'A layer with no evidence says so instead of guessing: no audible caller speech, fewer than two turn events, fewer than five transcribed words. Its weight goes to the layers that answered. If none did, the answer is <code>false</code> at 0.5, flagged <code>decisive: false</code>, which is not a vote for human.',
     },
   ],
 }

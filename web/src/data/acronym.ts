@@ -6,7 +6,7 @@
 export const acronym = [
   {
     word: 'Intelligent',
-    text: 'Not one classifier with an opinion. Three independent readers of the same call — the sound, the timing, the sense — that only get a vote once they agree on what they heard.',
+    text: 'Not one classifier with an opinion. Three independent readers of the same call — the sound, the timing, the sense. Two of them decide every call; the third is asked only when they cannot.',
   },
   {
     word: 'System',
@@ -18,7 +18,7 @@ export const acronym = [
   },
   {
     word: 'Synthetic',
-    text: 'Cloned voices leak in three places: vocoder residue inside the passband, recovery from interruption that is too clean, and answers to questions that have no answer.',
+    text: 'Cloned voices leak in three places: in what the voice is made of, in when it speaks and yields, and in answers that arrive too complete, too formal and without a single filler.',
   },
   {
     word: 'Interactions',
