@@ -1,0 +1,10 @@
+# Secrets never come back into this tree. The fusion reaches the module over HTTP; the keys belong to the
+# service's own process, not to this repository.
+.env
+.env.*
+!.env.example
+
+# The module's own outputs, once its sources are dropped in here.
+model.pkl
+scores_semantico.csv
+.venv/

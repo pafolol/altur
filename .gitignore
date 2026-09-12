@@ -17,6 +17,7 @@ __pycache__/
 audio/
 *.zip
 .DS_Store
+# Never again: the fusion branch pushed a .env with live ElevenLabs and Gemini keys.
 .env
 .env.*
 !.env.example
