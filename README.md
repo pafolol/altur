@@ -5,7 +5,7 @@ agent), decide whether the caller is a human or a synthetic voice.
 
 Independent detectors answer that question from **different evidence**, and `POST /detect` returns their
 weighted vote: **acoustic 50 % / behaviour 35 % / semantic 15 %**, every weight tunable at runtime. This
-repository is the merge of the `modelo` and `behaviour` branches; the semantic layer is reached over HTTP.
+repository is the merge of the `modelo`, `behaviour` and `fusion` branches; the semantic layer is reached over HTTP.
 
 ```
 stereo 8 kHz WAV (base64 at the API)
@@ -84,7 +84,9 @@ All three are git-ignored. The fusion itself never needs them - it is given WAV 
 
 **The semantic layer** is a separate service rather than a module in this tree: it needs an ElevenLabs key
 and a Gemini key, it is the only layer that leaves the machine, and its cost is a network budget rather than
-a model. Point the fusion at it and nothing else changes:
+a model. `semantic/` holds what the `fusion` branch actually contained — the Scribe and Gemini caches, which
+are the expensive part — but **not the module's sources, which were never pushed**; `semantic/README.md` has
+the evidence and what is needed. Point the fusion at the service and nothing else changes:
 
 ```
 set SEMANTIC_URL=http://127.0.0.1:8100/detect        (or python src/server.py --semantic-url ...)
@@ -274,6 +276,11 @@ behaviour/                      THE BEHAVIOUR LAYER, merged in frozen from the b
 behaviour/behavior/             the module itself (inference.py, vad.py, features.py, events.py, ...)
 behaviour/artifacts/            its two frozen artifacts - git-ignored, see Setup
 behaviour/reports/              its report, its freeze record and its metrics
+
+semantic/                       THE SEMANTIC LAYER, merged from the fusion branch - SOURCES NOT INCLUDED
+semantic/README.md              what arrived, what is missing, and how to attach the service. READ THIS ONE
+semantic/cache/                 the expensive part: Scribe transcripts + the Gemini rubric for every call
+semantic/bytecode/              the nine .pyc that were pushed instead of the sources
 outputs/fusion/                 the cached per-layer scores, the per-call CSV and the weight sweep
 
 models/wav2vec2_spanish/        Model A (specialist) = V1, in the fusion - never overwritten
