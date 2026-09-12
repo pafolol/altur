@@ -6,7 +6,7 @@ agent), decide whether the caller is a human or a synthetic voice.
 Independent detectors answer that question from **different evidence**, and `POST /detect` returns their
 verdict in **two stages**: the acoustic and behaviour layers decide every call **50 / 50**, and the semantic
 layer is a **verifier** consulted only when those two do not settle it. Every weight, role and gate is tunable
-at runtime. This repository is the merge of the `modelo`, `behaviour` and `fusion` branches.
+at runtime. This repository is the merge of the `modelo`, `behaviour`, `fusion` and `backend-esteban` branches.
 
 ```
 stereo 8 kHz WAV (base64 at the API)
@@ -311,6 +311,10 @@ behaviour/                      THE BEHAVIOUR LAYER, merged in frozen from the b
 behaviour/behavior/             the module itself (inference.py, vad.py, features.py, events.py, ...)
 behaviour/artifacts/            its two frozen artifacts - git-ignored, see Setup
 behaviour/reports/              its report, its freeze record and its metrics
+
+backend/                        THE SERVING SHELL, merged from the backend-esteban branch and not edited
+backend/INTEGRATION.md          how it relates to src/server.py - READ BEFORE SUBMITTING: two /detect exist
+backend/app/                    FastAPI with request limits, /ready, warm-up, request ids; detector is a stub
 
 semantic/                       THE SEMANTIC LAYER, merged from the fusion branch and not edited
 semantic/server.py              its own FastAPI service - runs on its own Python 3.13 venv, see Setup
