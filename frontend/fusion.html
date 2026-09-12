@@ -555,7 +555,7 @@
         <div class="big">${s.acc === null ? "–" : pct(s.acc)}</div>
         <div class="det">${silent
             ? `<b>no answer</b> on any of ${s.n} calls<br>${l.available ? "abstained" : "service not answering"}`
-            : `<b>${s.ok}</b>/${s.answered} answered${s.abst ? ` · ${s.abst} abstained` : ""}`}</div>
+            : `<b>${s.ok}</b>/${s.answered} correct${s.abst ? ` · ${s.abst} abstained` : ""}`}</div>
       </div>`;
     });
     let tn = 0, fp = 0, fn = 0, tp = 0, brier = 0, undecided = 0;

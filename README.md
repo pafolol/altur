@@ -29,7 +29,9 @@ stereo 8 kHz WAV (base64 at the API)
 The layers fail in different places, which is the point of running more than one: the acoustic layer needs
 *audible* caller speech, the behaviour layer needs *interaction* (a caller who never gets interrupted leaves
 it nothing to time), and the semantic layer needs a *transcript* and two third-party APIs. Each one says when
-it has nothing to go on instead of guessing, and its share of the vote goes to the others.
+it has nothing to go on instead of guessing, and its share of the vote goes to the others — a real example is
+in `semantic/samples/call.wav`, a 13.5 s clip with a silent agent channel, where the behaviour layer abstains
+because there is no interaction to time and the other two decide it between them.
 
 ### The acoustic layer's two models
 
@@ -82,23 +84,42 @@ xcopy /E /I D:/altur/hackmty26/turns          D:/altur/acoustic/behaviour/turns
 
 All three are git-ignored. The fusion itself never needs them - it is given WAV bytes like any caller.
 
-**The semantic layer** is a separate service rather than a module in this tree: it needs an ElevenLabs key
-and a Gemini key, it is the only layer that leaves the machine, and its cost is a network budget rather than
-a model. `semantic/` holds what the `fusion` branch actually contained — the Scribe and Gemini caches, which
-are the expensive part — but **not the module's sources, which were never pushed**; `semantic/README.md` has
-the evidence and what is needed. Point the fusion at the service and nothing else changes:
+**The semantic layer** lives in `semantic/`, merged from the `fusion` branch, and runs as its **own
+service on its own interpreter**. That is not incidental: it needs an ElevenLabs key and a Gemini key, it is
+the only layer that leaves the machine, its budget is a network deadline rather than compute — and it
+requires **Python 3.12+** (it uses PEP 701 f-strings), which the 3.11 venv here cannot parse. The HTTP
+boundary is what lets the two live in one repository without one dictating the other's runtime.
 
 ```
-set SEMANTIC_URL=http://127.0.0.1:8100/detect        (or python src/server.py --semantic-url ...)
+cd semantic
+set UV_PYTHON_INSTALL_DIR=%CD%\.python
+uv venv --python 3.13 .venv
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+copy .env.example .env                     :: ELEVENLABS_API_KEY, GEMINI_API_KEY - it will not start without them
+.venv\Scripts\python.exe -m uvicorn server:app --host 127.0.0.1 --port 8100
 ```
 
-It must answer `GET /health`, and `POST /detect {"audio": "<base64 wav>"}` with
-`{"is_synthetic", "confidence", "score", "abstain", "reason", "used", "ms"}`, where `score` is the calibrated
-P(synthetic) - `confidence` is P(the verdict is right), which is not what a fusion input is, so the layer
-reads `score`. `used` says which path answered (`"f4+f5"` full, `"f4"` degraded, `"abstain"`); the degraded
-path is recorded at half evidence quality. **If nothing answers, the layer abstains on every call and its
-15 % goes to the other two** - the console shows the channel greyed out with the reason, and the verdict is
-never blocked or delayed waiting for it.
+Then point the fusion at it — `python src/server.py --semantic-url http://127.0.0.1:8100/detect`, or set
+`SEMANTIC_URL`. Port 8100 rather than its default 8000 so it does not collide with this server.
+
+It answers `GET /health` and `POST /detect {"audio": "<base64 wav>"}` with
+`{"is_synthetic", "confidence", "score", "abstain", "reason", "used", "ms"}`. `score` is the calibrated
+P(synthetic) and is what the fusion reads; this service sets `confidence` equal to it, but a service
+following the challenge's own reading of "confidence" would return P(the verdict is right), and averaging
+that would be wrong. `used` names the path that answered — `"f4+f5"` (Scribe + rubric), `"f4"` (text
+features only, recorded at half evidence quality) or `"abstain"`.
+
+**If nothing answers, the layer abstains on every call and its 15 % goes to the other two** — the console
+greys the channel out with the reason, and no verdict is blocked or delayed waiting for it.
+
+It also needs the dataset where its code looks for it, which is one junction and no copying:
+
+```
+mklink /J D:/altur/acoustic/semantic/data/hackmty26  D:/altur/hackmty26
+mklink /J D:/altur/hackmty26/audio                   D:/altur/altur-challenge-audio/audio
+```
+
+(the second is the layout the organizers' own README describes, and `audio/` is gitignored there)
 
 ## Pipeline (in order)
 
@@ -139,7 +160,8 @@ never blocked or delayed waiting for it.
 | --- | --- | --- |
 | 17 | `python src/evaluate_fusion.py` | scores the 71 held-out calls through **every** layer, sweeps the weights, writes the cache the console reads (~60 s) |
 | 18 | `python src/server.py --port 8000` | `/detect` answers with the fused verdict; `/fusion` is the console |
-| 18b | `python src/server.py --semantic-url http://127.0.0.1:8100/detect` | ... with the semantic layer attached |
+| 18b | `python src/server.py --semantic-url http://127.0.0.1:8100/detect` | ... with the semantic service attached (start it first, see Setup) |
+| 18c | `cd semantic && .venv/Scripts/python holdout_val.py` | train-only fit applied to val -> `scores_val_trainfit.csv` (caches only, no API calls) |
 
 Smoke tests: add `--fraction 0.05` to steps 4 and 8, `--limit 10` to step 10, `--limit 6 --skip-stress` to
 step 15. Step 15 can rebuild its tables and figures without re-scoring anything with `--from-cache`.
@@ -277,10 +299,14 @@ behaviour/behavior/             the module itself (inference.py, vad.py, feature
 behaviour/artifacts/            its two frozen artifacts - git-ignored, see Setup
 behaviour/reports/              its report, its freeze record and its metrics
 
-semantic/                       THE SEMANTIC LAYER, merged from the fusion branch - SOURCES NOT INCLUDED
-semantic/README.md              what arrived, what is missing, and how to attach the service. READ THIS ONE
-semantic/cache/                 the expensive part: Scribe transcripts + the Gemini rubric for every call
-semantic/bytecode/              the nine .pyc that were pushed instead of the sources
+semantic/                       THE SEMANTIC LAYER, merged from the fusion branch and not edited
+semantic/server.py              its own FastAPI service - runs on its own Python 3.13 venv, see Setup
+semantic/model.pkl              its fitted logistic + Platt calibration
+semantic/cache/                 Scribe transcripts + the Gemini rubric for every call (no API calls to re-run)
+semantic/scores_semantico.csv   its own out-of-fold scores, a random 5-fold over all 353 calls
+semantic/scores_val_trainfit.csv  train-only fit applied to val, what the fusion reads for the 71
+semantic/holdout_val.py         added by this integration to write that file; nothing else is modified
+semantic/AUDIT.md               its shortcut audit, ablation ladder and error analysis
 outputs/fusion/                 the cached per-layer scores, the per-call CSV and the weight sweep
 
 models/wav2vec2_spanish/        Model A (specialist) = V1, in the fusion - never overwritten
@@ -295,44 +321,55 @@ reports/                        ACOUSTIC_LEARNING_SUMMARY.{pdf,md}, TELEPHONE_RO
 
 ### The fusion, on the 71 held-out calls
 
-Speaker-disjoint from everything either layer trained on. `python src/evaluate_fusion.py`, with the semantic
-service **not attached** - which is exactly what the numbers below therefore describe:
+Speaker-disjoint from everything any layer trained on. `python src/evaluate_fusion.py`:
 
-| system | accuracy | ROC AUC | Brier | answered | abstained |
+| system | accuracy | ROC AUC | Brier | reads |
+|---|---|---|---|---|
+| Acoustic V1 alone | 100.0% | 1.000 | 0.000 | how the caller sounds |
+| Behaviour alone | 97.2% | 0.991 | 0.041 | when the caller speaks, yields, interrupts |
+| Semantic alone | 91.5% | 0.975 | 0.070 | what the caller actually says |
+| **Fused, 50 / 35 / 15** | **100.0%** | **1.000** | **0.009** | all three |
+| Fused, even split | 100.0% | 1.000 | 0.017 | all three |
+
+Confusion of the fused verdict: `[[37, 0], [0, 34]]` (rows and columns human, synthetic). No layer
+abstained on this split.
+
+**The semantic column is not scored through the live service, on purpose.** Its shipped `model.pkl` is
+refitted on all 353 calls, so asking it about a validation call would be asking a model about audio it has
+already seen. `Layer.held_out_score()` exists for exactly this: an evaluation path passes the call's
+`anon_id`, and a layer that was fitted on it answers from its own held-out scores instead. Live `/detect`
+never has an `anon_id`, so it always runs every layer for real. The acoustic and behaviour layers are fitted
+on the train split alone, so for them the validation WAV is already a held-out input and they return `None`.
+
+The semantic numbers above come from `semantic/scores_val_trainfit.csv` — the served configuration fitted on
+the 282 train calls and applied to the 71 val ones, written by `semantic/holdout_val.py` from the caches with
+no API calls. The module's own `scores_semantico.csv` gives 0.973 instead of 0.975, because its rows come
+from a random 5-fold over all 353 calls, which ignores the speaker-disjoint official split; its own code
+calls that "slightly optimistic". The two agreeing to 0.002 is reassuring rather than alarming.
+
+> One inconsistency worth flagging to whoever owns that module: `AUDIT.md` labels a **10-feature** row
+> ("F4 limpio + F5 2 dims", val AUC 0.921) as *"lo que se sirve ahora"*, but `model.py` actually serves
+> **15** features — F4 with `SEMANTIC_EXTRA` on (12), plus `overlap_agent`, plus the 2 rubric dimensions.
+> The audit table and the served configuration have drifted apart; 0.975 is the served one measured the
+> same way.
+
+The behaviour layer gets two calls wrong and the acoustic layer rescues both:
+
+| call | truth | acoustic | behaviour | semantic | fused at 50 / 35 / 15 |
 |---|---|---|---|---|---|
-| Acoustic V1 alone | 100.0% | 1.000 | 0.000 | 71/71 | 0 |
-| Behaviour alone | 97.2% | 0.991 | 0.041 | 71/71 | 0 |
-| Semantic alone | – | – | – | 0/71 | 71 |
-| **Fused, 50 / 35 / 15** | **100.0%** | **1.000** | **0.007** | 71/71 | 0 |
-| Fused, even split | 100.0% | 1.000 | 0.010 | 71/71 | 0 |
+| `0847d7417bb1` | synthetic | 1.000 | 0.435 | 0.952 | 0.795 -> synthetic |
+| `569ffb0869eb` | human | 0.000 | 0.964 | 0.046 | 0.344 -> human |
 
-Per-layer accuracy is measured over the calls that layer was **willing to judge**; an abstention is no answer,
-not a wrong one, and counting it wrong would make an absent service look like a bad model. The abstention
-column is there so nothing is hidden. The semantic service answered nothing here, so its 15 % was handed to
-the other two and the real split on these rows was 59 % / 41 %.
+On that second call the semantic layer agrees with the acoustic one and the margin widens further — which is
+the shape of the argument for a third reading of the same call, even though this split is far too small and
+too saturated to prove it.
 
-Confusion of the fused verdict: `[[37, 0], [0, 34]]` (rows and columns human, synthetic).
-
-The behaviour layer gets exactly two calls wrong and the acoustic layer rescues both, which is the whole
-argument for running more than one:
-
-| call | truth | acoustic | behaviour | fused at 50 / 35 | (at an even 50 / 50) |
-|---|---|---|---|---|---|
-| `0847d7417bb1` | synthetic | 1.000 | 0.435 | 0.768 -> synthetic | 0.717 |
-| `569ffb0869eb` | human | 0.000 | 0.964 | 0.397 -> human | **0.482**, by 0.018 |
-
-That last column is the reason the acoustic layer is weighted above the behaviour layer rather than equal to
-it. At an even split the second rescue clears the threshold by 0.018 - one confidently wrong behaviour score
-against one confidently right acoustic score, decided on a hair. At 50 / 35 the same call lands at 0.397 and
-the margin is no longer interesting. That is a property of these 71 calls, not a proof, but it is the only
-evidence in them that bears on the weights at all.
-
-Read all of this honestly. The split is **saturated for the acoustic layer** - it is already at 100 % alone,
-for the reason the next section explains - so no weighting can be justified from these 71 calls, and a
-sweep maximum here is a description of them, not a setting that transfers. Both layers were also developed
-while looking at this split. The case for the other two layers is not this table: it is that they read
-completely different signals, ones that survive a codec, a re-recording and a voice the acoustic model has
-never heard. A caller who sounds perfect still has to take their turn, and still has to say something.
+Read the whole table honestly: the split is **saturated for the acoustic layer**, which is already at 100 %
+alone for the reason the next section explains. No weighting can be justified from these 71 calls, and a
+sweep maximum here describes them rather than transferring. Every layer was also developed while looking at
+this split. The case for three layers is not the accuracy column: it is that they fail in different places —
+a codec destroys the voice, a scripted bot still has to take its turn, and a fluent synthetic caller still
+has to say something that holds together.
 
 ### The specialist, on the official split
 

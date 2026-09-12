@@ -318,6 +318,49 @@ def test_semantic_layer_abstains_when_the_service_says_so(payload):
     assert r.abstained is True and r.quality == 0.0 and r.reason == payload["reason"]
 
 
+def test_held_out_scores_are_only_used_for_dataset_calls(tmp_path):
+    """
+    The semantic module's model.pkl is refitted on all 353 calls, so asking the live service about a
+    validation call would flatter it. An anon_id routes to its held-out score instead; live traffic has
+    no anon_id and always runs the real layer.
+    """
+    (tmp_path / "scores_val_trainfit.csv").write_text(
+        "anon_id,split,score\ncall_aaa,val,0.9\n", encoding="utf-8")
+    layer = fusion.SemanticLayer(url="http://127.0.0.1:1/detect", root=tmp_path)
+    r = layer.held_out_score("call_aaa")
+    assert r.probability == pytest.approx(0.9) and r.abstained is False
+    assert r.details["source"] == "scores_val_trainfit.csv"
+    assert layer.held_out_score("call_unknown") is None
+
+    det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.2, weight=0.5), layer])
+    # with an id: the held-out score votes, no HTTP at all
+    known = det.score_layers(b"RIFF", anon_id="call_aaa")
+    assert [x.probability for x in known] == [pytest.approx(0.2), pytest.approx(0.9)]
+    assert not known[1].abstained
+    # without one: the layer really is called, and abstains because nothing is listening on port 1
+    live = det.score_layers(b"RIFF")
+    assert live[1].abstained is True
+
+
+def test_the_train_fit_file_wins_over_the_modules_random_fold_file(tmp_path):
+    """Both files may know a call; the speaker-disjoint train-only fit is the one that counts."""
+    (tmp_path / "scores_semantico.csv").write_text(
+        "anon_id,split,score\ncall_aaa,val,0.10\ncall_bbb,train,0.20\n", encoding="utf-8")
+    (tmp_path / "scores_val_trainfit.csv").write_text(
+        "anon_id,split,score\ncall_aaa,val,0.90\n", encoding="utf-8")
+    layer = fusion.SemanticLayer(url="http://127.0.0.1:1/detect", root=tmp_path)
+    assert layer.held_out_score("call_aaa").probability == pytest.approx(0.90)
+    assert layer.held_out_score("call_aaa").details["source"] == "scores_val_trainfit.csv"
+    assert layer.held_out_score("call_bbb").probability == pytest.approx(0.20)
+    assert layer.held_out_score("call_bbb").details["source"] == "scores_semantico.csv"
+
+
+def test_layers_without_held_out_scores_are_scored_normally():
+    """Acoustic and behaviour are fitted on train alone, so the val WAV is already a held-out input."""
+    for layer in (fusion.AcousticLayer(), fusion.BehaviourLayer()):
+        assert layer.held_out_score("call_anything") is None
+
+
 def test_semantic_layer_abstains_when_nothing_answers():
     """Nothing is listening on port 1. The layer must abstain, not raise, and not stall the verdict."""
     layer = fusion.SemanticLayer(url="http://127.0.0.1:1/detect")

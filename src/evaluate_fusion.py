@@ -55,7 +55,7 @@ def score_split(det, df, acoustic_model, refresh=False, cache=None):
         key = f"{acoustic_model}|{'+'.join(det.keys())}:{r.anon_id}"
         if refresh or key not in cache:
             t0 = time.perf_counter()
-            results = det.score_layers(open(r.path, "rb").read())
+            results = det.score_layers(open(r.path, "rb").read(), anon_id=r.anon_id)
             cache[key] = {"layers": [x.to_dict() for x in results],
                           "scored_ms": round((time.perf_counter() - t0) * 1000),
                           "acoustic_model": acoustic_model}

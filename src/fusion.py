@@ -259,6 +259,22 @@ class Layer:
         """What the page shows about this layer before any call is scored."""
         return {}
 
+    def held_out_score(self, anon_id):
+        """
+        A properly held-out score for one call of the official dataset, or None.
+
+        This exists because "score the validation WAV through the deployed model" is only an honest
+        measurement while the deployed model has never seen that call. It is true of the acoustic and
+        behaviour layers, whose classifiers are fitted on the train split alone - they return None here
+        and are simply scored like any other audio. It is NOT true of the semantic layer, whose shipped
+        model.pkl is refitted on all 353 calls: asking it about a validation call would flatter it, so it
+        supplies the out-of-fold score its own training produced instead.
+
+        Only the evaluation paths (the console's 71 calls, evaluate_fusion.py) pass an anon_id. Live
+        traffic never has one, so /detect always runs the real layer.
+        """
+        return None
+
     # -- shared ---------------------------------------------------------------
     def ensure_loaded(self):
         import time
@@ -446,12 +462,14 @@ class SemanticLayer(Layer):
     # The degraded path is worth less than the full one: the rubric is most of the signal.
     QUALITY_BY_PATH = {"f4+f5": 1.0, "f4": 0.5}
 
-    def __init__(self, url=None, timeout=30.0):
+    def __init__(self, url=None, timeout=30.0, root=None):
         super().__init__()
         import os
         self.url = url or os.getenv("SEMANTIC_URL", "http://127.0.0.1:8100/detect")
         self.timeout = float(os.getenv("SEMANTIC_TIMEOUT_S", timeout))
+        self.root = Path(root or config.PROJECT_ROOT / "semantic")
         self._health = None
+        self._oof_cache = None
 
     HEALTH_TIMEOUT_S = 1.5
 
@@ -482,8 +500,11 @@ class SemanticLayer(Layer):
         req = urllib.request.Request(self.url, body, {"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=self.timeout) as r:
             out = json.loads(r.read())
-        # `score` is the calibrated probability; `confidence` is P(the verdict is right), which is NOT
-        # what a fusion input is. Take the probability, and only fall back to reconstructing it.
+        # `score` is the calibrated P(synthetic) and is what a fusion input must be. This service sets
+        # confidence == score (its README is explicit that confidence is "no 'certeza'"), so either would
+        # do here - but a service that followed the challenge's own reading of "confidence" would return
+        # P(the verdict is right) instead, and averaging THAT would be wrong. Read `score`; only if it is
+        # absent fall back to undoing the other convention.
         if "score" in out:
             p = float(out["score"])
         else:
@@ -498,9 +519,52 @@ class SemanticLayer(Layer):
                      "service_is_synthetic": out.get("is_synthetic"),
                      "service_confidence": out.get("confidence")})
 
+    # Where a held-out score for a dataset call comes from, best first.
+    #   scores_val_trainfit.csv  the served configuration fitted on the TRAIN split alone and applied to
+    #                            val. Written by semantic/holdout_val.py from the caches - no API calls.
+    #                            Honest against the official split, which is speaker-disjoint.
+    #   scores_semantico.csv     the module's own delivery. Every row is out-of-fold, but from a RANDOM
+    #                            5-fold over all 353 calls, which ignores that split; model.py's own
+    #                            comment calls it "slightly optimistic". In practice the two agree to
+    #                            0.002 AUC, so this is a fallback rather than a correction.
+    HELD_OUT_FILES = ("scores_val_trainfit.csv", "scores_semantico.csv")
+
+    def held_out_score(self, anon_id):
+        """
+        A score for one official call from a model that was not fitted on it.
+
+        The shipped `model.pkl` is refitted on all 353 calls, so putting a validation call through the
+        live service would be asking a model about audio it has already seen. The module anticipates
+        this - its README calls `scores_semantico.csv` "la entrega al backend para aprender los pesos de
+        fusion" - and `semantic/holdout_val.py` sharpens it to a train-only fit.
+        """
+        row = self._oof().get(anon_id)
+        if row is None:
+            return None
+        return LayerResult(self.key, self.display, row["score"], 1.0, False, "",
+                           details={"source": row["source"], "split": row["split"],
+                                    "note": "held out: model.pkl is refitted on all 353 calls, so the "
+                                            "live service must not be asked about a call it was fitted on"})
+
+    def _oof(self):
+        if self._oof_cache is None:
+            import csv
+            self._oof_cache = {}
+            # Later files do not overwrite earlier ones: the first source that knows a call wins.
+            for name in self.HELD_OUT_FILES:
+                path = self.root / name
+                if not path.exists():
+                    continue
+                with open(path, newline="") as f:
+                    for r in csv.DictReader(f):
+                        self._oof_cache.setdefault(r["anon_id"], {
+                            "score": float(r["score"]), "split": r["split"], "source": name})
+        return self._oof_cache
+
     def info(self):
         d = {"url": self.url, "timeout_s": self.timeout, "transport": "http",
-             "signal": "the words themselves - what the caller volunteers, repeats, repairs and grounds"}
+             "signal": "the words themselves - what the caller volunteers, repeats, repairs and grounds",
+             "held_out_scores": len(self._oof()), "root": str(self.root)}
         if self._health:
             d["service"] = self._health
         return d
@@ -572,12 +636,23 @@ class FusionDetector:
                 pass  # l.load_error holds the reason; describe() and /layers report it
         return self
 
-    def score_layers(self, wav_bytes):
-        """Run every layer. This is the expensive half; the result is cacheable and re-combinable."""
-        return [l.score(wav_bytes) for l in self.layers]
+    def score_layers(self, wav_bytes, anon_id=None):
+        """
+        Run every layer. This is the expensive half; the result is cacheable and re-combinable.
 
-    def score(self, wav_bytes, cfg=None):
-        results = self.score_layers(wav_bytes)
+        `anon_id` is only ever passed by the EVALUATION paths (the console's 71 held-out calls,
+        evaluate_fusion.py). A layer whose deployed model was fitted on that call answers from its own
+        held-out scores instead, so the table measures the layer rather than flattering it. Live traffic
+        has no anon_id, so /detect always runs every layer for real.
+        """
+        out = []
+        for l in self.layers:
+            r = l.held_out_score(anon_id) if anon_id else None
+            out.append(r if r is not None else l.score(wav_bytes))
+        return out
+
+    def score(self, wav_bytes, cfg=None, anon_id=None):
+        results = self.score_layers(wav_bytes, anon_id)
         return combine(results, cfg or self.config) | {"layer_details": [r.to_dict() for r in results]}
 
 

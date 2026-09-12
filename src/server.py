@@ -448,7 +448,9 @@ def validation_score(anon_id: str, refresh: bool = False):
     cache, key = _cache(), _cache_key(anon_id)
     if refresh or key not in cache:
         t0 = time.perf_counter()
-        results = get_fusion().score_layers(open(call["path"], "rb").read())
+        # anon_id is passed on purpose: a layer whose deployed model was refitted on this call answers
+        # from its own held-out scores rather than being asked about audio it has already seen.
+        results = get_fusion().score_layers(open(call["path"], "rb").read(), anon_id=anon_id)
         cache[key] = {"layers": [r.to_dict() for r in results],
                       "scored_ms": round((time.perf_counter() - t0) * 1000),
                       "acoustic_model": app.state.acoustic_model}
