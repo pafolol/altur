@@ -1,0 +1,21 @@
+{
+  "backbone": "wav2vec2_spanish",
+  "classifier": "mlp",
+  "layer": 5,
+  "reason": "highest mean validation AUC under the 10 stress conditions (0.9998; stressed accuracy 0.972, worst condition white_snr10 AUC 0.998); clean validation accuracy 1.000 / AUC 1.0000 - the clean split is saturated for every backbone and cannot rank them; 3 model(s) within 0.005 -> tie-break by stressed accuracy, EER, latency",
+  "val_metrics": {
+    "val_accuracy": 1.0,
+    "val_balanced_accuracy": 1.0,
+    "val_f1": 1.0,
+    "val_auc": 1.0,
+    "val_eer": 0.0
+  },
+  "stress_metrics": {
+    "stress_mean_auc": 0.9997615262321146,
+    "stress_mean_accuracy": 0.971830985915493,
+    "stress_worst_auc": 0.9984101748807632,
+    "stress_worst_condition": "white_snr10"
+  },
+  "gpu_latency_median_s": 0.11907069999961095,
+  "selection_rule": "mean validation AUC over stress conditions (MLP)"
+}

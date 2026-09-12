@@ -1,0 +1,42 @@
+{
+  "human": {
+    "anon_id": "call_eb1c9a5a2c08",
+    "duration_s": 145.32,
+    "caller_speech_s": 38.03999999999999,
+    "turn_start_s": 38.5,
+    "turn_seconds": 4.0,
+    "turn_samples": 32000,
+    "peak": 0.9803466796875,
+    "rms_db": -25.009273529052734,
+    "n_vad_regions": 18
+  },
+  "synthetic": {
+    "anon_id": "call_c87e905eb0d7",
+    "duration_s": 128.92,
+    "caller_speech_s": 38.48000000000001,
+    "turn_start_s": 9.16,
+    "turn_seconds": 4.0,
+    "turn_samples": 32000,
+    "peak": 0.9490966796875,
+    "rms_db": -15.067632675170898,
+    "n_vad_regions": 14
+  },
+  "pitch_medians": {
+    "f0_median": {
+      "human": 148.59316324529286,
+      "synthetic": 141.88293432325779
+    },
+    "f0_std": {
+      "human": 39.26954631080072,
+      "synthetic": 28.755950345419624
+    },
+    "f0_range_semitones": {
+      "human": 9.6,
+      "synthetic": 7.8000000000000025
+    },
+    "voiced_fraction": {
+      "human": 0.7641572285143238,
+      "synthetic": 0.8580946035976016
+    }
+  }
+}

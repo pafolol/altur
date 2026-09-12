@@ -1,0 +1,15 @@
+{
+  "method": "temperature",
+  "a": 3.0,
+  "b": 0.0,
+  "temperature": 0.05000000000000001,
+  "fit_on": "clean validation (no stress predictions for this classifier); slope capped at 3",
+  "n": 71,
+  "classifier": "logreg",
+  "cv": {
+    "brier": 1.0000000000275403e-12,
+    "log_loss": 1.0000005000290895e-06,
+    "ece": 1.00000000001377e-06,
+    "accuracy": 1.0
+  }
+}

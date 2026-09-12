@@ -1,0 +1,18 @@
+# Python 3.11. Tested versions (same stack as the previous ASVspoof project, plus the API server).
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0+cu128          # CPU-only machine: replace with torch==2.11.0
+transformers==5.17.0         # WavLM / wav2vec2 / XLS-R backbones
+librosa==0.11.0              # spectrograms, mel, MFCC, pitch (educational figures)
+soundfile==0.14.0            # WAV decoding (libsndfile)
+scipy>=1.11                  # polyphase resampling 8 kHz -> 16 kHz
+scikit-learn==1.9.1          # logistic regression, metrics, calibration
+numpy==2.4.6
+pandas==3.0.5
+matplotlib==3.11.1
+tqdm==4.70.0
+reportlab==5.0.1             # PDF report
+fastapi>=0.115               # POST /detect endpoint
+uvicorn>=0.30
+pytest>=8.0
+silero-vad>=6.0               # neural voice-activity detection (caller-turn segmentation)
+python-multipart>=0.0.9        # multipart uploads on the endpoint

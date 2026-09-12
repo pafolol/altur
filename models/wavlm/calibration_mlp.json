@@ -1,0 +1,15 @@
+{
+  "method": "temperature",
+  "a": 0.4138276162229579,
+  "b": 0.0,
+  "temperature": 2.416465119285877,
+  "fit_on": "validation under 11 conditions (781 call-conditions)",
+  "n": 781,
+  "classifier": "mlp",
+  "cv": {
+    "brier": 0.05647939240801501,
+    "log_loss": 0.19776400456712,
+    "ece": 0.04284010856412343,
+    "accuracy": 0.9359795134443022
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "n_clips": 108,
+  "per_source": {
+    "edge-tts es-MX-DaliaNeural": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9987507655406057,
+        "median_score": 7.298452734947205
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 0.5,
+        "median_p_synthetic": 0.632726914009407,
+        "median_score": 0.13420385122299194
+      }
+    },
+    "edge-tts es-MX-JorgeNeural": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9999892213675683,
+        "median_score": 11.750898361206055
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.885893428913461,
+        "median_score": 1.726000338792801
+      }
+    },
+    "edge-tts es-CO-SalomeNeural": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9965685406467959,
+        "median_score": 6.300783395767212
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 0.25,
+        "median_p_synthetic": 0.2797222657203643,
+        "median_score": -2.247364342212677
+      }
+    },
+    "edge-tts es-CO-GonzaloNeural": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9999833166777053,
+        "median_score": 11.681337833404541
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.93484906982674,
+        "median_score": 3.0272143855690956
+      }
+    },
+    "edge-tts es-AR-ElenaNeural": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9999626211561179,
+        "median_score": 10.37490463256836
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9850161478852479,
+        "median_score": 3.7365759015083313
+      }
+    },
+    "edge-tts es-AR-TomasNeural": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9999949438986662,
+        "median_score": 12.60067081451416
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9974492334946439,
+        "median_score": 5.697690725326538
+      }
+    },
+    "edge-tts es-US-PalomaNeural": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9996788582379026,
+        "median_score": 8.076590538024902
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.8724306906429691,
+        "median_score": 1.2095396518707275
+      }
+    },
+    "edge-tts es-US-AlonsoNeural": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9998777450293945,
+        "median_score": 9.133325815200806
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 0.75,
+        "median_p_synthetic": 0.9824836501971441,
+        "median_score": 3.539068043231964
+      }
+    },
+    "gTTS es-MX": {
+      "8k": {
+        "n": 8,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9992781090567777,
+        "median_score": 7.101667642593384
+      },
+      "pstn": {
+        "n": 8,
+        "correct": 0.875,
+        "median_p_synthetic": 0.8473698593828397,
+        "median_score": 0.9730978906154633
+      }
+    },
+    "Windows SAPI Sabina": {
+      "8k": {
+        "n": 4,
+        "correct": 0.5,
+        "median_p_synthetic": 0.4722645732184677,
+        "median_score": -1.1146448701620102
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9378768941975769,
+        "median_score": 2.1108656227588654
+      }
+    },
+    "Windows SAPI Helena": {
+      "8k": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9973472686662325,
+        "median_score": 6.833937168121338
+      },
+      "pstn": {
+        "n": 4,
+        "correct": 1.0,
+        "median_p_synthetic": 0.9808782096543844,
+        "median_score": 3.7858481407165527
+      }
+    },
+    "FLEURS es_419": {
+      "8k": {
+        "n": 40,
+        "correct": 0.35,
+        "median_p_synthetic": 0.7997910790390305,
+        "median_score": 0.6084554096062977
+      },
+      "pstn": {
+        "n": 40,
+        "correct": 0.9,
+        "median_p_synthetic": 0.022564148126979558,
+        "median_score": -5.104733149210611
+      }
+    },
+    "ASVspoof bonafide (English)": {
+      "8k": {
+        "n": 20,
+        "correct": 0.5,
+        "median_p_synthetic": 0.4094916677674769,
+        "median_score": -0.8837245106697083
+      },
+      "pstn": {
+        "n": 20,
+        "correct": 0.8,
+        "median_p_synthetic": 0.008358075513152895,
+        "median_score": -6.234323978424072
+      }
+    }
+  },
+  "per_variant": {
+    "8k": {
+      "accuracy": 0.6851851851851852,
+      "balanced_accuracy": 0.7125,
+      "auc": 0.8999999999999999,
+      "eer": 0.16666666666666663,
+      "far": 0.041666666666666664,
+      "frr": 0.5333333333333333,
+      "n_calls": 108
+    },
+    "pstn": {
+      "accuracy": 0.8796296296296297,
+      "balanced_accuracy": 0.875,
+      "auc": 0.9451388888888889,
+      "eer": 0.12916666666666665,
+      "far": 0.16666666666666666,
+      "frr": 0.08333333333333333,
+      "n_calls": 108
+    }
+  },
+  "runtime_s": 90.64267492294312
+}

@@ -1,0 +1,20 @@
+backbone,model,layer,classifier,split,accuracy,balanced_accuracy,precision,recall,f1,auc,eer,far,frr,brier,n_calls
+wavlm,WavLM Base+,9,logistic regression,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,2.923099491379347e-07,282
+wavlm,WavLM Base+,9,logistic regression,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,8.199458503946626e-08,71
+wavlm,WavLM Base+,9,MLP,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,2.5449327455387566e-05,282
+wavlm,WavLM Base+,9,MLP,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,5.232376277581959e-06,71
+wavlm,WavLM Base+,9,call-embedding logreg,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,8.28047948628096e-06,282
+wavlm,WavLM Base+,9,call-embedding logreg,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,7.125904449293613e-05,71
+wav2vec2_spanish,Wav2Vec2 Spanish (VoxPopuli),5,logistic regression,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,7.711983536406231e-07,282
+wav2vec2_spanish,Wav2Vec2 Spanish (VoxPopuli),5,logistic regression,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.00020256437203633248,71
+wav2vec2_spanish,Wav2Vec2 Spanish (VoxPopuli),5,MLP,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,7.329504720899421e-05,282
+wav2vec2_spanish,Wav2Vec2 Spanish (VoxPopuli),5,MLP,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,3.780864446067653e-05,71
+wav2vec2_spanish,Wav2Vec2 Spanish (VoxPopuli),5,call-embedding logreg,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,3.6863734903353917e-06,282
+wav2vec2_spanish,Wav2Vec2 Spanish (VoxPopuli),5,call-embedding logreg,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0004880764174682496,71
+xlsr,XLS-R 300M,23,logistic regression,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,3.187660278259604e-06,282
+xlsr,XLS-R 300M,23,logistic regression,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,3.276573311300352e-05,71
+xlsr,XLS-R 300M,23,MLP,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,7.382686220172192e-05,282
+xlsr,XLS-R 300M,23,MLP,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,1.300451362735691e-05,71
+xlsr,XLS-R 300M,23,call-embedding logreg,train,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,1.5111671651786222e-05,282
+xlsr,XLS-R 300M,23,call-embedding logreg,val,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,6.69021907787038e-05,71
+shortcut,"shortcut (all_trivial, logreg)",-,trivial statistics,val,0.9859154929577464,0.9852941176470588,,,0.9850746268656716,1.0,0.0,,,,71

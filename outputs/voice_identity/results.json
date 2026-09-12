@@ -1,0 +1,228 @@
+{
+  "backbone": "wav2vec2_spanish",
+  "layer": 5,
+  "sv_model": "microsoft/wavlm-base-plus-sv",
+  "human_nn_similarity_median": 0.9882630109786987,
+  "human_pair_similarity_median": 0.7602177858352661,
+  "synthetic_nn_similarity_median": 0.9949430227279663,
+  "synthetic_pair_similarity_median": 0.7740688920021057,
+  "human_vs_synthetic_pair_similarity_median": 0.7496722936630249,
+  "clusters": {
+    "0.6": {
+      "synthetic": {
+        "n_clusters": 2,
+        "n_singletons": 1,
+        "largest_cluster": 202,
+        "clusters_with_train_and_val": 1,
+        "val_calls_whose_voice_is_in_train": 34,
+        "val_calls_total": 34,
+        "sizes": [
+          202,
+          1
+        ]
+      },
+      "human": {
+        "n_clusters": 2,
+        "n_singletons": 0,
+        "largest_cluster": 79,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 37,
+        "val_calls_total": 37,
+        "sizes": [
+          79,
+          71
+        ]
+      }
+    },
+    "0.65": {
+      "synthetic": {
+        "n_clusters": 3,
+        "n_singletons": 1,
+        "largest_cluster": 103,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 34,
+        "val_calls_total": 34,
+        "sizes": [
+          103,
+          99,
+          1
+        ]
+      },
+      "human": {
+        "n_clusters": 2,
+        "n_singletons": 0,
+        "largest_cluster": 79,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 37,
+        "val_calls_total": 37,
+        "sizes": [
+          79,
+          71
+        ]
+      }
+    },
+    "0.7": {
+      "synthetic": {
+        "n_clusters": 3,
+        "n_singletons": 1,
+        "largest_cluster": 103,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 34,
+        "val_calls_total": 34,
+        "sizes": [
+          103,
+          99,
+          1
+        ]
+      },
+      "human": {
+        "n_clusters": 2,
+        "n_singletons": 0,
+        "largest_cluster": 79,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 37,
+        "val_calls_total": 37,
+        "sizes": [
+          79,
+          71
+        ]
+      }
+    },
+    "0.75": {
+      "synthetic": {
+        "n_clusters": 3,
+        "n_singletons": 1,
+        "largest_cluster": 103,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 34,
+        "val_calls_total": 34,
+        "sizes": [
+          103,
+          99,
+          1
+        ]
+      },
+      "human": {
+        "n_clusters": 2,
+        "n_singletons": 0,
+        "largest_cluster": 79,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 37,
+        "val_calls_total": 37,
+        "sizes": [
+          79,
+          71
+        ]
+      }
+    },
+    "0.8": {
+      "synthetic": {
+        "n_clusters": 5,
+        "n_singletons": 1,
+        "largest_cluster": 96,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 34,
+        "val_calls_total": 34,
+        "sizes": [
+          96,
+          85,
+          18,
+          3,
+          1
+        ]
+      },
+      "human": {
+        "n_clusters": 3,
+        "n_singletons": 0,
+        "largest_cluster": 76,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 37,
+        "val_calls_total": 37,
+        "sizes": [
+          76,
+          71,
+          3
+        ]
+      }
+    },
+    "0.86": {
+      "synthetic": {
+        "n_clusters": 6,
+        "n_singletons": 1,
+        "largest_cluster": 85,
+        "clusters_with_train_and_val": 2,
+        "val_calls_whose_voice_is_in_train": 34,
+        "val_calls_total": 34,
+        "sizes": [
+          85,
+          65,
+          31,
+          18,
+          3,
+          1
+        ]
+      },
+      "human": {
+        "n_clusters": 4,
+        "n_singletons": 0,
+        "largest_cluster": 76,
+        "clusters_with_train_and_val": 3,
+        "val_calls_whose_voice_is_in_train": 37,
+        "val_calls_total": 37,
+        "sizes": [
+          76,
+          60,
+          11,
+          3
+        ]
+      }
+    }
+  },
+  "loo": [
+    {
+      "voice": 0,
+      "n_held_out_calls": 85,
+      "n_train_synthetic_left": 104,
+      "held_out_recognised": 0.9882352941176471,
+      "auc": 1.0,
+      "accuracy": 0.9918032786885246,
+      "human_val_frr": 0.0
+    },
+    {
+      "voice": 1,
+      "n_held_out_calls": 18,
+      "n_train_synthetic_left": 151,
+      "held_out_recognised": 0.7222222222222222,
+      "auc": 1.0,
+      "accuracy": 0.9090909090909091,
+      "human_val_frr": 0.0
+    },
+    {
+      "voice": 2,
+      "n_held_out_calls": 65,
+      "n_train_synthetic_left": 118,
+      "held_out_recognised": 0.9538461538461539,
+      "auc": 1.0,
+      "accuracy": 0.9705882352941176,
+      "human_val_frr": 0.0
+    },
+    {
+      "voice": 5,
+      "n_held_out_calls": 31,
+      "n_train_synthetic_left": 138,
+      "held_out_recognised": 1.0,
+      "auc": 1.0,
+      "accuracy": 1.0,
+      "human_val_frr": 0.0
+    }
+  ],
+  "loo_summary": {
+    "threshold": 0.86,
+    "voices_tested": 4,
+    "calls_tested": 199,
+    "call_weighted_recognised": 0.9547738693467337,
+    "min_recognised": 0.7222222222222222,
+    "mean_auc": 1.0
+  },
+  "runtime_s": 0.5585205554962158
+}

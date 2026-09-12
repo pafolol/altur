@@ -1,0 +1,14 @@
+{
+  "method": "platt",
+  "a": 0.3847370563781619,
+  "b": -0.5542646533496921,
+  "fit_on": "validation under 11 conditions (781 call-conditions)",
+  "n": 781,
+  "classifier": "mlp",
+  "cv": {
+    "brier": 0.07706904145559883,
+    "log_loss": 0.2335170895433531,
+    "ece": 0.050240457129835395,
+    "accuracy": 0.8796414852752881
+  }
+}

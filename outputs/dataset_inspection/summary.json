@@ -1,0 +1,307 @@
+{
+  "manifest_rows": 353,
+  "columns": [
+    "anon_id",
+    "label",
+    "split",
+    "duration_s"
+  ],
+  "counts": {
+    "train": {
+      "human": 113,
+      "synthetic": 169,
+      "total": 282,
+      "synthetic_fraction": 0.599290780141844
+    },
+    "val": {
+      "human": 37,
+      "synthetic": 34,
+      "total": 71,
+      "synthetic_fraction": 0.4788732394366197
+    }
+  },
+  "split_overlap_ids": 0,
+  "missing_audio": [],
+  "missing_turns": [],
+  "unreadable_files": [],
+  "formats": {
+    "8000 | 2 | PCM_16 | WAV": 353
+  },
+  "formats_by_class": {
+    "human": {
+      "8000 | 2 | PCM_16": 150
+    },
+    "synthetic": {
+      "8000 | 2 | PCM_16": 203
+    }
+  },
+  "manifest_duration_max_abs_error_s": 0.960000000000008,
+  "duplicate_md5": 0,
+  "ltas_fingerprint": {
+    "max_cross_split_correlation": 0.9921092391014099,
+    "median_cross_split_correlation": 0.8806343078613281,
+    "pairs_above_0.995": 0
+  },
+  "shortcut_features": {
+    "duration_s": {
+      "description": "total call duration (manifest)",
+      "train_median_human": 148.18,
+      "train_median_synthetic": 143.74,
+      "train_auc": 0.4694978268838037,
+      "val_median_human": 144.78,
+      "val_median_synthetic": 146.5,
+      "val_auc": 0.4825119236883943,
+      "train_mannwhitney_p": 0.3858116397773693
+    },
+    "caller_speech_s": {
+      "description": "caller speech time (official turns)",
+      "train_median_human": 38.14000000000002,
+      "train_median_synthetic": 36.240000000000016,
+      "train_auc": 0.4242027543593234,
+      "val_median_human": 32.12000000000005,
+      "val_median_synthetic": 37.15999999999998,
+      "val_auc": 0.5524642289348172,
+      "train_mannwhitney_p": 0.03107022991190482
+    },
+    "caller_speech_fraction": {
+      "description": "caller speech / call duration",
+      "train_median_human": 0.26176713459950446,
+      "train_median_synthetic": 0.2507129277566538,
+      "train_auc": 0.4394931141016914,
+      "val_median_human": 0.22455089820359292,
+      "val_median_synthetic": 0.257131692916746,
+      "val_auc": 0.6120826709062002,
+      "train_mannwhitney_p": 0.08523935839089117
+    },
+    "n_caller_turns": {
+      "description": "number of caller turns",
+      "train_median_human": 19.0,
+      "train_median_synthetic": 13.0,
+      "train_auc": 0.23349217154526886,
+      "val_median_human": 20.0,
+      "val_median_synthetic": 14.0,
+      "val_auc": 0.2976947535771065,
+      "train_mannwhitney_p": 3.111660598008646e-14
+    },
+    "n_agent_turns": {
+      "description": "number of agent turns",
+      "train_median_human": 20.0,
+      "train_median_synthetic": 18.0,
+      "train_auc": 0.33486935120699585,
+      "val_median_human": 22.0,
+      "val_median_synthetic": 18.5,
+      "val_auc": 0.25596184419713836,
+      "train_mannwhitney_p": 2.468115884263215e-06
+    },
+    "mean_caller_turn_s": {
+      "description": "mean caller turn length",
+      "train_median_human": 1.9771428571428569,
+      "train_median_synthetic": 2.610769230769228,
+      "train_auc": 0.6756558621773053,
+      "val_median_human": 1.831666666666668,
+      "val_median_synthetic": 2.2784090909090917,
+      "val_auc": 0.7106518282988871,
+      "train_mannwhitney_p": 5.799148322106536e-07
+    },
+    "first_caller_start_s": {
+      "description": "time until the caller first speaks (leading silence)",
+      "train_median_human": 1.14,
+      "train_median_synthetic": 10.44,
+      "train_auc": 0.9477928470440382,
+      "val_median_human": 1.42,
+      "val_median_synthetic": 9.99,
+      "val_auc": 0.8990461049284579,
+      "train_mannwhitney_p": 3.449412420018973e-37
+    },
+    "trailing_silence_s": {
+      "description": "silence after the caller's last turn",
+      "train_median_human": 5.900000000000006,
+      "train_median_synthetic": 1.0,
+      "train_auc": 0.5346127664031,
+      "val_median_human": 2.239999999999995,
+      "val_median_synthetic": 0.8999999999999986,
+      "val_auc": 0.529014308426073,
+      "train_mannwhitney_p": 0.3249138092421363
+    },
+    "agent_speech_s": {
+      "description": "agent speech time",
+      "train_median_human": 78.51999999999997,
+      "train_median_synthetic": 67.0,
+      "train_auc": 0.24896580614756245,
+      "val_median_human": 79.25999999999999,
+      "val_median_synthetic": 69.92999999999998,
+      "val_auc": 0.2559618441971383,
+      "train_mannwhitney_p": 9.145687975125572e-13
+    },
+    "median_response_latency_s": {
+      "description": "median caller response latency after an agent turn",
+      "train_median_human": 1.7000000000000028,
+      "train_median_synthetic": 2.740000000000002,
+      "train_auc": 0.7845996753416767,
+      "val_median_human": 1.6799999999999997,
+      "val_median_synthetic": 3.1149999999999984,
+      "val_auc": 0.8402225755166931,
+      "train_mannwhitney_p": 5.588978367213729e-16
+    },
+    "overlap_s": {
+      "description": "seconds of caller/agent overlap",
+      "train_median_human": 3.7800000000000002,
+      "train_median_synthetic": 1.35,
+      "train_auc": 0.21998219615646436,
+      "val_median_human": 3.67,
+      "val_median_synthetic": 2.06,
+      "val_auc": 0.3092209856915739,
+      "train_mannwhitney_p": 1.6042684491108694e-15
+    },
+    "caller_rms_db": {
+      "description": "caller channel RMS level (whole channel)",
+      "train_median_human": -28.420581817626953,
+      "train_median_synthetic": -22.16106414794922,
+      "train_auc": 0.798292925590407,
+      "val_median_human": -28.6136474609375,
+      "val_median_synthetic": -21.76137065887451,
+      "val_auc": 0.9324324324324323,
+      "train_mannwhitney_p": 2.1095147319590523e-17
+    },
+    "caller_speech_rms_db": {
+      "description": "caller RMS level inside speech",
+      "train_median_human": -23.444820404052734,
+      "train_median_synthetic": -16.32036018371582,
+      "train_auc": 0.7898622820338272,
+      "val_median_human": -22.961484909057617,
+      "val_median_synthetic": -16.40132999420166,
+      "val_auc": 0.9165341812400636,
+      "train_mannwhitney_p": 1.614823543298655e-16
+    },
+    "caller_peak": {
+      "description": "caller peak amplitude",
+      "train_median_human": 0.8553466796875,
+      "train_median_synthetic": 0.9803466796875,
+      "train_auc": 0.7005550610043462,
+      "val_median_human": 0.7615966796875,
+      "val_median_synthetic": 0.9803466796875,
+      "val_auc": 0.8143879173290938,
+      "train_mannwhitney_p": 7.137105882753629e-10
+    },
+    "caller_clipping_fraction": {
+      "description": "fraction of clipped caller samples",
+      "train_median_human": 0.0,
+      "train_median_synthetic": 0.0,
+      "train_auc": 0.5,
+      "val_median_human": 0.0,
+      "val_median_synthetic": 0.0,
+      "val_auc": 0.5,
+      "train_mannwhitney_p": 1.0
+    },
+    "caller_rolloff95_hz": {
+      "description": "frequency below which 95% of caller speech energy lies",
+      "train_median_human": 1468.75,
+      "train_median_synthetic": 1265.625,
+      "train_auc": 0.424281300727863,
+      "val_median_human": 1375.0,
+      "val_median_synthetic": 1718.75,
+      "val_auc": 0.6832273449920508,
+      "train_mannwhitney_p": 0.031231671051431945
+    },
+    "caller_centroid_hz": {
+      "description": "spectral centroid of caller speech",
+      "train_median_human": 586.0417643103257,
+      "train_median_synthetic": 511.83719720319687,
+      "train_auc": 0.3342409802586794,
+      "val_median_human": 591.9505786869873,
+      "val_median_synthetic": 497.9852792882366,
+      "val_auc": 0.3640699523052464,
+      "train_mannwhitney_p": 2.4033726811552286e-06
+    },
+    "caller_hf_ratio_db": {
+      "description": "energy 3.4-4 kHz vs 0.3-3.4 kHz (telephone band edge)",
+      "train_median_human": -29.741493225097656,
+      "train_median_synthetic": -36.739479064941406,
+      "train_auc": 0.10635178300256586,
+      "val_median_human": -31.701135635375977,
+      "val_median_synthetic": -33.53968620300293,
+      "val_auc": 0.24801271860095386,
+      "train_mannwhitney_p": 4.0285349066935053e-29
+    },
+    "caller_noise_floor_db": {
+      "description": "caller channel noise floor (10th percentile frame level)",
+      "train_median_human": -72.24716186523438,
+      "train_median_synthetic": -72.24716186523438,
+      "train_auc": 0.5576792166308845,
+      "val_median_human": -72.24716186523438,
+      "val_median_synthetic": -72.24716186523438,
+      "val_auc": 0.5663751987281398,
+      "train_mannwhitney_p": 0.03225270629479622
+    },
+    "caller_snr_db": {
+      "description": "caller speech level minus noise floor",
+      "train_median_human": 48.77252197265625,
+      "train_median_synthetic": 52.69962501525879,
+      "train_auc": 0.5901974132062628,
+      "val_median_human": 48.145559310913086,
+      "val_median_synthetic": 54.95231914520264,
+      "val_auc": 0.6748807631160574,
+      "train_mannwhitney_p": 0.01028940289932787
+    },
+    "agent_rms_db": {
+      "description": "agent channel RMS level",
+      "train_median_human": -24.923995971679688,
+      "train_median_synthetic": -25.672042846679688,
+      "train_auc": 0.22239095145834425,
+      "val_median_human": -24.669349670410156,
+      "val_median_synthetic": -25.67964744567871,
+      "val_auc": 0.15023847376788552,
+      "train_mannwhitney_p": 2.8112848601797618e-15
+    },
+    "vad_n_regions": {
+      "description": "number of caller speech regions found by our VAD",
+      "train_median_human": 17.0,
+      "train_median_synthetic": 13.0,
+      "train_auc": 0.28878881499711995,
+      "val_median_human": 16.0,
+      "val_median_synthetic": 14.0,
+      "val_auc": 0.42011128775834655,
+      "train_mannwhitney_p": 1.7459292283763883e-09
+    },
+    "n_chunks": {
+      "description": "number of 4 s chunks our segmentation produces",
+      "train_median_human": 14.0,
+      "train_median_synthetic": 13.0,
+      "train_auc": 0.4333141331099125,
+      "val_median_human": 12.0,
+      "val_median_synthetic": 14.0,
+      "val_auc": 0.6176470588235294,
+      "train_mannwhitney_p": 0.05726870469768986
+    }
+  },
+  "vad_vs_official": {
+    "vad_precision": 0.9283314669652856,
+    "vad_recall": 0.9897491821155944,
+    "vad_f1": 0.9529802082141632,
+    "mean_f1": 0.94609312212409,
+    "calls_with_f1_below_0.8": 1
+  },
+  "chunks": {
+    "train": {
+      "n_chunks": 4102,
+      "chunk_hours": 3.0053527777777744,
+      "chunks_per_call_median": 14.0,
+      "calls_with_zero_chunks": 0
+    },
+    "val": {
+      "n_chunks": 977,
+      "chunk_hours": 0.6889722222222212,
+      "chunks_per_call_median": 13.0,
+      "calls_with_zero_chunks": 0
+    }
+  },
+  "caller_speech_hours_official": 3.912238888888889,
+  "total_audio_hours": 14.508027777777778,
+  "id_leakage": {
+    "id_hex_auc": 0.4970443349753695,
+    "label_runs_in_id_order": 174,
+    "expected_runs_if_random": 173.5212464589235,
+    "id_pattern": "call_ + 12 hex chars"
+  },
+  "runtime_s": 92.45435643196106
+}

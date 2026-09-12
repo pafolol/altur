@@ -1,0 +1,13 @@
+energy_f1      0.952
+energy_prec    0.928
+energy_rec     0.992
+silero_f1      0.927
+silero_prec    0.923
+silero_rec     0.954
+           energy_f1  silero_f1
+label                          
+human          0.939      0.890
+synthetic      0.961      0.941
+f1<0.8: {'energy_f1': 21, 'silero_f1': 54}
+regions median official/energy/silero: 16.0 15.0 12.0
+speech s median official/silero: 36.93999999999998 36.000000000000014

@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Line Inspector — Altur acoustic detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,800;1,9..144,300&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0b0f14;
+    --ink-2: #121821;
+    --panel: #161d28;
+    --line: #2a3442;
+    --paper: #efe7d6;
+    --paper-dim: #b9b0a0;
+    --muted: #7d8794;
+    --human: #5fd18a;
+    --human-dim: rgba(95, 209, 138, 0.16);
+    --synth: #ff6b4a;
+    --synth-dim: rgba(255, 107, 74, 0.16);
+    --amber: #f2b64b;
+    --trace: #8ee3ff;
+    --serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: 14px; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(142, 227, 255, 0.07), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(255, 107, 74, 0.06), transparent 60%),
+      var(--ink);
+  }
+  body::before { /* scanline grain */
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .35;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  header { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
+  .eyebrow { color: var(--amber); letter-spacing: .18em; text-transform: uppercase; font-size: 11px; }
+  h1 { font-family: var(--serif); font-weight: 800; font-size: clamp(34px, 5vw, 58px); line-height: .95; margin: 8px 0 6px; letter-spacing: -.01em; }
+  h1 em { font-style: italic; font-weight: 300; color: var(--paper-dim); }
+  .sub { color: var(--muted); max-width: 62ch; line-height: 1.5; }
+  .status { text-align: right; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .status b { color: var(--paper); font-weight: 500; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
+  .dot.ok { background: var(--human); box-shadow: 0 0 10px var(--human); }
+  .dot.bad { background: var(--synth); }
+
+  main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 28px; margin-top: 28px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } header { grid-template-columns: 1fr; } .status { text-align: left; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px; position: relative; }
+  .panel h2 { font-family: var(--serif); font-weight: 600; font-size: 22px; margin: 0 0 4px; }
+  .panel .hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 14px; }
+  .num { position: absolute; top: -12px; left: 16px; background: var(--ink); border: 1px solid var(--line); color: var(--amber); font-size: 11px; letter-spacing: .14em; padding: 2px 8px; border-radius: 3px; }
+
+  .intake { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card { border: 1px dashed var(--line); border-radius: 6px; padding: 16px; min-height: 150px; display: flex; flex-direction: column; gap: 10px; transition: border-color .2s, background .2s; }
+  .card.drag { border-color: var(--trace); background: rgba(142, 227, 255, 0.05); }
+  .card h3 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 17px; }
+  .card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; flex: 1; }
+  button { font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: .04em; border: 1px solid var(--line); background: var(--ink-2); color: var(--paper); padding: 10px 14px; border-radius: 4px; cursor: pointer; transition: transform .08s, background .15s, border-color .15s; }
+  button:hover { border-color: var(--paper-dim); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+  button.rec { border-color: var(--synth); color: var(--synth); }
+  button.rec.live { background: var(--synth); color: var(--ink); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,107,74,.5);} 50% { box-shadow: 0 0 0 10px rgba(255,107,74,0);} }
+  input[type=file] { display: none; }
+  .scope { width: 100%; height: 70px; background: var(--ink); border: 1px solid var(--line); border-radius: 4px; display: block; }
+  .timer { font-size: 22px; font-weight: 600; color: var(--synth); font-variant-numeric: tabular-nums; }
+
+  .opts { margin-top: 16px; display: grid; gap: 10px; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; color: var(--paper-dim); line-height: 1.5; }
+  .opt input { margin-top: 3px; accent-color: var(--amber); }
+  .opt b { color: var(--paper); font-weight: 500; }
+  .endpoint { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+  .endpoint input { flex: 1; font-family: var(--mono); font-size: 12px; background: var(--ink); color: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; }
+
+  .stage { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .stage .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .stage .meta { color: var(--muted); font-size: 12px; }
+  .wave { width: 100%; height: 90px; background: var(--ink); border: 1px solid var(--line); border-radius: 4px; display: block; margin-top: 10px; }
+  audio { width: 100%; margin-top: 8px; filter: invert(.9) hue-rotate(180deg); height: 32px; }
+  .send { margin-top: 12px; width: 100%; padding: 14px; font-size: 15px; }
+  .send.busy { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+
+  /* verdict */
+  .verdict { min-height: 210px; display: grid; place-items: center; text-align: center; position: relative; overflow: hidden; }
+  .verdict .empty { color: var(--muted); font-size: 13px; line-height: 1.7; max-width: 40ch; }
+  .stamp { font-family: var(--serif); font-weight: 800; font-size: clamp(44px, 7vw, 84px); line-height: 1; letter-spacing: -.02em; padding: 10px 26px; border: 4px solid currentColor; border-radius: 8px; transform: rotate(-6deg); animation: slam .55s cubic-bezier(.2,1.4,.3,1) both; mix-blend-mode: screen; }
+  .stamp.human { color: var(--human); box-shadow: 0 0 60px var(--human-dim); }
+  .stamp.synthetic { color: var(--synth); box-shadow: 0 0 60px var(--synth-dim); }
+  @keyframes slam { 0% { transform: rotate(-6deg) scale(3.2); opacity: 0; filter: blur(6px);} 60% { opacity: 1; filter: blur(0);} 100% { transform: rotate(-6deg) scale(1);} }
+  .conf { margin-top: 14px; font-size: 13px; color: var(--paper-dim); }
+  .conf b { color: var(--paper); font-size: 20px; font-weight: 600; }
+  .meter { height: 10px; width: 100%; max-width: 420px; margin: 12px auto 0; background: var(--ink); border: 1px solid var(--line); border-radius: 5px; position: relative; overflow: hidden; }
+  .meter .fill { position: absolute; inset: 0; width: 0; transition: width .8s cubic-bezier(.2,.9,.2,1); }
+  .meter .fill.human { background: linear-gradient(90deg, var(--human), #b9f2cd); }
+  .meter .fill.synthetic { background: linear-gradient(90deg, var(--synth), #ffb59f); }
+  .meter .mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--paper-dim); }
+  .scale { display: flex; justify-content: space-between; max-width: 420px; margin: 4px auto 0; font-size: 10px; color: var(--muted); letter-spacing: .1em; }
+
+  .explain { margin-top: 18px; display: none; }
+  .explain.on { display: block; }
+  .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+  .kv div { background: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; }
+  .kv small { display: block; color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
+  .kv span { font-size: 16px; font-weight: 600; }
+  .prose { color: var(--paper-dim); line-height: 1.65; font-size: 13px; }
+  .prose b { color: var(--paper); font-weight: 500; }
+  .strip { display: flex; gap: 3px; align-items: flex-end; height: 64px; margin: 10px 0 4px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .strip div { flex: 1; min-width: 4px; border-radius: 2px 2px 0 0; position: relative; }
+  .strip div:hover::after { content: attr(data-t); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--paper); color: var(--ink); font-size: 10px; padding: 2px 6px; border-radius: 3px; white-space: nowrap; }
+  .legend { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); letter-spacing: .08em; }
+  .steps { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; font-size: 12px; color: var(--paper-dim); }
+  .steps li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: baseline; }
+  .steps li i { font-style: normal; color: var(--amber); font-weight: 600; }
+  .caveat { margin-top: 12px; border-left: 3px solid var(--amber); padding: 8px 12px; background: rgba(242,182,75,0.06); color: var(--paper-dim); font-size: 12px; line-height: 1.55; }
+
+  /* scoreboard */
+  .truth { margin-top: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .truth button { padding: 8px 12px; font-size: 12px; }
+  .truth button.h { border-color: var(--human); color: var(--human); }
+  .truth button.s { border-color: var(--synth); color: var(--synth); }
+  .board { margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .board div { background: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; text-align: center; }
+  .board small { display: block; font-size: 10px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+  .board span { font-size: 20px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+  th, td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); color: var(--paper-dim); }
+  th { color: var(--muted); font-weight: 500; letter-spacing: .1em; text-transform: uppercase; font-size: 10px; }
+  td.ok { color: var(--human); } td.no { color: var(--synth); }
+  /* test deck */
+  .deck { grid-column: 1 / -1; }
+  .deck .top { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .deck select { font-family: var(--mono); font-size: 12px; background: var(--ink); color: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 7px 8px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 5px; margin: 12px 0; }
+  .tile { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 3px; background: var(--ink); cursor: pointer; font-size: 9px; color: var(--muted); display: grid; place-items: center; transition: transform .1s; }
+  .tile:hover { transform: scale(1.12); border-color: var(--paper-dim); }
+  .tile.cur { outline: 2px solid var(--amber); outline-offset: 1px; color: var(--paper); }
+  .tile.ok { background: var(--human-dim); border-color: var(--human); color: var(--human); }
+  .tile.no { background: var(--synth-dim); border-color: var(--synth); color: var(--synth); }
+  .now { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; background: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .now .title { font-family: var(--serif); font-size: 20px; font-weight: 600; }
+  .now .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .now .truth-tag { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; padding: 4px 8px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
+  .now .truth-tag.human { color: var(--human); border-color: var(--human); }
+  .now .truth-tag.synthetic { color: var(--synth); border-color: var(--synth); }
+  .deckbtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .deckbtns button.auto.live { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+  .deckstats { display: flex; gap: 18px; color: var(--muted); font-size: 12px; margin-top: 10px; flex-wrap: wrap; }
+  .deckstats b { color: var(--paper); font-weight: 600; }
+  .log { margin-top: 10px; font-size: 11px; color: var(--muted); white-space: pre-wrap; max-height: 120px; overflow: auto; }
+  .err { color: var(--synth); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Altur · HackMTY 2026 · acoustic branch</div>
+      <h1>Line <em>Inspector</em></h1>
+      <p class="sub">Put a caller on the line: record from your microphone or upload a call. The model only ever receives an 8 kHz stereo WAV — it is never told where the audio came from. Then tell the page what it really was, and keep score.</p>
+    </div>
+    <div class="status" id="status"><span class="dot"></span>checking the detector…</div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="num">01 · INTAKE</div>
+      <h2>Put a caller on the line</h2>
+      <p class="hint">Both paths produce the same thing: caller channel → resample to 8 kHz → stereo WAV (agent channel silent) → <code>POST /detect</code>.</p>
+      <div class="intake">
+        <div class="card">
+          <h3>Record</h3>
+          <p>Raw microphone audio (browser noise suppression and auto-gain off, like a phone line). Speak a few sentences; 8–20 s is plenty.</p>
+          <canvas class="scope" id="scope" width="600" height="70"></canvas>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="rec" id="recBtn">● Start recording</button>
+            <span class="timer" id="timer">0.0 s</span>
+          </div>
+        </div>
+        <div class="card" id="drop">
+          <h3>Upload</h3>
+          <p>WAV, MP3, M4A, OGG, WebM… A dataset call (stereo 8 kHz) is used as-is: channel 0 caller, channel 1 agent. Drop a file here or pick one.</p>
+          <label><input type="file" id="file" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.flac"><button type="button" onclick="document.getElementById('file').click()">Choose a file</button></label>
+          <p id="fileName" style="flex:0;color:var(--paper-dim)"></p>
+        </div>
+      </div>
+
+      <div class="opts">
+        <label class="opt"><input type="checkbox" id="pstn" checked>
+          <span><b>Simulate a telephone line</b> (300–3400 Hz band-pass + G.711 μ-law), applied identically to recordings and uploads that are not already phone audio. The detector was trained on phone calls; clean wideband audio tends to look synthetic to it (report, Part 8c). Untick to send the audio as-is.</span></label>
+        <label class="opt"><input type="checkbox" id="autoSkip" checked>
+          <span><b>Skip the simulation for 8 kHz stereo files</b> — a real call from the dataset already went through a phone line.</span></label>
+        <div class="endpoint"><span>endpoint</span><input id="endpoint" value=""></div>
+      </div>
+
+      <div class="stage">
+        <div class="row"><b id="stageTitle">Nothing on the line yet</b><span class="meta" id="stageMeta"></span></div>
+        <canvas class="wave" id="wave" width="900" height="90"></canvas>
+        <audio id="player" controls></audio>
+        <button class="send primary" id="sendBtn" disabled>Ask the detector</button>
+        <div class="log" id="log"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="num">02 · VERDICT</div>
+      <div class="verdict" id="verdict">
+        <div class="empty">The verdict lands here.<br>Record or upload something and press <b>Ask the detector</b>.</div>
+      </div>
+
+      <div class="explain" id="explain">
+        <h2>How it decided</h2>
+        <div class="kv" id="kv"></div>
+        <div class="prose" id="prose"></div>
+        <div class="strip" id="strip"></div>
+        <div class="legend"><span>← time in the call</span><span>bar height = how synthetic that chunk sounded</span></div>
+        <ol class="steps" id="steps"></ol>
+        <div class="caveat" id="caveat"></div>
+
+        <div class="truth" id="truth">
+          <span>What was it really?</span>
+          <button class="h" id="truthH">a human</button>
+          <button class="s" id="truthS">synthetic</button>
+          <span id="truthMsg"></span>
+        </div>
+        <div class="board">
+          <div><small>tested</small><span id="bTested">0</span></div>
+          <div><small>correct</small><span id="bCorrect">0</span></div>
+          <div><small>accuracy</small><span id="bAcc">–</span></div>
+        </div>
+        <table id="history"><thead><tr><th>#</th><th>source</th><th>verdict</th><th>conf.</th><th>truth</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section class="panel deck">
+      <div class="num">03 · TEST DECK</div>
+      <h2>Listen to the held-out calls, then let it decide</h2>
+      <p class="hint">The 71 validation calls were never used to train the model (speaker-disjoint split from the organisers). Pick a call, listen, then ask - the detector receives the WAV exactly as it would from the judges. The true label stays hidden until the verdict is in.</p>
+      <div class="top">
+        <button class="primary" id="deckLoad">Load the 71 held-out calls</button>
+        <label style="font-size:12px;color:var(--muted)">listen for
+          <select id="listenFor"><option value="15">15 s</option><option value="30" selected>30 s</option><option value="60">60 s</option><option value="0">the whole call</option></select>
+          before the verdict (auto mode)</label>
+        <span class="meta" id="deckMeta" style="color:var(--muted);font-size:12px"></span>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div class="now" id="now" hidden>
+        <div><div class="title" id="nowTitle"></div><div class="meta" id="nowMeta"></div></div>
+        <div class="truth-tag" id="nowTruth">truth hidden</div>
+      </div>
+      <audio id="deckPlayer" controls hidden></audio>
+      <div class="deckbtns" id="deckBtns" hidden>
+        <button id="deckPrev">&#9664; previous</button>
+        <button id="deckPlay">&#9654; play</button>
+        <button id="deckNext">next &#9654;</button>
+        <button id="deckRandom">random</button>
+        <button class="primary" id="deckAsk">Ask the detector on this call</button>
+        <button class="auto" id="deckAuto">&#9654;&#9654; auto: listen &rarr; verdict &rarr; next</button>
+      </div>
+      <div class="deckstats" id="deckStats"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const TARGET_SR = 8000;
+  const state = { buffer: null, sourceKind: null, sourceName: "", wavBlob: null, last: null, history: [] };
+  const endpointInput = $("endpoint");
+  endpointInput.value = localStorage.getItem("li_endpoint") || (location.protocol.startsWith("http") ? location.origin + "/detect" : "http://localhost:8000/detect");
+  endpointInput.addEventListener("change", () => localStorage.setItem("li_endpoint", endpointInput.value));
+  const log = (m, cls) => { const el = $("log"); el.innerHTML += (cls ? `<span class="${cls}">` : "") + m + (cls ? "</span>" : "") + "\n"; el.scrollTop = el.scrollHeight; };
+
+  // ------------------------------------------------------------------ health
+  async function health() {
+    const base = endpointInput.value.replace(/\/detect\/?$/, "");
+    try {
+      const r = await fetch(base + "/health"); const j = await r.json();
+      $("status").innerHTML = `<span class="dot ok"></span>detector online<br><b>${j.model}</b> on ${j.device}`;
+    } catch (e) {
+      $("status").innerHTML = `<span class="dot bad"></span>detector unreachable at ${base}<br>start it: <b>python src/server.py --port 8000</b>`;
+    }
+  }
+  health();
+
+  // ------------------------------------------------------------------ recording (raw PCM through a ScriptProcessor)
+  let rec = null;
+  $("recBtn").addEventListener("click", async () => {
+    if (rec) { stopRecording(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
+      const proc = ctx.createScriptProcessor(4096, 1, 1);
+      const chunks = []; let n = 0;
+      proc.onaudioprocess = (e) => { const d = e.inputBuffer.getChannelData(0); chunks.push(new Float32Array(d)); n += d.length; $("timer").textContent = (n / ctx.sampleRate).toFixed(1) + " s"; };
+      src.connect(analyser); analyser.connect(proc); proc.connect(ctx.destination);
+      rec = { stream, ctx, src, proc, analyser, chunks, get n() { return n; } };
+      $("recBtn").textContent = "■ Stop"; $("recBtn").classList.add("live");
+      drawScope();
+    } catch (e) { log("microphone: " + e.message, "err"); }
+  });
+  function stopRecording() {
+    const r = rec; rec = null;
+    r.proc.disconnect(); r.analyser.disconnect(); r.src.disconnect(); r.stream.getTracks().forEach(t => t.stop());
+    const total = r.chunks.reduce((a, c) => a + c.length, 0);
+    const pcm = new Float32Array(total); let o = 0; for (const c of r.chunks) { pcm.set(c, o); o += c.length; }
+    const buf = r.ctx.createBuffer(1, Math.max(total, 1), r.ctx.sampleRate); buf.copyToChannel(pcm, 0);
+    r.ctx.close();
+    $("recBtn").textContent = "● Start recording"; $("recBtn").classList.remove("live");
+    if (total / buf.sampleRate < 1) { log("recording too short", "err"); return; }
+    stage(buf, "recorded", `microphone, ${(total / buf.sampleRate).toFixed(1)} s @ ${buf.sampleRate} Hz`);
+  }
+  function drawScope() {
+    const c = $("scope"), g = c.getContext("2d");
+    const step = () => {
+      if (!rec) { g.clearRect(0, 0, c.width, c.height); return; }
+      const a = rec.analyser, data = new Float32Array(a.fftSize); a.getFloatTimeDomainData(data);
+      g.fillStyle = "#0b0f14"; g.fillRect(0, 0, c.width, c.height);
+      g.strokeStyle = "#8ee3ff"; g.lineWidth = 1.5; g.beginPath();
+      for (let i = 0; i < data.length; i++) { const x = i / data.length * c.width, y = c.height / 2 - data[i] * c.height * 0.9; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke(); requestAnimationFrame(step);
+    };
+    step();
+  }
+
+  // ------------------------------------------------------------------ upload
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("drag"); }));
+  drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+  $("file").addEventListener("change", e => { const f = e.target.files[0]; if (f) loadFile(f); });
+  async function loadFile(file) {
+    $("fileName").textContent = file.name;
+    try {
+      const ab = await file.arrayBuffer();
+      const info = wavInfo(ab); // sample rate + channels from the header when it is a WAV (decodeAudioData resamples)
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = await ctx.decodeAudioData(ab.slice(0)); ctx.close();
+      buf._origSr = info ? info.sampleRate : buf.sampleRate; buf._origCh = info ? info.channels : buf.numberOfChannels;
+      stage(buf, "uploaded", `${file.name}, ${buf.duration.toFixed(1)} s, ${buf._origCh} ch @ ${buf._origSr} Hz`);
+    } catch (e) { log("could not decode " + file.name + ": " + e.message, "err"); }
+  }
+  function wavInfo(ab) {
+    const v = new DataView(ab); if (ab.byteLength < 44) return null;
+    const tag = (o) => String.fromCharCode(v.getUint8(o), v.getUint8(o + 1), v.getUint8(o + 2), v.getUint8(o + 3));
+    if (tag(0) !== "RIFF" || tag(8) !== "WAVE") return null;
+    let o = 12; while (o + 8 <= ab.byteLength) { const id = tag(o), sz = v.getUint32(o + 4, true); if (id === "fmt ") return { channels: v.getUint16(o + 10, true), sampleRate: v.getUint32(o + 12, true) }; o += 8 + sz + (sz & 1); }
+    return null;
+  }
+
+  // ------------------------------------------------------------------ staging: the ONE path both sources take
+  async function stage(buf, kind, meta) {
+    state.buffer = buf; state.sourceKind = kind; state.sourceName = meta;
+    $("stageTitle").textContent = "On the line"; $("stageMeta").textContent = meta;
+    await buildWav();
+    $("sendBtn").disabled = false;
+    $("explain").classList.remove("on");
+    $("verdict").innerHTML = `<div class="empty">Ready. Press <b>Ask the detector</b>.<br>The model will receive an 8 kHz stereo WAV and nothing else.</div>`;
+  }
+  async function buildWav() {
+    const buf = state.buffer;
+    const isPhone = (buf._origSr || buf.sampleRate) === TARGET_SR && (buf._origCh || buf.numberOfChannels) === 2;
+    const simulate = $("pstn").checked && !($("autoSkip").checked && isPhone);
+    // channel 0 = caller. A stereo dataset call keeps channel 1 as the agent; anything else gets a silent agent channel.
+    const off = new OfflineAudioContext(1, Math.ceil(buf.duration * TARGET_SR), TARGET_SR);
+    const src = off.createBufferSource();
+    const mono = off.createBuffer(1, buf.length, buf.sampleRate); mono.copyToChannel(buf.getChannelData(0), 0);
+    src.buffer = mono; let node = src;
+    if (simulate) {
+      for (const [type, f] of [["highpass", 300], ["highpass", 300], ["lowpass", 3400], ["lowpass", 3400]]) { const b = off.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = 0.707; node.connect(b); node = b; }
+    }
+    node.connect(off.destination); src.start();
+    const rendered = await off.startRendering();
+    let caller = rendered.getChannelData(0);
+    let agent = new Float32Array(caller.length);
+    if (buf.numberOfChannels >= 2 && isPhone) {
+      const off2 = new OfflineAudioContext(1, Math.ceil(buf.duration * TARGET_SR), TARGET_SR);
+      const s2 = off2.createBufferSource(); const m2 = off2.createBuffer(1, buf.length, buf.sampleRate); m2.copyToChannel(buf.getChannelData(1), 0); s2.buffer = m2; s2.connect(off2.destination); s2.start();
+      agent = (await off2.startRendering()).getChannelData(0);
+    }
+    if (simulate) caller = mulaw(caller);
+    state.wavBlob = encodeWav([caller, agent], TARGET_SR);
+    state.simulated = simulate;
+    $("player").src = URL.createObjectURL(state.wavBlob);
+    drawWave(caller);
+    log(`prepared ${(caller.length / TARGET_SR).toFixed(1)} s stereo 8 kHz WAV (${(state.wavBlob.size / 1024).toFixed(0)} KB)${simulate ? ", telephone line simulated" : ", sent as-is"}`);
+  }
+  $("pstn").addEventListener("change", () => state.buffer && buildWav());
+  $("autoSkip").addEventListener("change", () => state.buffer && buildWav());
+  function mulaw(x) {
+    const mu = 255, out = new Float32Array(x.length);
+    for (let i = 0; i < x.length; i++) {
+      const v = Math.max(-1, Math.min(1, x[i])), s = Math.sign(v);
+      const y = s * Math.log1p(mu * Math.abs(v)) / Math.log1p(mu);
+      const q = Math.round((y + 1) / 2 * 255) / 255 * 2 - 1;
+      out[i] = Math.sign(q) * (1 / mu) * (Math.pow(1 + mu, Math.abs(q)) - 1);
+    }
+    return out;
+  }
+  function encodeWav(channels, sr) {
+    const n = channels[0].length, ch = channels.length, bytes = 44 + n * ch * 2;
+    const ab = new ArrayBuffer(bytes), v = new DataView(ab);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, bytes - 8, true); str(8, "WAVE"); str(12, "fmt "); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, ch, true); v.setUint32(24, sr, true); v.setUint32(28, sr * ch * 2, true);
+    v.setUint16(32, ch * 2, true); v.setUint16(34, 16, true); str(36, "data"); v.setUint32(40, n * ch * 2, true);
+    let o = 44;
+    for (let i = 0; i < n; i++) for (let c = 0; c < ch; c++) { const s = Math.max(-1, Math.min(1, channels[c][i])); v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true); o += 2; }
+    return new Blob([ab], { type: "audio/wav" });
+  }
+  function drawWave(x) {
+    const c = $("wave"), g = c.getContext("2d"); g.fillStyle = "#0b0f14"; g.fillRect(0, 0, c.width, c.height);
+    const per = Math.max(1, Math.floor(x.length / c.width)); g.strokeStyle = "#efe7d6"; g.lineWidth = 1; g.beginPath();
+    for (let px = 0; px < c.width; px++) { let lo = 0, hi = 0; for (let i = px * per; i < (px + 1) * per && i < x.length; i++) { if (x[i] < lo) lo = x[i]; if (x[i] > hi) hi = x[i]; } g.moveTo(px, c.height / 2 - hi * c.height / 2.2); g.lineTo(px, c.height / 2 - lo * c.height / 2.2 + 0.5); }
+    g.stroke();
+  }
+
+  // ------------------------------------------------------------------ ask the detector
+  $("sendBtn").addEventListener("click", async () => {
+    if (!state.wavBlob) return;
+    const btn = $("sendBtn"); btn.disabled = true; btn.classList.add("busy"); btn.textContent = "Listening…";
+    $("verdict").innerHTML = `<div class="empty">Segmenting the caller channel, embedding every chunk, scoring…</div>`;
+    try {
+      const b64 = await blobToBase64(state.wavBlob);
+      const t0 = performance.now();
+      const r = await fetch(endpointInput.value, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audio: b64 }) });
+      const j = await r.json(); const rt = performance.now() - t0;
+      if (j.error && j.is_synthetic === undefined) throw new Error(j.error);
+      state.last = { response: j, roundtrip: rt, source: state.sourceKind, name: state.sourceName, truth: null };
+      showVerdict(j, rt);
+    } catch (e) { $("verdict").innerHTML = `<div class="empty err">The detector did not answer: ${e.message}</div>`; log(e.message, "err"); }
+    btn.disabled = false; btn.classList.remove("busy"); btn.textContent = "Ask the detector";
+  });
+  const blobToBase64 = (b) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(",")[1]); fr.onerror = rej; fr.readAsDataURL(b); });
+
+  // ------------------------------------------------------------------ verdict + explanation
+  function showVerdict(j, rt) {
+    const d = j.details || {}; const syn = !!j.is_synthetic; const cls = syn ? "synthetic" : "human";
+    const p = d.synthetic_probability ?? (syn ? j.confidence : 1 - j.confidence);
+    $("verdict").innerHTML = `
+      <div>
+        <div class="stamp ${cls}">${syn ? "SYNTHETIC" : "HUMAN"}</div>
+        <div class="conf">confidence in this verdict <b>${(j.confidence * 100).toFixed(1)}%</b></div>
+        <div class="meter"><div class="mid"></div><div class="fill ${cls}" id="fill"></div></div>
+        <div class="scale"><span>HUMAN 0.0</span><span>p(synthetic) = ${p.toFixed(3)}</span><span>1.0 SYNTHETIC</span></div>
+      </div>`;
+    requestAnimationFrame(() => { $("fill").style.width = (p * 100).toFixed(1) + "%"; });
+
+    const scores = d.chunk_scores || [], spans = d.chunk_spans || [];
+    const raw = d.raw_score ?? 0, absr = Math.abs(raw);
+    const strength = absr > 3 ? "strong" : absr > 1 ? "moderate" : "borderline";
+    const nSyn = scores.filter(s => s >= 0).length;
+    $("kv").innerHTML = [
+      ["speech found", `${(d.speech_s ?? 0).toFixed(1)} s`], ["speech regions", d.n_speech_regions ?? "–"], ["chunks scored", d.n_chunks ?? scores.length],
+      ["raw score", `${raw >= 0 ? "+" : ""}${raw.toFixed(2)}`], ["model time", `${d.latency_ms ?? "–"} ms`], ["round trip", `${rt.toFixed(0)} ms`],
+    ].map(([k, v]) => `<div><small>${k}</small><span>${v}</span></div>`).join("");
+    $("prose").innerHTML = (d.n_chunks ? `
+      The detector found <b>${(d.speech_s ?? 0).toFixed(1)} s of caller speech</b> in ${d.n_speech_regions ?? "?"} region${d.n_speech_regions === 1 ? "" : "s"} and cut it into
+      <b>${d.n_chunks} chunk${d.n_chunks === 1 ? "" : "s"}</b> of at most 4 s. Each chunk went through <b>${d.model_display || d.model}</b>, which returns a
+      log-odds score: positive means "sounds synthetic", negative "sounds human". <b>${nSyn} of ${scores.length}</b> chunks leaned synthetic.
+      The average is <b>${raw >= 0 ? "+" : ""}${raw.toFixed(2)}</b>, a <b>${strength}</b> signal (|score| above 3 is strong, 1–3 moderate, below 1 borderline).
+      ${d.calibration && d.calibration !== "none" ? `A ${d.calibration}-scaling calibrator fitted on perturbed validation calls` : "A sigmoid"} turns that into
+      <b>p(synthetic) = ${p.toFixed(3)}</b>; the verdict is <b>${syn ? "SYNTHETIC" : "HUMAN"}</b> because it is ${syn ? "at or above" : "below"} ${d.threshold ?? 0.5},
+      and the confidence is the probability that this verdict is right: <b>${(j.confidence * 100).toFixed(1)}%</b>.` :
+      `No caller speech was found in the recording, so the model answered with an undecided 0.5 - it has nothing to judge. Try speaking louder or closer to the microphone.`);
+
+    const strip = $("strip"); strip.innerHTML = "";
+    const lim = Math.max(3, ...scores.map(Math.abs));
+    scores.forEach((s, i) => {
+      const el = document.createElement("div"); const h = Math.max(4, Math.abs(s) / lim * 60);
+      el.style.height = h + "px"; el.style.background = s >= 0 ? "var(--synth)" : "var(--human)"; el.style.opacity = (0.45 + 0.55 * Math.abs(s) / lim).toFixed(2);
+      el.style.alignSelf = "flex-end";
+      el.dataset.t = `${spans[i] ? spans[i][0].toFixed(1) + "–" + spans[i][1].toFixed(1) + " s: " : ""}${s >= 0 ? "+" : ""}${s.toFixed(2)}`;
+      strip.appendChild(el);
+    });
+    $("steps").innerHTML = [
+      `the page sent a stereo 8 kHz WAV${state.simulated ? " with a simulated telephone line" : ""} — no filename, no label, no hint of the source`,
+      "server: channel 0 (caller) → energy voice-activity detection 15 dB above the noise floor → speech regions",
+      "each region cut into ≤ 4 s chunks, every chunk scaled to the same loudness (so volume cannot be a cue), resampled to 16 kHz",
+      `frozen ${d.model_display || d.model} → one 768-number embedding per chunk → small MLP → chunk log-odds`,
+      "mean of the chunk log-odds → calibrated probability → verdict at 0.5 → confidence = max(p, 1 − p)",
+    ].map((t, i) => `<li><i>${String(i + 1).padStart(2, "0")}</i><span>${t}</span></li>`).join("");
+    $("caveat").innerHTML = `<b>Read it with care.</b> The model was trained on 8 kHz bank calls. On its own dataset it makes no mistakes; on new engines and speakers through a phone line it is right about 88% of the time (report, Part 8c). Clean, wide-band studio or laptop audio without the line simulation tends to look <i>synthetic</i> to it, because in its training data the synthetic callers were the clean ones. A borderline score means exactly that: borderline.`;
+    $("explain").classList.add("on");
+    $("truthMsg").textContent = ""; $("truthH").disabled = false; $("truthS").disabled = false;
+  }
+
+  // ------------------------------------------------------------------ scoreboard (local only; never sent to the model)
+  const saved = JSON.parse(localStorage.getItem("li_history") || "[]"); state.history = saved; renderBoard();
+  $("truthH").addEventListener("click", () => setTruth("human"));
+  $("truthS").addEventListener("click", () => setTruth("synthetic"));
+  function setTruth(t) {
+    const L = state.last; if (!L) return;
+    L.truth = t; const verdict = L.response.is_synthetic ? "synthetic" : "human"; L.correct = verdict === t;
+    state.history.push({ source: L.source, verdict, conf: L.response.confidence, truth: t, correct: L.correct, name: L.name });
+    localStorage.setItem("li_history", JSON.stringify(state.history.slice(-200)));
+    $("truthMsg").innerHTML = L.correct ? `<span style="color:var(--human)">correct</span>` : `<span style="color:var(--synth)">wrong</span>`;
+    $("truthH").disabled = true; $("truthS").disabled = true;
+    renderBoard();
+  }
+  function renderBoard() {
+    const h = state.history, n = h.length, c = h.filter(x => x.correct).length;
+    $("bTested").textContent = n; $("bCorrect").textContent = c; $("bAcc").textContent = n ? (100 * c / n).toFixed(0) + "%" : "–";
+    const tb = $("history").querySelector("tbody"); tb.innerHTML = "";
+    h.slice().reverse().slice(0, 12).forEach((x, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${n - i}</td><td title="${x.name}">${x.source}</td><td>${x.verdict}</td><td>${(x.conf * 100).toFixed(0)}%</td><td>${x.truth}</td><td class="${x.correct ? "ok" : "no"}">${x.correct ? "✓" : "✗"}</td>`;
+      tb.appendChild(tr);
+    });
+  }
+
+  // ------------------------------------------------------------------ test deck: the held-out validation calls
+  const deck = { calls: [], i: -1, results: {}, auto: false };
+  const base = () => endpointInput.value.replace(/\/detect\/?$/, "");
+  const AUTO_LABEL = "\u25B6\u25B6 auto: listen \u2192 verdict \u2192 next";
+  $("deckLoad").addEventListener("click", loadDeck);
+  async function loadDeck() {
+    try {
+      const r = await fetch(base() + "/validation"); deck.calls = await r.json();
+      deck.results = JSON.parse(localStorage.getItem("li_deck") || "{}");
+      $("deckMeta").textContent = `${deck.calls.length} calls, ${(deck.calls.reduce((a, c) => a + c.duration_s, 0) / 60).toFixed(0)} min of audio`;
+      renderTiles(); $("now").hidden = false; $("deckPlayer").hidden = false; $("deckBtns").hidden = false;
+      select(0);
+    } catch (e) { log("could not load the validation deck: " + e.message, "err"); }
+  }
+  function renderTiles() {
+    const t = $("tiles"); t.innerHTML = "";
+    deck.calls.forEach((c, k) => {
+      const el = document.createElement("div"); el.className = "tile"; el.textContent = k + 1; el.title = c.anon_id;
+      const r = deck.results[c.anon_id]; if (r) el.classList.add(r.correct ? "ok" : "no");
+      if (k === deck.i) el.classList.add("cur");
+      el.addEventListener("click", () => select(k)); t.appendChild(el);
+    });
+    const done = Object.keys(deck.results).filter(id => deck.calls.some(c => c.anon_id === id)), ok = done.filter(id => deck.results[id].correct).length;
+    $("deckStats").innerHTML = `<span>judged <b>${done.length}</b> / ${deck.calls.length}</span><span>correct <b>${ok}</b></span><span>accuracy on judged <b>${done.length ? (100 * ok / done.length).toFixed(0) + "%" : "-"}</b></span><span>${done.length ? '<a href="#" id="deckReset" style="color:var(--muted)">reset deck</a>' : ""}</span>`;
+    const rs = $("deckReset"); if (rs) rs.addEventListener("click", (e) => { e.preventDefault(); deck.results = {}; localStorage.removeItem("li_deck"); renderTiles(); });
+  }
+  function select(k) {
+    deck.i = (k + deck.calls.length) % deck.calls.length;
+    const c = deck.calls[deck.i], r = deck.results[c.anon_id];
+    $("nowTitle").textContent = `Call ${deck.i + 1} of ${deck.calls.length}`;
+    $("nowMeta").textContent = `${c.anon_id}, ${Math.floor(c.duration_s / 60)}:${String(Math.round(c.duration_s % 60)).padStart(2, "0")}, stereo 8 kHz, channel 0 = caller`;
+    const tag = $("nowTruth");
+    if (r) { tag.textContent = `truth: ${c.label}, verdict ${r.verdict} ${r.correct ? "\u2713" : "\u2717"}`; tag.className = "truth-tag " + c.label; }
+    else { tag.textContent = "truth hidden until the verdict"; tag.className = "truth-tag"; }
+    const pl = $("deckPlayer"); pl.src = `${base()}/validation/${c.anon_id}/audio`; pl.load();
+    renderTiles();
+  }
+  $("deckPrev").addEventListener("click", () => select(deck.i - 1));
+  $("deckNext").addEventListener("click", () => select(deck.i + 1));
+  $("deckRandom").addEventListener("click", () => select(Math.floor(Math.random() * deck.calls.length)));
+  $("deckPlay").addEventListener("click", () => { const pl = $("deckPlayer"); pl.paused ? pl.play() : pl.pause(); });
+  $("deckPlayer").addEventListener("play", () => $("deckPlay").textContent = "\u275A\u275A pause");
+  $("deckPlayer").addEventListener("pause", () => $("deckPlay").textContent = "\u25B6 play");
+  $("deckAsk").addEventListener("click", () => askDeck());
+
+  async function askDeck() {
+    const c = deck.calls[deck.i]; if (!c) return;
+    $("deckAsk").disabled = true; $("deckAsk").textContent = "Listening\u2026";
+    $("verdict").innerHTML = `<div class="empty">Call ${deck.i + 1}: segmenting, embedding, scoring\u2026</div>`;
+    try {
+      // the very same path as any other audio: fetch the WAV bytes, base64 them, POST /detect. Nothing else is sent.
+      const wav = await (await fetch(`${base()}/validation/${c.anon_id}/audio`)).blob();
+      const b64 = await blobToBase64(wav);
+      const t0 = performance.now();
+      const j = await (await fetch(endpointInput.value, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audio: b64 }) })).json();
+      const rt = performance.now() - t0;
+      state.last = { response: j, roundtrip: rt, source: `held-out call ${deck.i + 1}`, name: c.anon_id, truth: null };
+      state.simulated = false;
+      showVerdict(j, rt);
+      const verdict = j.is_synthetic ? "synthetic" : "human";
+      deck.results[c.anon_id] = { verdict, correct: verdict === c.label, conf: j.confidence };
+      localStorage.setItem("li_deck", JSON.stringify(deck.results));
+      setTruth(c.label);   // reveal now that the verdict is in, and count it on the scoreboard
+      select(deck.i);
+      document.querySelector(".verdict").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (e) { $("verdict").innerHTML = `<div class="empty err">The detector did not answer: ${e.message}</div>`; }
+    $("deckAsk").disabled = false; $("deckAsk").textContent = "Ask the detector on this call";
+  }
+
+  // auto mode: play the call for N seconds (or all of it), ask, reveal, move on - until stopped or the deck ends
+  $("deckAuto").addEventListener("click", async () => {
+    if (deck.auto) { deck.auto = false; $("deckAuto").classList.remove("live"); $("deckAuto").textContent = AUTO_LABEL; $("deckPlayer").pause(); return; }
+    deck.auto = true; $("deckAuto").classList.add("live"); $("deckAuto").textContent = "\u25A0 stop auto";
+    let start = deck.i;
+    for (let n = 0; n < deck.calls.length && deck.auto; n++) {
+      select((start + n) % deck.calls.length);
+      await playFor(parseFloat($("listenFor").value));
+      if (!deck.auto) break;
+      await askDeck();
+      await new Promise(r => setTimeout(r, 2500));
+    }
+    deck.auto = false; $("deckAuto").classList.remove("live"); $("deckAuto").textContent = AUTO_LABEL;
+  });
+  function playFor(seconds) {
+    const pl = $("deckPlayer");
+    return new Promise((resolve) => {
+      const done = () => { pl.removeEventListener("timeupdate", tick); pl.removeEventListener("ended", done); pl.removeEventListener("pause", onPause); pl.pause(); resolve(); };
+      const tick = () => { if (seconds > 0 && pl.currentTime >= seconds) done(); };
+      const onPause = () => { if (!deck.auto) done(); };
+      pl.addEventListener("timeupdate", tick); pl.addEventListener("ended", done); pl.addEventListener("pause", onPause);
+      pl.currentTime = 0; pl.play().catch(() => done());
+    });
+  }
+})();
+</script>
+</body>
+</html>

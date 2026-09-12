@@ -1,0 +1,7 @@
+t12      medF1 0.952 prec 0.928 rec 0.992  fails<0.8  21  human F1/P/R [0.939, 0.927, 0.963]  synth F1/P/R [0.961, 0.929, 0.999]  chunks 5317  speech_s h/s 39.1/39.9 (official 37.9/36.3)
+t12_m0   medF1 0.949 prec 0.934 rec 0.982  fails<0.8  34  human F1/P/R [0.918, 0.938, 0.903]  synth F1/P/R [0.962, 0.933, 0.993]  chunks 4942  speech_s h/s 35.4/39.7 (official 37.9/36.3)
+t12_m3   medF1 0.950 prec 0.934 rec 0.984  fails<0.8  31  human F1/P/R [0.921, 0.936, 0.912]  synth F1/P/R [0.962, 0.932, 0.994]  chunks 4994  speech_s h/s 35.5/39.7 (official 37.9/36.3)
+t12_m6   medF1 0.950 prec 0.934 rec 0.988  fails<0.8  29  human F1/P/R [0.922, 0.935, 0.917]  synth F1/P/R [0.962, 0.931, 0.995]  chunks 5043  speech_s h/s 35.6/39.8 (official 37.9/36.3)
+t15      medF1 0.953 prec 0.928 rec 0.990  fails<0.8   1  human F1/P/R [0.94, 0.927, 0.961]  synth F1/P/R [0.962, 0.931, 0.997]  chunks 5079  speech_s h/s 39.0/39.0 (official 37.9/36.3)
+t15_m3   medF1 0.950 prec 0.935 rec 0.982  fails<0.8  13  human F1/P/R [0.921, 0.937, 0.91]  synth F1/P/R [0.962, 0.933, 0.993]  chunks 4798  speech_s h/s 35.4/38.4 (official 37.9/36.3)
+t18_m3   medF1 0.951 prec 0.939 rec 0.979  fails<0.8  21  human F1/P/R [0.921, 0.939, 0.907]  synth F1/P/R [0.963, 0.938, 0.991]  chunks 4691  speech_s h/s 34.8/36.8 (official 37.9/36.3)
