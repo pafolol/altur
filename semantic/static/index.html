@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detector semántico de voz sintética</title>
+<style>
+  :root {
+    --humano: #2a78d6; --humano-bg: #e8f0fb;
+    --sintetico: #eb6834; --sintetico-bg: #fdeee7;
+    --ink: #17191c; --ink-2: #4a4f57; --ink-3: #7d838c;
+    --line: #e2e4e8; --bg: #f5f6f8; --panel: #ffffff;
+    --err-bg: #fff4f2; --ok: #1d7a3e; --err: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  header .wrap { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; padding-top: 14px; padding-bottom: 14px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 700; }
+  header span { color: var(--ink-3); font-size: 13px; }
+  main { padding: 28px 0 56px; }
+  section { margin-bottom: 40px; }
+  h2 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .lead { color: var(--ink-2); margin: 0 0 16px; max-width: 64ch; }
+
+  /* escala: la explicación de qué es el puntaje, una sola vez */
+  .scale { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; font-size: 13px; font-weight: 600; margin: 0 0 20px; max-width: 560px; }
+  .scale .h { color: var(--humano); } .scale .s { color: var(--sintetico); text-align: right; }
+  .scale .track { position: relative; height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--humano) 0%, #cfd3d9 50%, var(--sintetico) 100%); }
+  .scale .track::after { content: "0.5"; position: absolute; left: 50%; top: 14px; transform: translateX(-50%); color: var(--ink-3); font-weight: 500; }
+
+  /* subir */
+  .drop { display: block; border: 2px dashed #b9bec6; border-radius: 12px; padding: 28px 20px; text-align: center; background: var(--panel); cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--humano); background: var(--humano-bg); }
+  .drop:focus-within { outline: 3px solid var(--humano); outline-offset: 2px; }
+  .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .drop .btn { display: inline-block; background: var(--ink); color: #fff; border-radius: 8px; padding: 10px 18px; font-weight: 600; margin-bottom: 8px; }
+  .drop small { display: block; color: var(--ink-3); }
+  #results { display: grid; gap: 12px; margin-top: 16px; }
+
+  /* tarjeta de resultado: el veredicto es lo más grande de la pantalla */
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; grid-template-columns: 1fr auto; gap: 8px 20px; align-items: start; }
+  .card .file { color: var(--ink-2); font-size: 13px; overflow-wrap: anywhere; grid-column: 1 / -1; }
+  .card .verdict { font-size: 30px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
+  .card .verdict.h { color: var(--humano); } .card .verdict.s { color: var(--sintetico); } .card .verdict.a { color: var(--ink-3); }
+  .card .verdict small { display: block; font-size: 14px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; margin-top: 2px; }
+  .card .score { text-align: right; font-variant-numeric: tabular-nums; }
+  .card .score b { font-size: 26px; display: block; line-height: 1.1; }
+  .card .score span { font-size: 12px; color: var(--ink-3); }
+  .card .bar { grid-column: 1 / -1; position: relative; height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--humano) 0%, #cfd3d9 50%, var(--sintetico) 100%); margin-top: 6px; }
+  .card .bar i { position: absolute; top: -5px; width: 4px; height: 20px; margin-left: -2px; background: var(--ink); border-radius: 2px; box-shadow: 0 0 0 2px #fff; }
+  .card .meta { grid-column: 1 / -1; color: var(--ink-3); font-size: 12px; }
+  .card .meta.err { color: var(--err); font-size: 13px; }
+
+  /* resumen */
+  .summary { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 16px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; min-width: 150px; flex: 1 1 150px; }
+  .stat b { display: block; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--ink-3); font-size: 13px; }
+  .stat.errs b { color: var(--err); }
+
+  /* filtros */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .filters button { border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); border-radius: 999px; padding: 7px 14px; cursor: pointer; font: inherit; font-size: 13px; min-height: 36px; }
+  .filters button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .filters .spacer { flex: 1; }
+  .filters .hint { color: var(--ink-3); font-size: 13px; }
+
+  /* tabla */
+  .table { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); padding: 10px 14px; background: #fafbfc; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th button { all: unset; cursor: pointer; }
+  th button::after { content: " ↕"; color: #b9bec6; }
+  th.sorted button::after { content: " ↓"; color: var(--ink); }
+  th.sorted.asc button::after { content: " ↑"; }
+  td { padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: middle; }
+  tr.wrong td { background: var(--err-bg); }
+  td.id { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .chip.h { background: var(--humano-bg); color: var(--humano); } .chip.s { background: var(--sintetico-bg); color: var(--sintetico); }
+  .conf { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .conf .mini { width: 80px; height: 8px; border-radius: 4px; background: #e6e8ec; overflow: hidden; }
+  .conf .mini i { display: block; height: 100%; border-radius: 4px; }
+  .lvl { font-weight: 700; text-transform: capitalize; } .lvl.alta { color: var(--ok); } .lvl.media { color: #9a6700; } .lvl.baja { color: var(--ink-3); }
+  .hit { font-weight: 700; white-space: nowrap; } .hit.ok { color: var(--ok); } .hit.bad { color: var(--err); }
+  audio { height: 32px; width: 230px; vertical-align: middle; }
+  .foot { color: var(--ink-3); font-size: 13px; margin-top: 12px; max-width: 72ch; }
+
+  /* móvil: la tabla se vuelve tarjetas */
+  @media (max-width: 760px) {
+    thead { display: none; }
+    table, tbody, tr, td { display: block; }
+    tr { border-top: 1px solid var(--line); padding: 12px 14px; }
+    tr:first-child { border-top: 0; }
+    td { border: 0; padding: 3px 0; }
+    td.id { order: 9; }
+    td::before { content: attr(data-l); display: inline-block; width: 9.5em; color: var(--ink-3); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    audio { width: 100%; }
+    .card .verdict { font-size: 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .drop { transition: none; } }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>Detector semántico de voz sintética</h1>
+  <span>HackMTY 2026 · módulo semántico · corre en esta máquina</span>
+</div></header>
+
+<main class="wrap">
+  <section aria-labelledby="t1">
+    <h2 id="t1">Prueba un audio</h2>
+    <p class="lead">El modelo transcribe lo que dice quien llama y decide si habla como una persona o como un bot. Devuelve un puntaje de 0 a 1:</p>
+    <div class="scale" aria-hidden="true"><span class="h">0 · Humano</span><div class="track"></div><span class="s">Sintético · 1</span></div>
+    <p class="lead" style="font-size:13px">La confianza es qué tan lejos queda el puntaje de 0.5: cerca de los extremos es alta, pegado a 0.5 es baja.</p>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="audio/*,.wav,.m4a,.mp3,.aac,.caf" multiple>
+      <span class="btn">Elegir audio</span>
+      <small>o arrastra aquí. WAV, M4A, MP3. Estéreo: canal izquierdo quien llama, derecho el agente. Mono: todo cuenta como quien llama.</small>
+    </label>
+    <div id="results" aria-live="polite"></div>
+  </section>
+
+  <section aria-labelledby="t2">
+    <h2 id="t2">Comprobación con 71 llamadas que el modelo no vio</h2>
+    <p class="lead">Llamadas reales del reto, puntuadas por un modelo entrenado sin ellas. Compara lo que son en realidad con lo que dijo el modelo.</p>
+    <div class="summary" id="summary"></div>
+    <div class="filters" id="filters" role="group" aria-label="Filtrar">
+      <button data-f="all" class="on">Todas</button>
+      <button data-f="wrong">Solo errores</button>
+      <button data-f="human">Humanas</button>
+      <button data-f="synthetic">Sintéticas</button>
+      <span class="spacer"></span>
+      <span class="hint">Las filas rojas son errores del modelo.</span>
+    </div>
+    <div class="table"><table id="tbl">
+      <thead><tr>
+        <th data-k="label"><button>En realidad</button></th>
+        <th data-k="pred"><button>Dijo el modelo</button></th>
+        <th data-k="score"><button>Puntaje</button></th>
+        <th data-k="c"><button>Confianza</button></th>
+        <th data-k="hit"><button>¿Acertó?</button></th>
+        <th>Escuchar</th>
+        <th data-k="duration_s"><button>Dura</button></th>
+        <th data-k="id"><button>Llamada</button></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="foot">Umbral: 0.5 o más cuenta como sintético. Confianza alta: puntaje de 0.8 para arriba o de 0.2 para abajo; media: hasta 0.35 o desde 0.65; baja: lo demás. Estos puntajes vienen de scores_semantico.csv (fuera de fold). El audio se sirve desde esta máquina y no sale de ella.</p>
+  </section>
+</main>
+
+<script>
+const T = { human: "Humano", synthetic: "Sintético" };
+const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+// confianza = distancia del puntaje a 0.5, llevada a 0..100 %. Alta: puntaje <= 0.2 o >= 0.8; media: hasta 0.35 / desde 0.65; baja: cerca de 0.5.
+const conf = p => { const c = Math.abs(p - 0.5) * 2; return { pct: Math.round(100 * c), level: c >= 0.6 ? "alta" : c >= 0.3 ? "media" : "baja" }; };
+let rows = [], filter = "all", sortK = "hit", sortD = 1;
+
+function auc(rs) {
+  const pos = rs.filter(r => r.label === "synthetic").map(r => r.score), neg = rs.filter(r => r.label === "human").map(r => r.score);
+  let n = 0; for (const p of pos) for (const q of neg) n += p > q ? 1 : p === q ? 0.5 : 0;
+  return pos.length && neg.length ? n / (pos.length * neg.length) : NaN;
+}
+
+function render() {
+  const ok = rows.filter(r => r.hit).length, bad = rows.length - ok;
+  document.getElementById("summary").innerHTML =
+    `<div class="stat"><b>${ok} de ${rows.length}</b><span>aciertos (${rows.length ? (100 * ok / rows.length).toFixed(0) : 0} %)</span></div>` +
+    `<div class="stat errs"><b>${bad}</b><span>errores</span></div>` +
+    `<div class="stat"><b>${auc(rows).toFixed(2)}</b><span>AUC (1 = separa perfecto, 0.5 = azar)</span></div>`;
+  let v = rows.filter(r => filter === "all" || (filter === "wrong" ? !r.hit : r.label === filter));
+  v.sort((a, b) => (a[sortK] > b[sortK] ? 1 : a[sortK] < b[sortK] ? -1 : 0) * sortD || b.score - a.score);
+  document.querySelectorAll("th[data-k]").forEach(th => { th.classList.toggle("sorted", th.dataset.k === sortK); th.classList.toggle("asc", th.dataset.k === sortK && sortD === 1); });
+  document.querySelector("#tbl tbody").innerHTML = v.map(r => {
+    const syn = r.pred === "synthetic";
+    return `<tr class="${r.hit ? "" : "wrong"}">` +
+      `<td data-l="En realidad"><span class="chip ${r.label === "synthetic" ? "s" : "h"}">${T[r.label]}</span></td>` +
+      `<td data-l="Dijo el modelo"><span class="chip ${syn ? "s" : "h"}">${T[r.pred]}</span></td>` +
+      `<td data-l="Puntaje"><span class="conf"><span class="mini"><i style="width:${(100 * r.score).toFixed(0)}%;background:${syn ? "var(--sintetico)" : "var(--humano)"}"></i></span>${r.score.toFixed(2)}</span></td>` +
+      `<td data-l="Confianza"><span class="lvl ${conf(r.score).level}">${conf(r.score).level}</span> ${conf(r.score).pct} %</td>` +
+      `<td data-l="¿Acertó?"><span class="hit ${r.hit ? "ok" : "bad"}">${r.hit ? "✓ Sí" : "✗ No"}</span></td>` +
+      `<td data-l="Escuchar"><audio controls preload="none" src="/audio/${r.id}"></audio></td>` +
+      `<td data-l="Dura">${fmt(r.duration_s)}</td>` +
+      `<td data-l="Llamada" class="id">${r.id.replace("call_", "")}</td></tr>`;
+  }).join("");
+}
+
+function load(d) {
+  rows = d.filter(r => r.score != null).map(r => {
+    const pred = r.score >= 0.5 ? "synthetic" : "human";
+    return { ...r, pred, hit: pred === r.label, c: Math.abs(r.score - 0.5) * 2 };
+  });
+  render();
+}
+fetch("/calls").then(r => r.json()).then(load).catch(() => {
+  load(window.CALLS || []);
+  if (!rows.length) document.getElementById("summary").innerHTML = '<div class="stat errs"><b>Sin datos</b><span>el servidor no responde; arráncalo y recarga la página</span></div>';
+});
+
+document.getElementById("filters").onclick = e => {
+  if (!e.target.dataset.f) return;
+  filter = e.target.dataset.f;
+  for (const b of e.currentTarget.querySelectorAll("button")) b.classList.toggle("on", b === e.target);
+  render();
+};
+document.querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { sortD = sortK === th.dataset.k ? -sortD : 1; sortK = th.dataset.k; render(); });
+
+// subida: bytes crudos a /check; el servidor convierte con afconvert y corre el mismo camino que /detect
+const drop = document.getElementById("drop"), results = document.getElementById("results");
+async function check(file) {
+  const card = document.createElement("div"); card.className = "card";
+  card.innerHTML = `<div class="file">${file.name} · ${(file.size / 1e6).toFixed(1)} MB</div><div class="verdict a">Analizando…<small>transcribiendo y puntuando, unos 2 segundos</small></div>`;
+  results.prepend(card);
+  const t0 = performance.now();
+  try {
+    const r = await fetch("/check", { method: "POST", body: file });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || r.statusText);
+    const cls = d.abstain ? "a" : d.is_synthetic ? "s" : "h";
+    const txt = d.abstain ? "Sin veredicto" : d.is_synthetic ? "Sintético" : "Humano";
+    const k = conf(d.score);
+    const why = d.abstain ? `no hubo evidencia suficiente (${d.reason})` : (d.is_synthetic ? "habla como un bot" : "habla como una persona") + ` · confianza ${k.level} (${k.pct} %)`;
+    const path = d.used === "f4+f5" ? "transcripción + rúbrica" : d.used === "f4" ? "solo transcripción" + (d.reason ? " (" + d.reason + ")" : "") : d.reason;
+    card.innerHTML = `<div class="file">${file.name} · ${fmt(Math.round(d.duration_s))}</div>` +
+      `<div class="verdict ${cls}">${txt}<small>${why}</small></div>` +
+      `<div class="score"><b>${d.score.toFixed(2)}</b><span>puntaje 0-1</span></div>` +
+      `<div class="bar" aria-hidden="true"><i style="left:${(100 * d.score).toFixed(1)}%"></i></div>` +
+      `<div class="meta">Camino: ${path} · ${d.ms} ms en el servidor, ${Math.round(performance.now() - t0)} ms en total</div>`;
+  } catch (e) {
+    const msg = e.message === "Failed to fetch" ? "El servidor no responde. Arráncalo en una terminal: .venv/bin/uvicorn server:app --port 8000 --workers 2 y vuelve a intentar." : e.message;
+    card.innerHTML = `<div class="file">${file.name}</div><div class="verdict a">No se pudo analizar</div><div class="meta err">${msg}</div>`;
+  }
+}
+document.getElementById("file").onchange = e => { for (const f of e.target.files) check(f); e.target.value = ""; };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); for (const f of e.dataTransfer.files) check(f); };
+</script>
+</body>
+</html>

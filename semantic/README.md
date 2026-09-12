@@ -1,94 +1,75 @@
-# The semantic layer — what arrived, and what is still missing
+# altur-semantico — módulo semántico (HackMTY26, reto Altur)
 
-This directory is the merge of the `fusion` branch (`061c93f`, "semantica"). **The module's source code is
-not in it, because it was never pushed.** What follows is exactly what the branch contained, how that was
-verified, and what has to happen for the layer to run.
+Uno de tres módulos. Entrada: WAV estéreo 8 kHz (canal 0 llamante, canal 1 agente). Salida: `P(llamante sintético)` en [0,1], calibrada, en < 3 s (plazo de red 2.8 s).
+Spec: `PLAN.md`. Lo que se midió y contradice al plan: `FINDINGS.md`.
 
-## What is here
+## Correr
 
-| path | what it is |
-| --- | --- |
-| `cache/asr/` | ElevenLabs Scribe transcripts, 353 calls × 2 channels — word-level, with timings and per-word logprobs |
-| `cache/asr_scribe_v2/` | the same, from a second Scribe configuration |
-| `cache/gemini/` | the 7-dimension Gemini rubric per call, in four model/prompt variants (`gemini-3.5-flash-lite` × prompts `7f24a2` / `fcb51f`, `…_scribe_v2`, and `gemini-3.6-flash`) — 353 calls each |
-| `cache/*.log` | the batch logs of those two runs |
-| `bytecode/` | the nine `.pyc` files that were pushed instead of the sources (`asr, audit, config, features, model, rubric, server, traps, vad`, CPython 3.14) |
-
-The caches are the expensive part — they are two full passes of a paid ASR API and four full passes of an LLM
-over every call in the dataset. They are laid out the way the module expects (`<root>/cache/asr`,
-`<root>/cache/gemini`), so dropping the sources in beside them should hit the cache rather than the APIs.
-
-## What is missing
-
-- **every `.py` file.** Verified against the GitHub API on the branch head `061c93f3438e…`, not a local clone:
-  `__pycache__/` holds nine `.pyc`, `reports/` holds only a `.DS_Store`, `tests/` holds only a `__pycache__/`.
-  Zero `.py` blobs on that branch — and zero on any other branch of the repository.
-- **`model.pkl`** — the fitted logistic + Platt calibration. Without it there is no probability to contribute.
-- **`scores_semantico.csv`** — the out-of-fold score per call, which would have let the console show the
-  semantic column for the 71 held-out calls without running anything.
-
-A directory whose only surviving file is `.DS_Store` is the signature of a **global** gitignore (something
-like `~/.gitignore_global` with a broad rule) rather than a repository one: the branch has no `.gitignore` at
-all. Whoever owns the module should check `git check-ignore -v model.py` on their machine, then push the
-sources and `model.pkl`.
-
-## ⚠ Two things that need action
-
-1. **The branch committed a `.env` with live API keys** (ElevenLabs and Gemini). It has been removed from the
-   working tree here, but it remains reachable in Git history through the merged commit, and it was already
-   pushed. **Those keys must be rotated** — deleting the file does not undo the exposure.
-2. The ASR caches are **verbatim transcripts of the challenge audio**. The dataset terms say not to
-   redistribute it, and a transcript is the dataset in another form. Keep this repository private.
-
-## How the layer plugs in
-
-The fusion does not import this module; `SemanticLayer` in `src/fusion.py` reaches it over HTTP. That is
-deliberate — it needs two third-party API keys, it is the only layer that leaves the machine, and its cost is
-a network budget rather than a model's compute.
-
-```
-python src/server.py --semantic-url http://127.0.0.1:8100/detect
-# or: set SEMANTIC_URL=http://127.0.0.1:8100/detect
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env        # ELEVENLABS_API_KEY, GEMINI_API_KEY (el servidor no arranca sin ellas)
+.venv/bin/uvicorn server:app --workers 4
 ```
 
-The service must answer:
-
-```
-GET  /health
-POST /detect  {"audio": "<base64 stereo 8 kHz wav>"}
-  -> {"is_synthetic", "confidence", "score", "abstain", "reason", "used", "ms"}
+```bash
+.venv/bin/python detect.py samples/call.wav       # codifica, llama y muestra el JSON (WAV sintético de Apple TTS, no del dataset)
 ```
 
-`score` is the calibrated P(synthetic) and is what the fusion reads. `confidence` is P(the verdict is right),
-which is a different quantity and would be wrong to feed a weighted vote. `used` names the path that
-answered — `"f4+f5"` (Scribe + rubric), `"f4"` (text features only, recorded at half evidence quality) or
-`"abstain"`.
+Página de demo: con el servidor arriba, abre <http://localhost:8000/>. Lista las 71 llamadas de validación con su audio,
+la verdad y el puntaje fuera de fold (el modelo que las calificó no las vio), y deja subir audios nuevos en cualquier
+formato que lea `afconvert` (macOS): `POST /check` los convierte a estéreo 8 kHz y corre el mismo camino que `/detect`.
+Mono se toma como cliente con el agente en silencio.
 
-Until something answers, the layer abstains on every call, its 15 % is shared out among the layers that did
-answer, and the console shows the channel greyed out with the reason. Nothing waits for it.
-
-## What the module does, as far as it can be reconstructed
-
-Recovered from the strings in `bytecode/` — enough to write the adapter against, not enough to run:
-
-```
-Fase 1  vad.py       energy VAD + compaction of the caller channel
-Fase 2  traps.py     trap bank by template matching on the AGENT channel, no ASR: the scripted moments
-                     (saludo, pide_referencia, permitame_confirmar, asi_es, interrupcion, producto,
-                     reconfirmacion) located by sliding cosine similarity over log-band spectra
-Fase 3  asr.py       ElevenLabs Scribe on the compacted audio, chunked on segment boundaries, concurrent,
-                     word times mapped back to the original timeline, cached per call
-Fase 4  features.py  F4 text features with no LLM: logprob mean/std/p10/min/low-fraction/first-30,
-                     disfluency rate, mexicanism rate, false-start rate, sentence length, words per turn,
-                     guion rate, plus f_agent — the share of the caller's vocabulary the agent also said
-                     ("humans echo the agent to confirm; bots follow their script")
-Fase 5  rubric.py    one Gemini call per conversation, structured JSON, 7 dimensions scored 0–1 with a short
-                     quote each: sobrecompletitud, registro_formal, reparacion_conversacional, iniciativa,
-                     manejo_producto_ambiguo, fidelidad_repeticion, consistencia_memoria
-Fase 6  model.py     logistic regression on F4 + F5, class_weight balanced, Platt-calibrated by CV on train
-Fase 7  server.py    the /detect contract above, degrading f4+f5 -> f4 -> abstain within a hard deadline
+```bash
+curl -s localhost:8000/detect -H 'Content-Type: application/json' -d '{"audio": "<wav estéreo 16-bit 8 kHz en base64>"}'
+# -> {"is_synthetic": true, "confidence": 0.91, "score": 0.91, "abstain": false, "reason": "", "used": "f4+f5", "ms": 1980}
 ```
 
-For reference, a logistic fit on the **cached rubric alone** (the 7 dimensions, nothing else) reaches
-val ROC-AUC 0.83 and accuracy 77.5 % on the official split — a real signal, and consistent with the 15 %
-weight the fusion gives this layer. The module's own model adds the F4 text features on top of that.
+| campo | significado |
+|---|---|
+| `is_synthetic` | `score >= 0.5` (lo que pide el contrato del reto) |
+| `confidence` | igual a `score`: P(sintético) calibrada, no "certeza". El backend aprende los pesos de fusión sobre esto |
+| `abstain` | `true` = no hubo evidencia (`score` es 0.5 y **no es una opinión**; el backend no debe promediarlo) |
+| `reason` | vacío si todo bien; `no_speech`, `asr_error:<tipo>`, `degraded:<tipo>` (Gemini o canal del agente no llegaron), `internal:<tipo>` |
+| `used` | camino alcanzado: `f4+f5` (Scribe + rúbrica Gemini), `f4` (solo texto), `abstain` |
+
+Entrada inválida (no es WAV, mono, 16 kHz, 0 frames, > 400 s) devuelve **400** con el formato esperado; cuerpo > 20 MB de base64 devuelve **413**. `GET /health` devuelve config, procedencia del modelo y qué llaves están presentes. Cada petición deja una línea JSON en stderr (`used`, `reason`, `ms`, trozos, hedges).
+
+## Pipeline
+
+```
+decode + VAD (vad.py)  →  Scribe (scribe_v1) por canal, compactado, trozos de 20 s en paralelo con hedging (asr.py)
+  → F4 features de texto sin LLM (features.py)  →  regresión logística F4  ─┐
+  → transcript anotado → rúbrica Gemini, JSON estructurado (rubric.py)    → regresión logística F4+F5 (model.py)
+  → vocabulario del cliente compartido con el agente (features.f_agent)   ─┘  (solo en f4+f5: necesita el canal del agente)
+```
+
+## Reproducir el entrenamiento
+
+```bash
+.venv/bin/python check_dataset.py     # Fase 0: manifest + 353 audios
+.venv/bin/python vad.py               # Fase 1: VAD vs turns.json
+.venv/bin/python asr.py all           # Fase 3: transcribe y cachea (cache/asr)
+.venv/bin/python features.py          # Fase 4: AUC por feature en val
+.venv/bin/python rubric.py all        # Fase 5: rúbrica en las 353 (cache/gemini), AUC por dimensión
+.venv/bin/python model.py             # Fase 6: F4 / F5 / F4+F5, calibración, model.pkl, scores_semantico.csv
+.venv/bin/python model.py cv          # regla para comparar experimentos: 5-fold x10 sobre las 353 (±0.01 en la media)
+.venv/bin/python check_server.py      # Fase 7: HTTP real, 71 de val, p50/p95, AUC  (--parallel 8 para carga)
+.venv/bin/pytest -q                   # contrato y degradación con Scribe/Gemini simulados, sin red
+.venv/bin/python tts_probe.py         # robustez con un TTS ajeno (Apple, macOS); regenera samples/call.wav
+```
+
+## Perillas e invariantes
+
+| qué | dónde | se puede tocar |
+|---|---|---|
+| `BUDGET_S` / `HARD_S` (2.8 / 3.0 s) | env o server.py | sí, sin reentrenar |
+| `HEDGE_S`, `CHUNK_S` | asr.py | `HEDGE_S` sí; `CHUNK_S` está guardado en model.pkl: cambiarlo exige `asr.py all` + `model.py` |
+| `SEMANTIC_CONFIG` (`F4+F5` / `F4`) | env | sí; `F4` sirve sin Gemini |
+| `SCRIBE_MAX_INFLIGHT` (9) | env | sí; la suscripción de ElevenLabs admite ~20 peticiones simultáneas: con `--workers N`, N × 9 debe quedar por debajo. Techo real: 2-3 llamadas simultáneas a calidad completa |
+| `SCRIBE_MODEL`, `GEMINI_MODEL`, `RUBRIC_EVIDENCE`, el prompt de la rúbrica | env / rubric.py | **no sin reentrenar**: el servidor se niega a arrancar si model.pkl fue entrenado con otros valores. Cambiarlos: `asr.py all` (si ASR) o `rubric.py all` (si rúbrica), luego `model.py` |
+| lista de features (`model.F4`, `model.AGENT`, `model.DIMS`, `SEMANTIC_EXTRA`) | model.py / env | solo con `model.py` después: model.pkl guarda la lista y el servidor la comprueba al arrancar |
+| versión de scikit-learn | requirements.txt | el servidor avisa si difiere de la que pickleó model.pkl |
+
+`AUDIT.md` tiene la auditoría de atajos, ablación, prefijos y errores. `scores_semantico.csv` (`anon_id,split,score`, todas las filas fuera de fold) es la entrega al backend para aprender los pesos de fusión. `model.pkl` está ajustado con las 353 llamadas; las cifras de val y de CV son la medición.
+Filas de train = predicción out-of-fold (5-fold aleatorio: no hay id de hablante, ligeramente optimista). Filas de val = modelo entrenado en train.
