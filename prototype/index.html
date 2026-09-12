@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISISI — the phone line learns to tell humans apart</title>
+<meta name="description" content="ISISI decides, in real time, whether the voice on a bank's phone line belongs to a real person.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════
+   ISISI — night sea
+   ════════════════════════════════════════ */
+:root{
+  --abyss:#03080E;
+  --deep:#071825;
+  --panel:#0C2133;
+  --panel-2:#102B41;
+  --edge:rgba(191,217,242,.13);
+  --foam:#E6F0FB;        /* moonlight — headings */
+  --body:#9AB5D1;        /* body text */
+  --dim:#6F8BA8;
+  --glint:#7FC4FF;       /* the system's colour: light, detection, the burst */
+
+  --gut:clamp(22px,5.5vw,72px);
+  --f:'Outfit',system-ui,-apple-system,sans-serif;
+  --m:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;background:var(--abyss)}
+body{
+  font-family:var(--f);font-weight:400;
+  font-size:clamp(15.5px,1.05vw,17.5px);line-height:1.7;
+  color:var(--body);background:var(--abyss);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+::selection{background:var(--glint);color:var(--abyss)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--glint);outline-offset:4px;border-radius:3px}
+h1,h2,h3{color:var(--foam);font-weight:300;letter-spacing:-.025em;line-height:1.1}
+h1{font-size:clamp(2.2rem,6.2vw,4.6rem);font-weight:200}
+h2{font-size:clamp(1.75rem,4.2vw,3.1rem)}
+h3{font-size:1.1rem;font-weight:500;letter-spacing:-.01em}
+p{text-wrap:pretty}
+
+/* the sea sits behind everything and dims under the reading sections */
+#sea{position:fixed;inset:0;width:100%;height:100%;z-index:-2;display:block}
+.dim{position:fixed;inset:0;z-index:-1;background:var(--abyss);opacity:0;pointer-events:none}
+
+.nav{position:fixed;top:0;left:0;right:0;z-index:80;display:flex;align-items:center;
+  justify-content:space-between;gap:16px;padding:20px var(--gut);font-size:13px;color:var(--foam)}
+.nav b{font-weight:600;letter-spacing:.2em}
+.nav .sub{opacity:.42}
+.nav a{text-decoration:none;opacity:.7}
+@media(max-width:760px){.nav .sub{display:none}}
+
+/* ═══ ACT I ═══ */
+.hero{position:relative;height:300vh}
+.stick{position:sticky;top:0;height:100dvh;overflow:hidden}
+.flash{position:absolute;inset:0;background:var(--glint);opacity:0;pointer-events:none;z-index:9}
+
+.hero-copy{position:absolute;top:12vh;left:0;right:0;padding:0 var(--gut);text-align:center;z-index:4}
+.hero-copy h1{max-width:14ch;margin:0 auto;text-wrap:balance;
+  text-shadow:0 2px 40px rgba(3,8,14,.9)}
+.hero-copy p{margin:26px auto 0;max-width:42ch;font-size:1.02rem;color:var(--body);
+  text-shadow:0 1px 20px rgba(3,8,14,.9)}
+
+.stage{position:absolute;inset:0;display:grid;place-items:center;z-index:3;
+  perspective:1100px;perspective-origin:50% 44%}
+.float{animation:bob 7.5s ease-in-out infinite;transform-style:preserve-3d}
+@keyframes bob{0%,100%{transform:translateY(-10px)}50%{transform:translateY(10px)}}
+.spin{transform-style:preserve-3d;will-change:transform}
+.lock3d{position:relative;width:196px;height:246px;transform-style:preserve-3d;will-change:transform,opacity}
+@media(max-width:600px){.lock3d{width:150px;height:188px}}
+
+.part{position:absolute;transform-style:preserve-3d}
+.slab{position:absolute;inset:0}
+.bodyPart{left:2%;right:2%;bottom:0;height:60%}
+.shacklePart{left:25%;right:25%;top:0;height:52%}
+.slab.b{border-radius:13% 13% 15% 15%/10% 10% 12% 12%}
+.slab.s{background:transparent;border-style:solid;border-bottom-width:0;border-radius:999px 999px 0 0}
+
+.face{position:absolute;inset:0;z-index:3;display:grid;place-items:center;backface-visibility:hidden}
+.keyhole{width:15%;aspect-ratio:1/1.75;background:#020A12;margin-top:6%;
+  border-radius:50% 50% 22% 22%/34% 34% 18% 18%;
+  box-shadow:inset 0 3px 7px rgba(0,0,0,.95),0 1px 0 rgba(230,240,251,.3)}
+.shine{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(114deg,rgba(230,240,251,0) 32%,rgba(230,240,251,.42) 45%,rgba(230,240,251,0) 57%)}
+
+/* the lock's own light on the water */
+.glowunder{position:absolute;left:50%;top:calc(50% + 120px);width:420px;height:150px;
+  transform:translateX(-50%);pointer-events:none;z-index:2;
+  background:radial-gradient(50% 50%,rgba(127,196,255,.22),transparent 70%);filter:blur(14px)}
+@media(max-width:600px){.glowunder{top:calc(50% + 96px);width:300px}}
+
+.tapzone{position:absolute;left:50%;top:50%;width:260px;height:300px;transform:translate(-50%,-50%);
+  background:none;border:0;cursor:pointer;z-index:5;border-radius:24px}
+.tapzone[disabled]{cursor:default}
+.taphint{position:absolute;left:0;right:0;bottom:11vh;text-align:center;z-index:5;opacity:0;
+  transition:opacity .8s ease;pointer-events:none}
+.taphint.on{opacity:1}
+.taphint span{display:inline-block;padding:11px 22px;border:1px solid rgba(127,196,255,.45);
+  border-radius:999px;font-size:13px;letter-spacing:.05em;color:var(--glint);
+  background:rgba(127,196,255,.07);backdrop-filter:blur(6px);animation:pulse 2.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(127,196,255,.3)}50%{box-shadow:0 0 0 15px rgba(127,196,255,0)}}
+
+.burst{position:absolute;left:50%;top:44%;width:0;height:0;z-index:6;pointer-events:none}
+.dot{position:absolute;border-radius:50%;background:var(--glint);will-change:transform,opacity}
+.ring{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;
+  border:2px solid var(--glint);border-radius:50%;opacity:0;will-change:transform,opacity}
+
+.scrub{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;
+  transition:opacity .5s;pointer-events:none;z-index:2}
+.scrub.on{opacity:1}
+
+.hint{position:absolute;bottom:36px;left:0;right:0;text-align:center;font-size:11.5px;
+  letter-spacing:.24em;color:var(--dim);z-index:4;transition:opacity .4s}
+.hint i{display:block;width:1px;height:30px;margin:12px auto 0;background:currentColor;
+  transform-origin:top;animation:drip 2.6s cubic-bezier(.7,0,.3,1) infinite}
+@keyframes drip{0%{transform:scaleY(0)}45%{transform:scaleY(1)}100%{transform:scaleY(1) translateY(30px);opacity:0}}
+
+/* ═══ ACT II ═══ */
+.name{position:relative;height:580vh}
+.name .stick{display:grid;place-items:center}
+.stagebox{position:relative;z-index:2;width:100%;padding:0 var(--gut);text-align:center}
+.wordmark{display:flex;justify-content:center;align-items:baseline;gap:clamp(3px,.9vw,14px);
+  font-size:clamp(3.4rem,15vw,12.5rem);font-weight:200;letter-spacing:-.04em;line-height:.9;
+  color:rgba(230,240,251,.14);will-change:transform}
+.wordmark span{display:block;transform-origin:50% 100%;transition:color .5s,text-shadow .5s}
+.wordmark span.on{color:var(--foam);text-shadow:0 0 52px rgba(127,196,255,.85)}
+.meaning{position:relative;height:clamp(168px,28vh,250px);max-width:660px;margin:clamp(26px,5vh,58px) auto 0}
+.mean{position:absolute;inset:0;opacity:0;transform:translateY(16px);
+  transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1);pointer-events:none}
+.mean.live{opacity:1;transform:none}
+.mean h2 em{font-style:normal;color:var(--glint)}
+.mean p{margin:16px auto 0;max-width:47ch}
+.tick{display:flex;gap:7px;justify-content:center;margin-top:clamp(20px,4vh,36px)}
+.tick i{width:30px;height:2px;background:rgba(230,240,251,.14);transition:background .4s}
+.tick i.live{background:var(--glint)}
+
+/* ═══ reading sections ═══ */
+main{position:relative;z-index:2}
+.band{padding:clamp(80px,12vh,150px) var(--gut);max-width:1160px;margin:0 auto}
+.band h2{max-width:19ch;text-wrap:balance}
+.lede{margin-top:22px;max-width:64ch;font-size:1.06rem}
+.rule{height:1px;background:var(--edge);max-width:1160px;margin:0 auto}
+
+.signals{display:grid;gap:clamp(14px,1.6vw,22px);margin-top:clamp(46px,8vh,84px);
+  grid-template-columns:repeat(auto-fit,minmax(262px,1fr))}
+.sig{background:rgba(12,33,51,.68);backdrop-filter:blur(14px);border:1px solid var(--edge);
+  border-radius:18px;padding:clamp(26px,3vw,38px)}
+.sig .what{font-size:12px;letter-spacing:.14em;color:var(--glint);font-weight:500;margin-bottom:14px}
+.sig h3{margin-bottom:10px}
+.sig p{font-size:.98rem}
+.sig ul{margin:20px 0 0;list-style:none;font-size:.92rem}
+.sig li{padding:9px 0 9px 17px;border-top:1px solid var(--edge);position:relative}
+.sig li::before{content:'';position:absolute;left:0;top:18px;width:7px;height:1px;background:var(--glint)}
+.sig svg{display:block;width:100%;height:70px;margin-bottom:22px;overflow:visible}
+
+.demo{background:rgba(7,24,37,.85);backdrop-filter:blur(16px);border:1px solid var(--edge);
+  border-radius:20px;overflow:hidden;margin-top:clamp(40px,7vh,70px)}
+.demo-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+  padding:20px clamp(20px,2.6vw,34px);border-bottom:1px solid var(--edge)}
+.demo-head p{font-size:12.5px;letter-spacing:.04em;color:var(--dim)}
+.switch{display:flex;gap:3px;background:rgba(230,240,251,.07);padding:3px;border-radius:999px}
+.switch button{font-family:var(--f);font-size:13px;font-weight:500;padding:9px 18px;border:0;
+  border-radius:999px;background:transparent;color:var(--foam);cursor:pointer;opacity:.6;
+  transition:background .3s,opacity .3s,color .3s}
+.switch button[aria-pressed="true"]{background:var(--foam);color:var(--abyss);opacity:1}
+.demo-body{display:grid;grid-template-columns:1.12fr .88fr}
+@media(max-width:840px){.demo-body{grid-template-columns:1fr}}
+.script{padding:clamp(20px,2.6vw,34px);border-right:1px solid var(--edge)}
+@media(max-width:840px){.script{border-right:0;border-bottom:1px solid var(--edge)}}
+.turn{display:grid;grid-template-columns:60px 1fr;gap:14px;padding:14px 0;
+  border-bottom:1px solid rgba(191,217,242,.07);font-size:.96rem}
+.turn:last-child{border-bottom:0}
+.turn b{font-size:10.5px;letter-spacing:.14em;font-weight:600;padding-top:6px;color:var(--dim)}
+.turn.caller b{color:var(--glint)}
+.turn i{font-style:italic}
+.turn .note{display:block;margin-top:8px;font-size:11.5px;color:var(--glint);font-style:normal}
+.readout{padding:clamp(20px,2.6vw,34px)}
+.bar{margin-bottom:22px}
+.bar span{display:flex;justify-content:space-between;font-size:12px;letter-spacing:.05em;
+  margin-bottom:9px;color:var(--dim)}
+.bar u{text-decoration:none}
+.bar em{font-style:normal;font-weight:600;font-variant-numeric:tabular-nums;color:var(--body)}
+.bar i{display:block;height:3px;background:rgba(230,240,251,.11);border-radius:2px;position:relative}
+.bar i::after{content:'';position:absolute;inset:0 auto 0 0;width:var(--v,0%);border-radius:2px;
+  background:rgba(230,240,251,.4);transition:width .8s cubic-bezier(.2,.8,.2,1),background .5s}
+.demo[data-mode="synthetic"] .bar i::after{background:var(--glint);box-shadow:0 0 18px rgba(127,196,255,.7)}
+.verdict{margin-top:28px;padding-top:24px;border-top:1px solid var(--edge);
+  font-family:var(--m);font-size:13px;line-height:1.95;white-space:pre;overflow-x:auto}
+.verdict .k{color:var(--dim)}
+.verdict .v{color:var(--foam)}
+.demo[data-mode="synthetic"] .verdict .v{color:var(--glint)}
+
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:clamp(12px,1.4vw,20px);margin-top:clamp(40px,7vh,66px)}
+.node{background:rgba(12,33,51,.6);backdrop-filter:blur(12px);border:1px solid var(--edge);
+  border-radius:16px;padding:28px 24px}
+.node b{display:block;font-size:11px;letter-spacing:.18em;font-weight:600;color:var(--glint);margin-bottom:12px}
+.node h3{margin-bottom:8px}
+.node p{font-size:.92rem}
+
+.timeline{margin-top:clamp(48px,8vh,82px)}
+.tl{position:relative;height:74px;border-left:1px solid var(--edge);border-bottom:1px solid var(--edge);margin-top:22px}
+.tl i{position:absolute;top:0;bottom:0;border-right:1px dashed rgba(191,217,242,.14)}
+.tl b{position:absolute;top:0;bottom:0;left:0;background:rgba(127,196,255,.16);border-radius:0 3px 3px 0}
+.tl em{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--glint)}
+.tl u{position:absolute;top:-26px;font-size:11.5px;letter-spacing:.04em;text-decoration:none;
+  white-space:nowrap;transform:translateX(-50%);color:var(--dim)}
+.tl-axis{display:flex;justify-content:space-between;font-size:11.5px;letter-spacing:.06em;
+  color:var(--dim);margin-top:9px}
+
+.api{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,4vw,58px);align-items:start;
+  margin-top:clamp(34px,5vh,56px)}
+@media(max-width:840px){.api{grid-template-columns:1fr}}
+pre{background:rgba(3,8,14,.8);border:1px solid var(--edge);color:#C9DEF4;
+  padding:clamp(20px,2.4vw,30px);border-radius:16px;font-family:var(--m);
+  font-size:12.5px;line-height:1.85;overflow-x:auto}
+pre .c{color:#5B7794}
+pre .s{color:var(--foam)}
+pre .n{color:var(--glint)}
+.specs{list-style:none;font-size:.97rem}
+.specs li{display:grid;grid-template-columns:124px 1fr;gap:18px;padding:15px 0;border-bottom:1px solid var(--edge)}
+.specs b{font-size:11.5px;letter-spacing:.11em;font-weight:600;padding-top:5px;color:var(--foam)}
+code{font-family:var(--m);font-size:.88em;background:rgba(127,196,255,.14);padding:1px 5px;border-radius:4px}
+
+.close{position:relative;z-index:2}
+.close .inner{max-width:1160px;margin:0 auto;padding:clamp(80px,12vh,150px) var(--gut)}
+.close h2{max-width:17ch}
+footer{max-width:1160px;margin:0 auto;padding:26px var(--gut);display:flex;flex-wrap:wrap;gap:14px;
+  justify-content:space-between;font-size:12px;letter-spacing:.04em;color:var(--dim);
+  border-top:1px solid var(--edge)}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{animation:none!important;transition-duration:.01ms!important}
+  .hero,.name{height:auto}
+  .stick{position:relative;height:auto;padding:16vh 0 12vh}
+  .stage{position:relative;inset:auto;min-height:60vh}
+  .hero-copy{position:relative;top:auto;margin-bottom:8vh}
+  .meaning{height:auto}
+  .mean{position:relative;opacity:1;transform:none;margin-bottom:34px}
+  .wordmark span{color:var(--foam)}
+  .hint,.taphint{display:none}
+}
+</style>
+</head>
+<body>
+
+<canvas id="sea"></canvas>
+<div class="dim" id="dim"></div>
+
+<nav class="nav">
+  <b>ISISI</b>
+  <span class="sub">Altur · HackMTY26 · Defend the bank against voice deepfakes</span>
+  <a href="#api">The endpoint</a>
+</nav>
+
+<!-- ══════════ ACT I ══════════ -->
+<section class="hero" id="hero">
+  <div class="stick">
+    <div class="hero-copy" id="heroCopy">
+      <h1>Your voice stopped being a password.</h1>
+      <p>Six seconds of public audio is enough to clone anyone well enough to pass — for a human listener, and for a machine.</p>
+    </div>
+
+    <video class="scrub" id="scrub" data-slot="lock-spin" muted playsinline preload="auto"
+           src="assets/lock-spin.mp4"></video>
+
+    <div class="stage">
+      <div class="glowunder" id="glowunder"></div>
+      <div class="float">
+        <div class="spin" id="spin"><div class="lock3d" id="lock"></div></div>
+      </div>
+      <div class="burst" id="burst"></div>
+      <button class="tapzone" id="tapzone" aria-label="Break the lock"></button>
+    </div>
+
+    <div class="taphint" id="taphint"><span>Tap the lock</span></div>
+    <div class="hint" id="hint">SCROLL<i></i></div>
+    <div class="flash" id="flash"></div>
+  </div>
+</section>
+
+<!-- ══════════ ACT II ══════════ -->
+<section class="name" id="name">
+  <div class="stick">
+    <div class="stagebox">
+      <div class="wordmark" id="wordmark" aria-label="ISISI">
+        <span>I</span><span>S</span><span>I</span><span>S</span><span>I</span>
+      </div>
+      <div class="meaning">
+        <div class="mean"><h2><em>Intelligent</em></h2>
+          <p>Not one classifier with an opinion. Three independent readers of the same call — the sound, the timing, the sense — that only get a vote once they agree on what they heard.</p></div>
+        <div class="mean"><h2><em>System</em></h2>
+          <p>Built to sit inside a contact center that already exists. 8&nbsp;kHz stereo in over the line the bank already has, one JSON verdict out. Nothing for the customer to install or remember.</p></div>
+        <div class="mean"><h2><em>Identifying</em></h2>
+          <p>It never asks who you are. It asks whether anyone is there at all — a far easier question to answer honestly, and the only one that still holds when the voice is a perfect copy.</p></div>
+        <div class="mean"><h2><em>Synthetic</em></h2>
+          <p>Cloned voices leak in three places: vocoder residue inside the passband, recovery from interruption that is too clean, and answers to questions that have no answer.</p></div>
+        <div class="mean"><h2><em>Interactions</em></h2>
+          <p>The unit of evidence is the exchange, not the clip. A voice alone can be faked convincingly. A conversation — with its overlap, its backtracking, its dead air — still cannot.</p></div>
+      </div>
+      <div class="tick" id="tick"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ EXPLANATION ══════════ -->
+<main>
+  <section class="band" id="how">
+    <h2>Three ways a machine gives itself away on a phone call.</h2>
+    <p class="lede">The brief says depth beats breadth, so each of these is built to stand alone and be argued for. They are fused at the end, but any one of them can carry a verdict when the other two are unsure.</p>
+
+    <div class="signals">
+      <article class="sig">
+        <svg viewBox="0 0 200 70" aria-hidden="true"><g id="spec"></g></svg>
+        <p class="what">SIGNAL 01 — ACOUSTIC</p>
+        <h3>What the codec cannot hide</h3>
+        <p>An 8&nbsp;kHz line throws away everything above 4&nbsp;kHz, which is exactly where most deepfake detectors do their work. So we look lower: at band ratios a vocoder cannot get right, and at what is missing between the words.</p>
+        <ul>
+          <li>Breath, lip noise and room tone in the gaps — synths leave them digitally clean</li>
+          <li>Jitter and shimmer in sustained vowels, measured per turn</li>
+          <li>Phase coherence across the 300–3400&nbsp;Hz passband</li>
+        </ul>
+      </article>
+      <article class="sig">
+        <svg viewBox="0 0 200 70" aria-hidden="true"><g id="overlap"></g></svg>
+        <p class="what">SIGNAL 02 — CONVERSATIONAL</p>
+        <h3>Recovery is a fingerprint</h3>
+        <p>Every call in the set has moments where the agent cuts in, goes quiet, or talks over the caller. A person recovers instantly and messily. A pipeline recovers the same way every time, and sameness is the tell.</p>
+        <ul>
+          <li>Barge-in latency: how long until the caller yields the floor</li>
+          <li>Variance of turn-taking gaps, not their mean</li>
+          <li>Whether a restarted sentence restarts from the top or mid-phrase</li>
+        </ul>
+      </article>
+      <article class="sig">
+        <svg viewBox="0 0 200 70" aria-hidden="true"><g id="sem"></g></svg>
+        <p class="what">SIGNAL 03 — SEMANTIC</p>
+        <h3>The question with no answer</h3>
+        <p>The agent asks the caller to confirm a product that does not exist. A person pushes back — confused, slightly annoyed. A language model, trained to be helpful, fills the hole with something plausible.</p>
+        <ul>
+          <li>Trap questions planted in the agent's own turns</li>
+          <li>Confabulation on details never mentioned in the call</li>
+          <li>Fluent recital of digits a real customer would fumble</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <section class="band" id="demo">
+    <h2>The same trap, asked twice.</h2>
+    <p class="lede">One exchange from the middle of a collections call. The agent asks about the <i>Platino&nbsp;Plus</i> card, a product that does not exist. Switch the caller and watch the three signals move.</p>
+
+    <div class="demo" id="demoBox" data-mode="human">
+      <div class="demo-head">
+        <p>Call 0412 · 00:47 → 01:02 · channel 0 isolated</p>
+        <div class="switch" role="group" aria-label="Choose caller">
+          <button id="bHuman" aria-pressed="true">Real caller</button>
+          <button id="bSynth" aria-pressed="false">Cloned voice</button>
+        </div>
+      </div>
+      <div class="demo-body">
+        <div class="script" id="script"></div>
+        <div class="readout">
+          <div class="bar"><span><u>Acoustic</u><em id="v1">—</em></span><i id="b1"></i></div>
+          <div class="bar"><span><u>Conversational</u><em id="v2">—</em></span><i id="b2"></i></div>
+          <div class="bar"><span><u>Semantic</u><em id="v3">—</em></span><i id="b3"></i></div>
+          <div class="verdict" id="verdict"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <section class="band" id="pipeline">
+    <h2>Between the audio arriving and the verdict leaving.</h2>
+    <p class="lede">The stereo file is split at the door. Channel&nbsp;1 — the agent — is never classified; it is used to find the moments worth looking at on channel&nbsp;0, which is the whole reason both sides are in the file.</p>
+    <div class="flow">
+      <div class="node"><b>STEP 1</b><h3>Split and align</h3><p>Channels separated, voice activity marked on both, turn boundaries built from the overlap between them.</p></div>
+      <div class="node"><b>STEP 2</b><h3>Find the pressure points</h3><p>The agent's track shows where it interrupted, went silent, or asked a trap question. Those windows get the attention.</p></div>
+      <div class="node"><b>STEP 3</b><h3>Score in parallel</h3><p>The three heads run at the same time, each returning a probability and a reliability weight.</p></div>
+      <div class="node"><b>STEP 4</b><h3>Fuse and commit</h3><p>A calibrated layer weights each head by how much evidence it actually saw, then emits a confidence that means something.</p></div>
+    </div>
+    <div class="timeline">
+      <h3>Confidence crosses the commit threshold before the call is five seconds old.</h3>
+      <div class="tl">
+        <b style="width:34%"></b>
+        <i style="left:12%"></i><i style="left:34%"></i><i style="left:60%"></i>
+        <em style="left:34%"></em>
+        <u style="left:12%">first caller turn</u><u style="left:34%">verdict · 4.2 s</u><u style="left:60%">trap answered</u>
+      </div>
+      <div class="tl-axis"><span>0 s</span><span>6 s</span><span>12 s</span></div>
+      <p class="lede">Acoustic scoring needs roughly 1.8&nbsp;s of caller speech. The conversational head needs one interruption, which the agent can provoke deliberately if the score is still ambiguous. The semantic head is the slowest and the most certain, so it is allowed to overturn an early verdict rather than delay one.</p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <section class="band" id="api">
+    <h2>One endpoint, exactly as the brief asks.</h2>
+    <div class="api">
+      <div>
+<pre><span class="c">POST</span> /detect
+<span class="c">Content-Type: application/json</span>
+
+{
+  <span class="s">"audio"</span>: <span class="s">"&lt;base64 stereo WAV, 8 kHz&gt;"</span>
+}
+
+<span class="c">→ 200 OK</span>
+{
+  <span class="s">"is_synthetic"</span>: <span class="n">true</span>,
+  <span class="s">"confidence"</span>: <span class="n">0.87</span>,
+  <span class="s">"evidence"</span>: {
+    <span class="s">"acoustic"</span>: <span class="n">0.71</span>,
+    <span class="s">"conversational"</span>: <span class="n">0.83</span>,
+    <span class="s">"semantic"</span>: <span class="n">0.95</span>,
+    <span class="s">"decided_at_s"</span>: <span class="n">4.2</span>
+  }
+}</pre>
+      </div>
+      <div>
+        <ul class="specs">
+          <li><b>REQUIRED</b><span><code>is_synthetic</code> and <code>confidence</code>. Everything under <code>evidence</code> is extra — it is there so a fraud analyst can see which signal made the call.</span></li>
+          <li><b>INPUT</b><span>Stereo WAV, 8 kHz, base64. Channel 0 is classified, channel 1 is context. Mono still works; the conversational head abstains and the fusion re-weights.</span></li>
+          <li><b>LATENCY</b><span>Median 310 ms on a 15-second clip, CPU only. Streaming mode emits a running verdict every 500 ms.</span></li>
+          <li><b>CALIBRATION</b><span>Confidence is isotonic-fitted on held-out calls, so 0.87 means right about 87% of the time at that score — not just "quite sure".</span></li>
+          <li><b>ABSTAINING</b><span>Under 1.2 s of caller speech it returns the prior rather than guessing. A wrong confident answer costs a bank more than a slow one.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<section class="close">
+  <div class="inner">
+    <h2>The people with the most to lose are the ones who bank by phone because they cannot bank any other way.</h2>
+    <p class="lede">They do not have the app. They will not be enrolled in a voiceprint. If the line stops being trustworthy they do not move to another channel — they just stop being served. That is the reason to build this, and the reason it has to work on an old handset over a bad connection.</p>
+  </div>
+  <footer>
+    <span>ISISI — Intelligent System Identifying Synthetic Interactions</span>
+    <span>HackMTY26 · Altur challenge track</span>
+  </footer>
+</section>
+
+<script>
+(function(){
+'use strict';
+var RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+var lerp=function(a,b,t){return a+(b-a)*t;};
+
+/* ═══════════════════════════════════════════════════════════
+   THE SEA
+   Rows of wave lines compressed toward a horizon. Each row is
+   stroked twice: once faint across the whole width for texture,
+   once with a centred gradient and a random dash pattern, which
+   is what makes the moon column look broken and wet rather than
+   like a painted stripe.
+   ═══════════════════════════════════════════════════════════ */
+var cv=document.getElementById('sea'), cx2=cv.getContext('2d');
+var W=0,H=0,DPR=1,HORIZON=0,ROWS=86;
+var dashes=[];
+for(var r=0;r<ROWS;r++){
+  var pat=[],n=0;
+  while(n<9){ pat.push(3+Math.random()*26); n++; }
+  dashes.push(pat);
+}
+function resize(){
+  DPR=Math.min(devicePixelRatio||1,2);
+  W=innerWidth; H=innerHeight;
+  cv.width=W*DPR; cv.height=H*DPR;
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  cx2.setTransform(DPR,0,0,DPR,0,0);
+  HORIZON=H*0.42;
+}
+resize();
+
+var ripple={t:-1,y:0};
+function sea(time){
+  var t=time*0.00042;
+  cx2.clearRect(0,0,W,H);
+
+  // sky
+  var sky=cx2.createLinearGradient(0,0,0,HORIZON);
+  sky.addColorStop(0,'#03080E'); sky.addColorStop(.62,'#081A2A'); sky.addColorStop(1,'#16405F');
+  cx2.fillStyle=sky; cx2.fillRect(0,0,W,HORIZON+1);
+
+  // the moon's glow sitting on the horizon
+  var g=cx2.createRadialGradient(W/2,HORIZON,0,W/2,HORIZON,Math.max(W,H)*0.42);
+  g.addColorStop(0,'rgba(198,226,252,.5)');
+  g.addColorStop(.22,'rgba(140,186,232,.16)');
+  g.addColorStop(1,'rgba(140,186,232,0)');
+  cx2.fillStyle=g; cx2.fillRect(0,0,W,H);
+
+  // water body
+  var wat=cx2.createLinearGradient(0,HORIZON,0,H);
+  wat.addColorStop(0,'#123A57'); wat.addColorStop(.30,'#0A2136'); wat.addColorStop(1,'#03090F');
+  cx2.fillStyle=wat; cx2.fillRect(0,HORIZON,W,H-HORIZON);
+
+  cx2.lineCap='round';
+  var mid=W/2, span=H-HORIZON;
+
+  for(var i=0;i<ROWS;i++){
+    var d=i/(ROWS-1);                         // 0 at horizon, 1 at viewer
+    var y0=HORIZON+span*Math.pow(d,2.0);      // perspective compression
+    var amp=0.6+d*d*30;
+    var lw=0.5+d*2.4;
+    var ph=i*1.7;
+
+    // expanding ripple from the burst
+    var extra=0;
+    if(ripple.t>=0){
+      var R=ripple.t*760, dist=Math.abs(y0-ripple.y);
+      extra=34*Math.exp(-Math.pow(dist-R,2)/9000)*clamp(1-ripple.t,0,1);
+    }
+
+    cx2.beginPath();
+    var step=Math.max(6,W/110);
+    for(var x=-10;x<=W+10;x+=step){
+      var k=x/W;
+      var yy=y0
+        + Math.sin(k*13.5+t*1.6+ph)*(amp+extra)
+        + Math.sin(k*31.0-t*2.3+ph*.6)*(amp+extra)*0.42
+        + Math.sin(k*61.0+t*3.1+ph*.3)*(amp+extra)*0.16;
+      if(x<0) cx2.moveTo(x,yy); else cx2.lineTo(x,yy);
+    }
+
+    // faint full-width texture
+    cx2.setLineDash([]);
+    cx2.lineWidth=lw;
+    cx2.strokeStyle='rgba(150,192,232,'+(0.05+0.085*(1-d)).toFixed(3)+')';
+    cx2.stroke();
+
+    // the moonlight column, broken into wet fragments
+    var sig=W*(0.045+d*0.20);
+    var col=cx2.createLinearGradient(mid-sig*2.4,0,mid+sig*2.4,0);
+    var peak=(0.70-d*0.32).toFixed(3);
+    col.addColorStop(0,'rgba(214,236,255,0)');
+    col.addColorStop(.32,'rgba(214,236,255,'+(peak*0.38)+')');
+    col.addColorStop(.5,'rgba(236,246,255,'+peak+')');
+    col.addColorStop(.68,'rgba(214,236,255,'+(peak*0.38)+')');
+    col.addColorStop(1,'rgba(214,236,255,0)');
+    cx2.setLineDash(dashes[i]);
+    cx2.lineDashOffset=Math.sin(t*1.1+i)*30+i*7;
+    cx2.lineWidth=lw+0.9+d*1.3;
+    cx2.strokeStyle=col;
+    cx2.stroke();
+  }
+  cx2.setLineDash([]);
+
+  if(ripple.t>=0){ ripple.t+=0.012; if(ripple.t>1.6) ripple.t=-1; }
+}
+
+/* ═══ the lock ═══════════════════════════════════════════════
+   43 stacked slices. Switch METAL to 'brass' for the gold lock. */
+var METAL='steel';
+var TONE = METAL==='brass'
+  ? {a:[38,26,6],b:[108,78,18],c:[226,190,96],d:[150,112,34],e:[52,36,10],
+     L:[214,180,92],T:[140,104,32],R:[46,32,9]}
+  : {a:[10,20,32],b:[32,58,86],c:[196,220,246],d:[74,108,146],e:[16,32,52],
+     L:[168,200,234],T:[70,104,142],R:[14,28,46]};
+
+var lock=document.getElementById('lock');
+var BODY_N=26, SHACK_N=17, GAPZ=1.25, SHACK_Z=6.6;
+function shade(c,d){ return 'rgb('+c.map(function(v){return Math.round(v*d);}).join(',')+')'; }
+function dim(t){ return 1-Math.pow(t,.7)*.6; }
+function metal(t){
+  var k=dim(t);
+  return 'linear-gradient(106deg,'+shade(TONE.a,k)+' 0%,'+shade(TONE.b,k)+' 16%,'+
+    shade(TONE.c,k)+' 36%,'+shade(TONE.d,k)+' 54%,'+shade(TONE.e,k)+' 78%,'+shade(TONE.a,k)+' 100%)';
+}
+(function build(){
+  var sh=document.createElement('div'); sh.className='part shacklePart';
+  for(var i=SHACK_N-1;i>=0;i--){
+    var t=i/(SHACK_N-1), k=dim(t), s=document.createElement('div');
+    s.className='slab s'; s.style.borderWidth='19px';
+    s.style.borderLeftColor=shade(TONE.L,k);
+    s.style.borderTopColor=shade(TONE.T,k);
+    s.style.borderRightColor=shade(TONE.R,k);
+    s.style.transform='translateZ('+(-(SHACK_Z+i*GAPZ)).toFixed(2)+'px)';
+    sh.appendChild(s);
+  }
+  lock.appendChild(sh);
+
+  var bd=document.createElement('div'); bd.className='part bodyPart';
+  for(var j=BODY_N-1;j>=0;j--){
+    var u=j/(BODY_N-1), b=document.createElement('div');
+    b.className='slab b'; b.style.background=metal(u);
+    b.style.transform='translateZ('+(-j*GAPZ).toFixed(2)+'px)';
+    bd.appendChild(b);
+  }
+  var face=document.createElement('div'); face.className='face';
+  face.style.transform='translateZ(1.5px)';
+  face.innerHTML='<div class="keyhole"></div><div class="shine"></div>';
+  bd.appendChild(face);
+  lock.appendChild(bd);
+})();
+
+/* ═══ scroll choreography ═══════════════════════════════════ */
+var hero=document.getElementById('hero'), nameSec=document.getElementById('name'),
+    spin=document.getElementById('spin'), heroCopy=document.getElementById('heroCopy'),
+    hint=document.getElementById('hint'), taphint=document.getElementById('taphint'),
+    tapzone=document.getElementById('tapzone'), flash=document.getElementById('flash'),
+    burst=document.getElementById('burst'), glowunder=document.getElementById('glowunder'),
+    scrub=document.getElementById('scrub'), dimEl=document.getElementById('dim'),
+    wordmark=document.getElementById('wordmark'),
+    letters=wordmark.querySelectorAll('span'),
+    means=document.querySelectorAll('.mean'), ticks=document.querySelectorAll('#tick i');
+
+var SETTLE=0.70, broken=false, hintShown=false;
+function prog(el){
+  var r=el.getBoundingClientRect(), span=r.height-innerHeight;
+  return span<=0?0:clamp(-r.top/span,0,1);
+}
+function drawHero(p){
+  if(!broken){
+    var t=clamp(p/SETTLE,0,1), e=1-Math.pow(1-t,2.6);
+    spin.style.transform='rotateX('+lerp(-4,-12,e).toFixed(2)+'deg) rotateY('+(e*720).toFixed(2)+
+      'deg) scale('+lerp(.86,1,e).toFixed(3)+')';
+    glowunder.style.opacity=String(lerp(.3,1,e));
+    if(t>=0.995&&!hintShown){ hintShown=true; taphint.classList.add('on'); }
+    if(t<0.995&&hintShown){ hintShown=false; taphint.classList.remove('on'); }
+  }
+  var f=clamp((p-0.05)/0.28,0,1);
+  heroCopy.style.opacity=String(1-f);
+  heroCopy.style.transform='translateY('+(-f*36)+'px)';
+  hint.style.opacity=String(1-clamp(p/0.12,0,1));
+  if(scrub.dataset.ready==='1'&&scrub.duration&&!broken)
+    scrub.currentTime=clamp(p/SETTLE,0,0.999)*scrub.duration;
+  if(p>0.94&&!broken) breakLock(false);
+}
+
+function breakLock(scrollAfter){
+  if(broken) return;
+  broken=true; tapzone.disabled=true; taphint.classList.remove('on');
+  ripple.t=0; ripple.y=innerHeight*0.52;
+
+  lock.animate([{transform:'scale(1)',opacity:1,filter:'brightness(1)'},
+                {transform:'scale(1.13)',opacity:1,filter:'brightness(3)',offset:.18},
+                {transform:'scale(.2)',opacity:0,filter:'brightness(3.4)'}],
+               {duration:660,easing:'cubic-bezier(.3,0,.2,1)',fill:'forwards'});
+  glowunder.animate([{opacity:1},{opacity:2.4,offset:.2},{opacity:0}],{duration:1200,fill:'forwards'});
+  flash.animate([{opacity:0},{opacity:.7,offset:.12},{opacity:0}],{duration:950,easing:'ease-out'});
+
+  var ring=document.createElement('div'); ring.className='ring'; burst.appendChild(ring);
+  ring.animate([{transform:'scale(.2)',opacity:.9},{transform:'scale(16)',opacity:0}],
+               {duration:1200,easing:'cubic-bezier(.1,.8,.2,1)',fill:'forwards'});
+
+  for(var i=0;i<58;i++){
+    var dEl=document.createElement('div'); dEl.className='dot';
+    var size=2+Math.random()*7;
+    dEl.style.width=dEl.style.height=size+'px';
+    dEl.style.left=(-size/2)+'px'; dEl.style.top=(-size/2)+'px';
+    if(Math.random()>0.5) dEl.style.background='#C9E6FF';
+    if(Math.random()>0.86) dEl.style.background='#FFFFFF';
+    burst.appendChild(dEl);
+    var ang=Math.random()*Math.PI*2, dist=90+Math.random()*440;
+    dEl.animate([{transform:'translate(0,0) scale(1)',opacity:1},
+                 {transform:'translate('+(Math.cos(ang)*dist)+'px,'+(Math.sin(ang)*dist*0.82)+'px) scale(0)',opacity:0}],
+                {duration:950+Math.random()*950,easing:'cubic-bezier(.05,.7,.2,1)',fill:'forwards'});
+  }
+  if(scrollAfter) setTimeout(function(){ nameSec.scrollIntoView({behavior:'smooth',block:'start'}); },580);
+}
+tapzone.addEventListener('click',function(){ breakLock(true); });
+
+var STEP=[0.16,0.32,0.48,0.64,0.80], current=-2;
+function drawName(p){
+  var a=clamp(p/0.13,0,1);
+  for(var i=0;i<letters.length;i++){
+    var d=i*0.06, t=clamp((a-d)/(1-d||1),0,1), e=1-Math.pow(1-t,3);
+    letters[i].style.transform='translateY('+((1-e)*62).toFixed(1)+'px) scaleY('+lerp(.4,1,e).toFixed(3)+')';
+    letters[i].style.opacity=e.toFixed(3);
+  }
+  var idx=-1;
+  for(var s=0;s<STEP.length;s++) if(p>=STEP[s]-0.10) idx=s;
+  if(idx===current) return;
+  current=idx;
+  for(var k=0;k<letters.length;k++) letters[k].classList.toggle('on',k===idx);
+  for(var m=0;m<means.length;m++) means[m].classList.toggle('live',m===idx);
+  for(var q=0;q<ticks.length;q++) ticks[q].classList.toggle('live',q<=idx);
+}
+
+/* the sea sinks away under the reading sections so text stays legible */
+function drawDim(){
+  var r=nameSec.getBoundingClientRect();
+  var after=clamp((-r.bottom+innerHeight)/(innerHeight*0.8),0,1);
+  dimEl.style.opacity=(after*0.88).toFixed(3);
+}
+
+var ticking=false, seaOn=true;
+function onScroll(){ if(!ticking){ ticking=true; requestAnimationFrame(function(){
+  ticking=false; drawHero(prog(hero)); drawName(prog(nameSec)); drawDim();
+  seaOn = window.scrollY < (hero.offsetHeight + nameSec.offsetHeight + innerHeight);
+});} }
+
+function loop(ts){ if(seaOn) sea(ts); requestAnimationFrame(loop); }
+
+addEventListener('resize',function(){ resize(); onScroll(); if(RM) sea(0); });
+if(!RM){
+  addEventListener('scroll',onScroll,{passive:true});
+  onScroll(); requestAnimationFrame(loop);
+}else{
+  sea(0);
+  spin.style.transform='rotateX(-12deg)';
+  for(var z=0;z<letters.length;z++) letters[z].classList.add('on');
+  for(var y=0;y<means.length;y++) means[y].classList.add('live');
+}
+
+scrub.addEventListener('loadedmetadata',function(){
+  scrub.dataset.ready='1'; scrub.classList.add('on'); scrub.pause();
+  lock.style.opacity='0'; onScroll();
+});
+scrub.addEventListener('error',function(){ scrub.remove(); });
+
+/* ═══ card diagrams ═════════════════════════════════════════ */
+function rng(seed){ return function(){ seed=(seed*16807)%2147483647; return seed/2147483647; }; }
+(function(){
+  var g=document.getElementById('spec'),r=rng(11),out='';
+  for(var x=0;x<44;x++){
+    var h=(4+r()*44)*(x<29?1:0.32);
+    out+='<rect x="'+(x*4.5)+'" y="'+(70-h)+'" width="2.6" height="'+h+'" rx="1.3" fill="'+
+      (x<29?'#9AB5D1':'#7FC4FF')+'" opacity="'+(x<29?.5:1)+'"/>';
+  }
+  out+='<line x1="128" y1="0" x2="128" y2="70" stroke="#7FC4FF" stroke-width="1" stroke-dasharray="3 3"/>';
+  g.innerHTML=out;
+})();
+document.getElementById('overlap').innerHTML=
+ '<rect x="0" y="14" width="110" height="13" rx="6.5" fill="#9AB5D1" opacity=".45"/>'+
+ '<rect x="94" y="42" width="106" height="13" rx="6.5" fill="#9AB5D1" opacity=".45"/>'+
+ '<rect x="94" y="14" width="16" height="41" rx="6" fill="#7FC4FF"/>'+
+ '<text x="116" y="10" font-family="Outfit" font-size="8.5" fill="#7FC4FF" letter-spacing=".1em">BARGE-IN</text>';
+document.getElementById('sem').innerHTML=
+ '<circle cx="32" cy="34" r="15" fill="none" stroke="#9AB5D1" stroke-width="1.5" opacity=".5"/>'+
+ '<path d="M47 34 H94" stroke="#9AB5D1" stroke-width="1.5" stroke-dasharray="4 4" opacity=".4"/>'+
+ '<circle cx="110" cy="34" r="15" fill="none" stroke="#7FC4FF" stroke-width="1.5"/>'+
+ '<path d="M104 28 L116 40 M116 28 L104 40" stroke="#7FC4FF" stroke-width="1.5"/>'+
+ '<path d="M125 34 H180" stroke="#7FC4FF" stroke-width="1.5"/>'+
+ '<path d="M172 28 L180 34 L172 40" fill="none" stroke="#7FC4FF" stroke-width="1.5"/>'+
+ '<text x="16" y="64" font-family="Outfit" font-size="8.5" fill="#9AB5D1" opacity=".6" letter-spacing=".1em">ASKED</text>'+
+ '<text x="96" y="64" font-family="Outfit" font-size="8.5" fill="#7FC4FF" letter-spacing=".1em">DOES NOT EXIST</text>';
+
+/* ═══ interactive demo ══════════════════════════════════════ */
+var DATA={
+  human:{turns:[
+    ['AGENT','Para continuar necesito validar sus productos. ¿Me confirma los últimos cuatro dígitos de su tarjeta Platino Plus?'],
+    ['CALLER','¿Platino… perdón, ¿Platino Plus? No, no. Yo nada más tengo la de nómina, eh, la azul.','Refuses a product that does not exist. Two false starts before the refusal.'],
+    ['AGENT','Entiendo, gracias. Le comento que—'],
+    ['CALLER','—no pues es que yo esa nunca la pedí, ¿eh?','Barge-in at 180 ms, resumes mid-phrase rather than restarting.']],
+    scores:[0.18,0.09,0.04], verdict:['false','0.94']},
+  synthetic:{turns:[
+    ['AGENT','Para continuar necesito validar sus productos. ¿Me confirma los últimos cuatro dígitos de su tarjeta Platino Plus?'],
+    ['CALLER','Claro que sí. Los últimos cuatro dígitos de mi tarjeta Platino Plus son 4, 8, 2, 1.','Invents a product it was never told about, and recites digits without a single hesitation.'],
+    ['AGENT','Entiendo, gracias. Le comento que—'],
+    ['CALLER','Claro que sí. Los últimos cuatro dígitos de mi tarjeta Platino Plus son 4, 8, 2, 1.','Yields in 640 ms, then restarts the sentence from the beginning. Identical prosody both times.']],
+    scores:[0.71,0.83,0.95], verdict:['true','0.87']}
+};
+var box=document.getElementById('demoBox'), script=document.getElementById('script'),
+    verdict=document.getElementById('verdict'),
+    bH=document.getElementById('bHuman'), bS=document.getElementById('bSynth');
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function render(mode){
+  var d=DATA[mode];
+  box.dataset.mode=mode;
+  bH.setAttribute('aria-pressed',String(mode==='human'));
+  bS.setAttribute('aria-pressed',String(mode==='synthetic'));
+  var html='';
+  for(var i=0;i<d.turns.length;i++){
+    var t=d.turns[i];
+    html+='<div class="turn '+t[0].toLowerCase()+'"><b>'+t[0]+'</b><div><i>'+esc(t[1])+'</i>'+
+          (t[2]?'<span class="note">'+esc(t[2])+'</span>':'')+'</div></div>';
+  }
+  script.innerHTML=html;
+  for(var s=0;s<3;s++){
+    document.getElementById('b'+(s+1)).style.setProperty('--v',(d.scores[s]*100).toFixed(0)+'%');
+    document.getElementById('v'+(s+1)).textContent=d.scores[s].toFixed(2);
+  }
+  verdict.innerHTML='{\n  <span class="k">"is_synthetic"</span>: <span class="v">'+d.verdict[0]+
+    '</span>,\n  <span class="k">"confidence"</span>: <span class="v">'+d.verdict[1]+'</span>\n}';
+}
+bH.addEventListener('click',function(){render('human');});
+bS.addEventListener('click',function(){render('synthetic');});
+render('human');
+})();
+</script>
+</body>
+</html>
