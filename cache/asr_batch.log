@@ -1,0 +1,2 @@
+calls=353  scribe latency (sum of 2 channels, sequential) mean=2.19s p95=3.13s
+caller words mean=119  calls with a 4-gram repeated >=4x: 7

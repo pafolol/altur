@@ -1,0 +1,51 @@
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started parent process [21792]
+INFO:     Started server process [21797]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [21796]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:62900 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62903 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62905 - "GET /calls HTTP/1.1" 200 OK
+{"used": "f4+f5", "reason": "", "ms": 2375, "score": 0.597, "dur_s": 136.2, "n_chunks": 2, "n_hedged": 1, "n_words": 73}
+INFO:     127.0.0.1:62940 - "POST /check HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63006 - "GET /calls HTTP/1.1" 200 OK
+{"used": "f4", "reason": "degraded:TimeoutError", "ms": 2300, "score": 0.559, "dur_s": 136.2, "n_chunks": 2, "n_hedged": 1, "n_words": 73}
+INFO:     127.0.0.1:63023 - "POST /check HTTP/1.1" 200 OK
+{"used": "f4+f5", "reason": "", "ms": 2616, "score": 0.496, "dur_s": 136.2, "n_chunks": 2, "n_hedged": 1, "n_words": 63}
+INFO:     127.0.0.1:63190 - "POST /check HTTP/1.1" 200 OK
