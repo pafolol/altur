@@ -1,0 +1,8 @@
+# Local environments and confidential source/derived data (behaviour module)
+artifacts/
+manifest.csv
+turns/
+reports/private/
+reports/reference_baseline/
+*.wav
+*.joblib
