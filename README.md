@@ -1,29 +1,35 @@
-# Altur HackMTY 2026 - synthetic-caller detector (acoustic + behaviour)
+# Altur HackMTY 2026 - synthetic-caller detector (acoustic + behaviour + semantic)
 
 "Defend the Bank Against Voice Deepfakes": given a stereo 8 kHz call (channel 0 = caller, channel 1 = bank
 agent), decide whether the caller is a human or a synthetic voice.
 
-Two independent detectors answer that question from **different evidence**, and `POST /detect` returns their
-weighted vote. This repository is the merge of the `modelo` and `behaviour` branches.
+Independent detectors answer that question from **different evidence**, and `POST /detect` returns their
+weighted vote: **acoustic 50 % / behaviour 35 % / semantic 15 %**, every weight tunable at runtime. This
+repository is the merge of the `modelo` and `behaviour` branches; the semantic layer is reached over HTTP.
 
 ```
 stereo 8 kHz WAV (base64 at the API)
   |
-  +-- ACOUSTIC LAYER  - how the caller SOUNDS
+  +-- ACOUSTIC LAYER  - how the caller SOUNDS                                                w 0.50
   |     channel 0 -> VAD -> caller speech chunks (<= 4 s), RMS-normalised -> resample 16 kHz
   |     -> FROZEN speech backbone, hidden layer 5 -> mean over time -> MLP -> calibrated P(synthetic)
   |
-  +-- BEHAVIOUR LAYER - how the caller BEHAVES  (behaviour/, frozen, never edited here)
+  +-- BEHAVIOUR LAYER - how the caller BEHAVES  (behaviour/, frozen, never edited here)      w 0.35
   |     both channels -> Silero VAD at 8 kHz -> turns -> interruption / barge-in / response timing
   |     -> 24 features -> logistic + sigmoid calibration -> calibrated P(synthetic) + evidence quality
   |
-  +-> FUSION (src/fusion.py): weighted vote, 50 / 50 by default, every weight tunable at runtime
+  +-- SEMANTIC LAYER  - what the caller SAYS  (a separate service, reached over HTTP)        w 0.15
+  |     agent channel -> trap bank;  caller channel -> VAD -> ElevenLabs Scribe -> words + logprobs
+  |     -> text features + a 7-dimension Gemini rubric -> logistic, Platt-calibrated -> P(synthetic)
+  |
+  +-> FUSION (src/fusion.py): weighted vote, 50 / 35 / 15 by default, every weight tunable at runtime
       -> {"is_synthetic": bool, "confidence": float}
 ```
 
-The two layers can fail in different places, which is the point of running both: the acoustic layer needs
-*audible* caller speech, the behaviour layer needs *interaction* — a caller who never gets interrupted leaves
-it nothing to time, and it says so instead of guessing.
+The layers fail in different places, which is the point of running more than one: the acoustic layer needs
+*audible* caller speech, the behaviour layer needs *interaction* (a caller who never gets interrupted leaves
+it nothing to time), and the semantic layer needs a *transcript* and two third-party APIs. Each one says when
+it has nothing to go on instead of guessing, and its share of the vote goes to the others.
 
 ### The acoustic layer's two models
 
@@ -56,24 +62,41 @@ dataset is generated into `D:\altur\channel_dataset` and the official one is nev
 keeps `artifacts/` out, because the same folder also holds per-call caches derived from the dataset):
 
 ```
-behaviourrtifacts\modelsehavior.json     sha256 631dc6d7...  the fitted model  (52 KB)
-behaviourrtifactsad\silero_vad.onnx      sha256 1a153a22...  Silero v6.2.1, MIT (2.3 MB)
+behaviour/artifacts/models/behavior.json     sha256 631dc6d7...  the fitted model  (52 KB)
+behaviour/artifacts/vad/silero_vad.onnx      sha256 1a153a22...  Silero v6.2.1, MIT (2.3 MB)
 ```
 
 Copy the `artifacts/` folder of the behaviour deliverable to `behaviour/artifacts/`. Both hashes are checked
 at load time — the ONNX by the module itself, the model against
-`behaviour/reports/FINAL_BEHAVIOR_MANIFEST.json`. Without them the behaviour layer reports itself unavailable
-and the fusion runs on the acoustic layer alone.
+`behaviour/reports/FINAL_BEHAVIOR_MANIFEST.json`. Without them the behaviour layer reports itself unavailable,
+abstains on every call, and its 35 % is shared out among the layers that did answer.
 
 To run the behaviour module's *own* test suite it also wants the dataset beside it (its 41 tests read real
 calls); only the last line copies any bytes:
 
 ```
-mklink /J D:lturcousticehaviourudio D:lturltur-challenge-audioudio
-copy D:ltur\hackmty26\manifest.csv D:lturcousticehaviourxcopy /E /I D:ltur\hackmty26	urns D:lturcousticehaviour	urns
+mklink /J  D:/altur/acoustic/behaviour/audio  D:/altur/altur-challenge-audio/audio
+copy       D:/altur/hackmty26/manifest.csv    D:/altur/acoustic/behaviour/
+xcopy /E /I D:/altur/hackmty26/turns          D:/altur/acoustic/behaviour/turns
 ```
 
 All three are git-ignored. The fusion itself never needs them - it is given WAV bytes like any caller.
+
+**The semantic layer** is a separate service rather than a module in this tree: it needs an ElevenLabs key
+and a Gemini key, it is the only layer that leaves the machine, and its cost is a network budget rather than
+a model. Point the fusion at it and nothing else changes:
+
+```
+set SEMANTIC_URL=http://127.0.0.1:8100/detect        (or python src/server.py --semantic-url ...)
+```
+
+It must answer `GET /health`, and `POST /detect {"audio": "<base64 wav>"}` with
+`{"is_synthetic", "confidence", "score", "abstain", "reason", "used", "ms"}`, where `score` is the calibrated
+P(synthetic) - `confidence` is P(the verdict is right), which is not what a fusion input is, so the layer
+reads `score`. `used` says which path answered (`"f4+f5"` full, `"f4"` degraded, `"abstain"`); the degraded
+path is recorded at half evidence quality. **If nothing answers, the layer abstains on every call and its
+15 % goes to the other two** - the console shows the channel greyed out with the reason, and the verdict is
+never blocked or delayed waiting for it.
 
 ## Pipeline (in order)
 
@@ -114,6 +137,7 @@ All three are git-ignored. The fusion itself never needs them - it is given WAV 
 | --- | --- | --- |
 | 17 | `python src/evaluate_fusion.py` | scores the 71 held-out calls through **every** layer, sweeps the weights, writes the cache the console reads (~60 s) |
 | 18 | `python src/server.py --port 8000` | `/detect` answers with the fused verdict; `/fusion` is the console |
+| 18b | `python src/server.py --semantic-url http://127.0.0.1:8100/detect` | ... with the semantic layer attached |
 
 Smoke tests: add `--fraction 0.05` to steps 4 and 8, `--limit 10` to step 10, `--limit 6 --skip-stress` to
 step 15. Step 15 can rebuild its tables and figures without re-scoring anything with `--from-cache`.
@@ -144,10 +168,11 @@ registry, so a third layer appears in all of them on its own.
 python src/fusion.py call.wav                             # every layer's score + the fused verdict
 python src/fusion.py call.wav --weight acoustic=0.7 --weight behaviour=0.3
 python src/fusion.py call.wav --mode logit_mean           # average the log-odds instead
-python src/predict.py path	o\call.wav                    # the acoustic layer on its own
+python src/predict.py path\to\call.wav                    # the acoustic layer on its own
 python src/evaluate_fusion.py                             # the 71 held-out calls + the weight sweep
 python src/server.py --acoustic-model robust_v2           # put V2 in the acoustic slot instead of V1
-python src/server.py --weight acoustic=0.7                # start somewhere other than 50 / 50
+python src/server.py --weight acoustic=0.7                # start somewhere other than 50 / 35 / 15
+python src/server.py --semantic-url http://127.0.0.1:8100/detect   # attach the semantic service
 python src/client_demo.py call.wav --url http://127.0.0.1:8000/detect
 ```
 
@@ -157,18 +182,23 @@ python src/client_demo.py call.wav --url http://127.0.0.1:8000/detect
 | `POST /detect_layers` | the same body -> each layer's own score, quality and latency, plus the fused verdict. An optional `"config"` scores that one call under different weights without changing the server's |
 | `POST /fusion/recombine` | `{"calls": [{"id", "layers"}], "config"}` -> the decisions again from scores that already exist. **No model runs** - this is what the faders call |
 | `GET` / `POST /fusion/config` | read / live-tune the weights, the combine mode, the abstention policy and the threshold |
-| `GET /layers` | the registry: what detection systems exist, whether they loaded, what each one is looking at |
+| `GET /layers` | the registry: what detection systems exist, whether they are answering, why not if not, and what each one is looking at |
 | `GET /validation`, `/validation/{id}/score`, `/validation/scores` | the 71 held-out calls, scored server-side from disk and cached |
 | `POST /detect_all`, `GET /models` | unchanged: the two ACOUSTIC models side by side, for the inspector's A/B panel |
 
 From Python:
 
 ```python
-from fusion import FusionDetector, FusionConfig
-det = FusionDetector()                       # V1 acoustic + behaviour, equal weights
+from fusion import FusionDetector, FusionConfig, build_layers
+det = FusionDetector()                       # whatever is answering, at 0.50 / 0.35 / 0.15
 det.score(open("call.wav", "rb").read())     # fused verdict + what every layer contributed
 
-det.config = FusionConfig.from_dict({"weights": {"acoustic": 0.7, "behaviour": 0.3}}, det.config)
+# every registered layer, including ones not answering (what the server serves, so the console
+# shows a greyed-out channel with its share reserved instead of silently dropping it)
+det = FusionDetector(layers=build_layers(include_unavailable=True))
+
+det.config = FusionConfig.from_dict({"weights": {"semantic": 0.3}}, det.config)   # partial update
+det.config = det.equal_config()                                                   # assume nothing
 
 from predict import predict_acoustic         # one layer on its own, unchanged
 ```
@@ -176,10 +206,15 @@ from predict import predict_acoustic         # one layer on its own, unchanged
 ### Adding a third layer
 
 `src/fusion.py` is the only file that has to change. Subclass `Layer` with `available()`, `_load()` and
-`_score()` returning a `LayerResult`, then add it to `build_layers()`. The endpoints, the console, the batch
-evaluation and the CSV export all iterate over the registry, so the new layer arrives in each of them with
-its own column, its own fader and its own share of the vote. A layer that raises is caught and abstains, so
-it can never take the verdict down with it - there is a test for exactly that.
+`_score()` returning a `LayerResult`, give it a `default_weight`, then add it to `build_layers()`. The
+endpoints, the console, the batch evaluation and the CSV export all iterate over the registry, so the new
+layer arrives in each of them with its own column, its own fader, its own preset button and its own share of
+the vote. `SemanticLayer` is the worked example: about sixty lines, and it reaches a service over HTTP.
+
+A layer that raises is caught and abstains, so it can never take the verdict down with it - there is a test
+for exactly that. A layer that fails to load is not retried for 30 s, so a batch of 71 calls does not pay a
+connection timeout each. And a layer that is registered but not answering still appears, greyed out, with its
+share reserved - it does not silently vanish from the table.
 
 ### How the votes are combined
 
@@ -189,10 +224,10 @@ any number of layers works.
 
 | knob | options |
 | --- | --- |
-| weights | any non-negative number per layer. Equal is the default - with today's two layers, exactly 50 / 50 |
+| weights | any non-negative number per layer. The shipped split is acoustic 0.50 / behaviour 0.35 / semantic 0.15 |
 | mode | `weighted_mean` (average the probabilities - the literal reading of "50 / 50") or `logit_mean` (average the log-odds; two layers that agree reinforce each other) |
 | on_abstain | `renormalise` (a layer with no evidence is dropped and the rest share its weight) or `neutral` (it stays in at 0.5) |
-| use_quality | multiply each weight by that layer's evidence quality on that call. Off by default, so 50 / 50 means 50 / 50 on every call |
+| use_quality | multiply each weight by that layer's evidence quality on that call. Off by default, so the split means exactly what it says on every call |
 | threshold | where the fused probability becomes a verdict |
 
 If nothing is left voting - every layer abstained, or every weight is zero - the answer is an explicit
@@ -230,6 +265,7 @@ src/evaluate_models.py          four models x six domains, AUC-vs-threshold anal
 src/report_robust.py            the telephone-robustness report
 
 src/fusion.py                   THE FUSION LAYER: Layer, LayerResult, FusionConfig, combine(), the registry
+                                AcousticLayer (0.50) + BehaviourLayer (0.35) + SemanticLayer (0.15, over HTTP)
 src/evaluate_fusion.py          all 71 held-out calls through every layer + the weight sweep
 frontend/index.html             the single-call inspector (GET /)
 frontend/fusion.html            the fusion console (GET /fusion)
@@ -252,41 +288,44 @@ reports/                        ACOUSTIC_LEARNING_SUMMARY.{pdf,md}, TELEPHONE_RO
 
 ### The fusion, on the 71 held-out calls
 
-Speaker-disjoint from everything either layer trained on. `python src/evaluate_fusion.py`:
+Speaker-disjoint from everything either layer trained on. `python src/evaluate_fusion.py`, with the semantic
+service **not attached** - which is exactly what the numbers below therefore describe:
 
-| system | accuracy | ROC AUC | Brier | calls it abstained on |
-|---|---|---|---|---|
-| Acoustic V1 alone | 100.0% | 1.000 | 0.000 | 0 |
-| Behaviour alone | 97.2% | 0.991 | 0.041 | 0 |
-| **Fused, 50 / 50** | **100.0%** | **1.000** | **0.010** | 0 |
+| system | accuracy | ROC AUC | Brier | answered | abstained |
+|---|---|---|---|---|---|
+| Acoustic V1 alone | 100.0% | 1.000 | 0.000 | 71/71 | 0 |
+| Behaviour alone | 97.2% | 0.991 | 0.041 | 71/71 | 0 |
+| Semantic alone | – | – | – | 0/71 | 71 |
+| **Fused, 50 / 35 / 15** | **100.0%** | **1.000** | **0.007** | 71/71 | 0 |
+| Fused, even split | 100.0% | 1.000 | 0.010 | 71/71 | 0 |
 
-Confusion of the fused verdict: `[[37, 0], [0, 34]]` (rows and columns human, synthetic). Every layer answered
-on every call - neither abstained once on this split.
+Per-layer accuracy is measured over the calls that layer was **willing to judge**; an abstention is no answer,
+not a wrong one, and counting it wrong would make an absent service look like a bad model. The abstention
+column is there so nothing is hidden. The semantic service answered nothing here, so its 15 % was handed to
+the other two and the real split on these rows was 59 % / 41 %.
+
+Confusion of the fused verdict: `[[37, 0], [0, 34]]` (rows and columns human, synthetic).
 
 The behaviour layer gets exactly two calls wrong and the acoustic layer rescues both, which is the whole
-argument for running two of them - but one rescue is narrow and the table above should not hide it:
+argument for running more than one:
 
-| call | truth | acoustic | behaviour | fused at 50 / 50 |
-|---|---|---|---|---|
-| `0847d7417bb1` | synthetic | 1.000 | 0.435 | 0.717 -> synthetic |
-| `569ffb0869eb` | human | 0.000 | 0.964 | **0.482** -> human, by 0.018 |
+| call | truth | acoustic | behaviour | fused at 50 / 35 | (at an even 50 / 50) |
+|---|---|---|---|---|---|
+| `0847d7417bb1` | synthetic | 1.000 | 0.435 | 0.768 -> synthetic | 0.717 |
+| `569ffb0869eb` | human | 0.000 | 0.964 | 0.397 -> human | **0.482**, by 0.018 |
 
-That second row is why the sweep drops to 98.6% the moment the acoustic share falls below 50%: the behaviour
-layer is confidently wrong about that caller, and at 45% the acoustic layer no longer outvotes it.
+That last column is the reason the acoustic layer is weighted above the behaviour layer rather than equal to
+it. At an even split the second rescue clears the threshold by 0.018 - one confidently wrong behaviour score
+against one confidently right acoustic score, decided on a hair. At 50 / 35 the same call lands at 0.397 and
+the margin is no longer interesting. That is a property of these 71 calls, not a proof, but it is the only
+evidence in them that bears on the weights at all.
 
-Accuracy as the acoustic layer's share of the vote moves (the behaviour layer holds the rest):
-
-| acoustic share | 0% | 15% | 25% | 50% | 75% | 100% |
-|---|---|---|---|---|---|---|
-| accuracy | 97.2% | 98.6% | 98.6% | **100.0%** | 100.0% | 100.0% |
-
-Read that honestly. This split is **saturated for the acoustic layer** - it is already at 100% alone, for the
-reason the next section explains - so the sweep cannot show the fusion beating its best member here, and a
-weighting that happens to be perfect on these 71 calls is a description of them, not a setting that transfers.
-Both layers were developed while looking at this split. The even split is the default precisely because it
-assumes nothing, and the case for the behaviour layer is not this table: it is that it reads a completely
-different signal, one that survives a codec, a re-recording and a new voice that the acoustic layer has never
-heard. A caller who sounds perfect still has to take their turn.
+Read all of this honestly. The split is **saturated for the acoustic layer** - it is already at 100 % alone,
+for the reason the next section explains - so no weighting can be justified from these 71 calls, and a
+sweep maximum here is a description of them, not a setting that transfers. Both layers were also developed
+while looking at this split. The case for the other two layers is not this table: it is that they read
+completely different signals, ones that survive a codec, a re-recording and a voice the acoustic model has
+never heard. A caller who sounds perfect still has to take their turn, and still has to say something.
 
 ### The specialist, on the official split
 

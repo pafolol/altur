@@ -56,6 +56,7 @@ CANDIDATES = {"specialist": "wav2vec2_spanish", "robust_v2": "robust_v2"}
 app.state.classifier = "mlp"
 app.state.primary = None
 app.state.acoustic_model = "wav2vec2_spanish"   # V1, the specialist
+app.state.semantic_url = None
 app.state.fusion = None
 
 
@@ -63,9 +64,18 @@ app.state.fusion = None
 
 
 def get_fusion():
-    """The single FusionDetector this process serves. Built on first use, layers loaded lazily."""
+    """
+    The single FusionDetector this process serves. Built on first use, layers loaded lazily.
+
+    Every registered layer is included even when it is not answering right now, so the console always
+    shows the full registry - a semantic channel whose service is down is a greyed-out fader with its
+    share reserved, not a layer that silently vanished. Such a layer abstains at score time and
+    combine() hands its weight to the others.
+    """
     if app.state.fusion is None:
-        app.state.fusion = fusion.FusionDetector(acoustic_model=app.state.acoustic_model)
+        app.state.fusion = fusion.FusionDetector(
+            layers=fusion.build_layers(app.state.acoustic_model, include_unavailable=True,
+                                       semantic_url=app.state.semantic_url))
     return app.state.fusion
 
 
@@ -396,7 +406,13 @@ def _cache():
 
 
 def _cache_key(anon_id):
-    return f"{app.state.acoustic_model}:{anon_id}"
+    """
+    The cache holds PER-LAYER scores, so it is only valid for the layer set that produced it. Adding a
+    semantic layer (or swapping the acoustic model) changes the key, the old entries are ignored, and
+    the console shows those calls as not scored rather than silently missing a column.
+    """
+    layers = "+".join(l.key for l in get_fusion().layers)
+    return f"{app.state.acoustic_model}|{layers}:{anon_id}"
 
 
 def _cache_save():
@@ -462,7 +478,8 @@ def validation_scores():
 @app.delete("/validation/scores")
 def clear_scores():
     cache = _cache()
-    for k in [k for k in cache if k.startswith(f"{app.state.acoustic_model}:")]:
+    prefix = _cache_key("").rsplit(":", 1)[0] + ":"   # everything scored by the CURRENT layer set
+    for k in [k for k in cache if k.startswith(prefix)]:
         del cache[k]
     _cache_save()
     return {"cleared": True, "n_scored": 0}
@@ -492,6 +509,8 @@ def main():
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--acoustic-model", default="wav2vec2_spanish",
                         help="which acoustic model sits in the fusion: wav2vec2_spanish (V1, default) or robust_v2")
+    parser.add_argument("--semantic-url", default=None,
+                        help="the semantic service's /detect (default: $SEMANTIC_URL or http://127.0.0.1:8100/detect)")
     parser.add_argument("--weight", action="append", default=[], metavar="KEY=W",
                         help="starting weight of one layer, e.g. --weight acoustic=0.7 (tunable live afterwards)")
     parser.add_argument("--mode", default="weighted_mean", choices=fusion.COMBINE_MODES)
@@ -502,6 +521,7 @@ def main():
     args = parser.parse_args()
     app.state.classifier = args.classifier
     app.state.acoustic_model = args.acoustic_model
+    app.state.semantic_url = args.semantic_url
     if not available_models():
         raise SystemExit("no trained model found under models/")
     app.state.primary = args.model or default_model()
@@ -513,8 +533,10 @@ def main():
     det.config = fusion.FusionConfig.from_dict({"weights": overrides, "mode": args.mode}, det.config)
     if not args.no_preload:
         det.preload()
-    print(f"[server] fusion layers: " +
-          ", ".join(f"{l.display} (w={det.config.weight_of(l):.2f})" for l in det.layers))
+    print("[server] fusion layers: " +
+          ", ".join(f"{l.display} w={det.config.weight_of(l):.2f}"
+                    f"{'' if l.available() else ' [NOT ANSWERING - abstains, its share goes to the others]'}"
+                    for l in det.layers))
     print(f"[server] acoustic slot: {app.state.acoustic_model}; A/B models available: {available_models()}")
     # 127.0.0.1, not localhost: uvicorn binds IPv4 only, and on Windows "localhost" resolves to ::1
     # first, which costs a two-second connection timeout on every single request.

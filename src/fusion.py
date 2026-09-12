@@ -4,9 +4,10 @@ FUSION - the modular decision layer.
 One call in, one verdict out, but the verdict is a weighted vote of independent detection systems:
 
     stereo 8 kHz WAV bytes
-      -> layer 1  acoustic    (frozen Wav2Vec2 Spanish + MLP on the caller's voice)      -> p1, quality, abstain?
-      -> layer 2  behaviour   (Silero turn timing + logistic on the interaction)         -> p2, quality, abstain?
-      -> layer N  ...                                                                     -> pN, ...
+      -> layer 1  acoustic    (frozen Wav2Vec2 Spanish + MLP on the caller's voice)      -> p, quality, abstain?   w 0.50
+      -> layer 2  behaviour   (Silero turn timing + logistic on the interaction)         -> p, quality, abstain?   w 0.35
+      -> layer 3  semantic    (Scribe transcript + Gemini rubric + logistic, over HTTP)  -> p, quality, abstain?   w 0.15
+      -> layer N  ...                                                                     -> ...
       -> combine(weights, mode, abstention policy)                                        -> fused probability
       -> threshold                                                                        -> {"is_synthetic", "confidence"}
 
@@ -16,8 +17,9 @@ Everything that varies is data, not code:
                     line in build_layers(); the endpoints, the frontend and the batch evaluation are all
                     driven by the registry and need no edit.
     FusionConfig    the tunable part: per-layer weights, how the scores are combined, what happens when a
-                    layer has no evidence, and where the decision threshold sits. Default = every layer
-                    weighted equally, so with the two layers of today that is exactly 50 % / 50 %.
+                    layer has no evidence, and where the decision threshold sits. The shipped weights are
+                    acoustic 0.50 / behaviour 0.35 / semantic 0.15, and every one of them is live-tunable.
+                    A layer that is missing or has no evidence leaves its share to the others.
 
 The split between `Layer.score()` (expensive, runs the models) and `combine()` (pure arithmetic on
 numbers already computed) is deliberate: the frontend scores a call once and then re-tunes the weights
@@ -221,15 +223,24 @@ class Layer:
 
     Implement `available()`, `load()` and `score()`; everything else - the HTTP surface, the weight
     slider, the batch evaluation, the report - works off this interface and never knows what is inside.
+
+    `default_weight` is this layer's share of the vote before anyone touches a fader. The shipped
+    numbers are acoustic 0.50 / behaviour 0.35 / semantic 0.15; they are normalised at combine time, so
+    a layer that is missing or abstaining simply leaves its share to the others.
     """
     key = "layer"
     display = "Layer"
     description = ""
     default_weight = 1.0
 
+    # A layer whose load just failed is not retried on every single call: a batch of 71 would otherwise
+    # pay one connection timeout each. It abstains instantly until the window passes, then tries again.
+    RETRY_AFTER_S = 30.0
+
     def __init__(self):
         self._loaded = False
         self.load_error = None
+        self._retry_after = 0.0
 
     # -- to implement ---------------------------------------------------------
     def available(self):
@@ -250,9 +261,19 @@ class Layer:
 
     # -- shared ---------------------------------------------------------------
     def ensure_loaded(self):
-        if not self._loaded:
+        import time
+        if self._loaded:
+            return
+        if time.monotonic() < self._retry_after:
+            raise RuntimeError(self.load_error or "layer unavailable")
+        try:
             self._load()
-            self._loaded = True
+        except Exception as exc:
+            self.load_error = f"{type(exc).__name__}: {exc}"
+            self._retry_after = time.monotonic() + self.RETRY_AFTER_S
+            raise
+        self._loaded = True
+        self.load_error = None
 
     def score(self, wav_bytes):
         """Never raises: a layer that breaks abstains, so one broken layer cannot take the verdict down."""
@@ -269,7 +290,7 @@ class Layer:
     def describe(self):
         return {"key": self.key, "display": self.display, "description": self.description,
                 "default_weight": self.default_weight, "available": bool(self.available()),
-                "loaded": self._loaded, **self.info()}
+                "loaded": self._loaded, "load_error": self.load_error, **self.info()}
 
 
 class AcousticLayer(Layer):
@@ -285,6 +306,7 @@ class AcousticLayer(Layer):
     key = "acoustic"
     display = "Acoustic V1 (specialist)"
     description = "Frozen Wav2Vec2 Spanish layer 5 + MLP on the caller's voice, Platt-calibrated."
+    default_weight = 0.50
 
     def __init__(self, model_dir="wav2vec2_spanish", classifier="mlp", display=None):
         super().__init__()
@@ -342,6 +364,7 @@ class BehaviourLayer(Layer):
     key = "behaviour"
     display = "Behaviour (conversation timing)"
     description = "Separated-channel Silero VAD -> turn-taking timing -> 24 features -> calibrated logistic."
+    default_weight = 0.35
 
     def __init__(self, root=BEHAVIOUR_ROOT):
         super().__init__()
@@ -390,16 +413,111 @@ class BehaviourLayer(Layer):
                 "signal": "when the caller speaks, yields, interrupts and answers - not how they sound"}
 
 
+class SemanticLayer(Layer):
+    """
+    What the caller SAYS, rather than how they sound or when they speak.
+
+        agent channel -> trap bank (the scripted moments: the deliberately wrong digit, the interruption,
+                         the product the caller may not have)
+        caller channel -> energy VAD -> compaction -> ElevenLabs Scribe -> words with logprobs
+        -> F4 text features (disfluencies, false starts, mexicanisms, ASR logprob, grounding in the
+           agent's own words) + F5, a 7-dimension Gemini rubric
+        -> logistic regression, Platt-calibrated -> P(synthetic)
+
+    The module is reached over HTTP rather than imported, and deliberately so: it needs two third-party
+    API keys, it is the only layer that leaves the machine, and its latency is a network budget rather
+    than a model's. It already exposes exactly the contract this needs -
+
+        POST /detect {"audio": "<base64 stereo 8 kHz wav>"}
+          -> {"is_synthetic", "confidence", "score", "abstain", "reason", "used", "ms"}
+
+    - where `score` is the calibrated P(synthetic), `abstain` says it had no usable transcript, and
+    `used` says which path answered: "f4+f5" (Scribe + rubric), "f4" (text features only, the degraded
+    path when the rubric times out) or "abstain".
+
+    Point it at the service with SEMANTIC_URL, or pass url=. If nothing answers, the layer abstains and
+    the fusion renormalises the remaining weights - it never blocks a verdict.
+    """
+    key = "semantic"
+    display = "Semantic (what the caller says)"
+    description = "Scribe transcript -> text features + a 7-dimension Gemini rubric -> calibrated logistic."
+    default_weight = 0.15
+
+    # The degraded path is worth less than the full one: the rubric is most of the signal.
+    QUALITY_BY_PATH = {"f4+f5": 1.0, "f4": 0.5}
+
+    def __init__(self, url=None, timeout=30.0):
+        super().__init__()
+        import os
+        self.url = url or os.getenv("SEMANTIC_URL", "http://127.0.0.1:8100/detect")
+        self.timeout = float(os.getenv("SEMANTIC_TIMEOUT_S", timeout))
+        self._health = None
+
+    HEALTH_TIMEOUT_S = 1.5
+
+    def available(self):
+        """One cheap GET. The service is remote, so this is the only honest way to ask."""
+        import json
+        import urllib.error
+        import urllib.request
+        base = self.url.rsplit("/detect", 1)[0]
+        try:
+            with urllib.request.urlopen(base + "/health", timeout=self.HEALTH_TIMEOUT_S) as r:
+                self._health = json.loads(r.read())
+            return True
+        except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError):
+            self._health = None
+            return False
+
+    def _load(self):
+        if not self.available():
+            raise RuntimeError(f"no semantic service answering at {self.url} "
+                               f"(start it, or set SEMANTIC_URL)")
+
+    def _score(self, wav_bytes):
+        import base64
+        import json
+        import urllib.request
+        body = json.dumps({"audio": base64.b64encode(wav_bytes).decode("ascii")}).encode()
+        req = urllib.request.Request(self.url, body, {"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=self.timeout) as r:
+            out = json.loads(r.read())
+        # `score` is the calibrated probability; `confidence` is P(the verdict is right), which is NOT
+        # what a fusion input is. Take the probability, and only fall back to reconstructing it.
+        if "score" in out:
+            p = float(out["score"])
+        else:
+            c = float(out.get("confidence", 0.5))
+            p = c if out.get("is_synthetic") else 1.0 - c
+        path = out.get("used", "")
+        abstained = bool(out.get("abstain")) or path == "abstain"
+        return LayerResult(
+            self.key, self.display, p, 0.0 if abstained else self.QUALITY_BY_PATH.get(path, 0.5),
+            abstained, out.get("reason", "") if abstained else "",
+            details={"used": path, "service_ms": out.get("ms"), "url": self.url,
+                     "service_is_synthetic": out.get("is_synthetic"),
+                     "service_confidence": out.get("confidence")})
+
+    def info(self):
+        d = {"url": self.url, "timeout_s": self.timeout, "transport": "http",
+             "signal": "the words themselves - what the caller volunteers, repeats, repairs and grounds"}
+        if self._health:
+            d["service"] = self._health
+        return d
+
+
 # --------------------------------------------------------------------------- the registry
 #
 # THIS is the list to extend. A new detection system becomes a full citizen of the endpoint, the page
 # and the batch evaluation by appearing here; nothing downstream hard-codes a layer key.
 #
-def build_layers(acoustic_model="wav2vec2_spanish", include_unavailable=False):
+# The order here is the order of the columns, the faders and the report.
+#
+def build_layers(acoustic_model="wav2vec2_spanish", include_unavailable=False, semantic_url=None):
     layers = [
-        AcousticLayer(acoustic_model, display=_acoustic_display(acoustic_model)),
-        BehaviourLayer(),
-        # SemanticLayer(),   <- the next one goes here
+        AcousticLayer(acoustic_model, display=_acoustic_display(acoustic_model)),   # 0.50
+        BehaviourLayer(),                                                           # 0.35
+        SemanticLayer(semantic_url),                                                # 0.15
     ]
     return [l for l in layers if include_unavailable or l.available()]
 
@@ -415,13 +533,25 @@ def _acoustic_display(model_dir):
 class FusionDetector:
     """Holds the layers and the current configuration; scores calls through all of them."""
 
-    def __init__(self, layers=None, cfg=None, acoustic_model="wav2vec2_spanish"):
-        self.layers = list(layers) if layers is not None else build_layers(acoustic_model)
+    def __init__(self, layers=None, cfg=None, acoustic_model="wav2vec2_spanish", semantic_url=None):
+        self.layers = list(layers) if layers is not None else build_layers(acoustic_model, semantic_url=semantic_url)
         self.config = cfg or self.default_config()
 
     def default_config(self):
-        """Equal weight to every available layer - with today's two layers, exactly 50 % / 50 %."""
-        return FusionConfig(weights=tuple(sorted((l.key, 1.0 / max(len(self.layers), 1)) for l in self.layers)))
+        """
+        Each layer's own default_weight: acoustic 0.50, behaviour 0.35, semantic 0.15.
+
+        They are NOT renormalised here. A layer that is unavailable today simply never appears, and
+        combine() divides by the weight actually present - so with the semantic service down, 0.50 and
+        0.35 become shares of 59 % and 41 %, and the moment it answers the split is 50 / 35 / 15 again
+        without anyone touching a fader.
+        """
+        return FusionConfig(weights=tuple(sorted((l.key, float(l.default_weight)) for l in self.layers)))
+
+    def equal_config(self):
+        """Every available layer weighted the same - the "assume nothing" setting the page also offers."""
+        n = max(len(self.layers), 1)
+        return FusionConfig(weights=tuple(sorted((l.key, 1.0 / n) for l in self.layers)))
 
     def keys(self):
         return [l.key for l in self.layers]
@@ -430,8 +560,16 @@ class FusionDetector:
         return [l.describe() | {"weight": self.config.weight_of(l)} for l in self.layers]
 
     def preload(self):
+        """
+        Warm every layer before the first request. A layer that cannot load is NOT an error here: it
+        records why, abstains on every call, and the others carry the verdict. Startup never fails
+        because one optional layer is not answering.
+        """
         for l in self.layers:
-            l.ensure_loaded()
+            try:
+                l.ensure_loaded()
+            except Exception:
+                pass  # l.load_error holds the reason; describe() and /layers report it
         return self
 
     def score_layers(self, wav_bytes):

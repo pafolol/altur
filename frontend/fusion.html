@@ -75,7 +75,8 @@
   .strips { display: grid; gap: 14px; align-content: start; margin-bottom: 16px; }
   .strip { background: var(--ink); border: 1px solid var(--line); border-left: 3px solid var(--chan, var(--muted)); border-radius: 5px; padding: 15px 17px; display: grid; grid-template-columns: minmax(0,1fr) 190px; gap: 18px; align-items: center; transition: opacity .2s, border-color .2s; }
   .strip.off { opacity: .45; }
-  .strip.gone { border-left-color: var(--synth); }
+  .strip.gone { border-left-color: var(--amber); opacity: .72; }
+  .strip.gone .name { color: var(--paper-dim); }
   .strip .who { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
   .strip .name { font-family: var(--serif); font-size: 19px; font-weight: 600; color: var(--chan, var(--paper)); }
   .strip .key { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; }
@@ -167,9 +168,10 @@
       <div class="eyebrow">Altur · HackMTY 2026 · fusion layer</div>
       <h1>Fusion <em>Console</em></h1>
       <p class="sub">
-        Two independent detectors listen to the same call and vote. The <b>acoustic</b> layer judges the caller's
-        voice; the <b>behaviour</b> layer never hears a voice at all — it times the conversation. Set how much each
-        vote is worth, run the 71 held-out calls, and watch every system's own score and the decision they add up to.
+        Independent detectors listen to the same call and vote. The <b>acoustic</b> layer judges how the caller
+        sounds; the <b>behaviour</b> layer never hears a voice at all — it times the conversation; the
+        <b>semantic</b> layer reads what was actually said. Set how much each vote is worth, run the 71 held-out
+        calls, and watch every system's own score and the decision they add up to.
         <br><a href="/">← the single-call inspector</a>
       </p>
     </div>
@@ -182,8 +184,11 @@
     <h2>What each vote is worth</h2>
     <p class="hint">
       The faders are raw weights; only their ratio matters, so the big number is the share of the decision each
-      layer actually holds. Both at the same value is an even split — the default, and the honest one. Every
-      change is sent to the server's combiner, so what you see here is exactly what <code>POST /detect</code> answers - including for the judges. <b>reset: even split</b> puts every knob back to the shipped default.
+      layer actually holds. The shipped split is <b>acoustic 50 / behaviour 35 / semantic 15</b>. A layer that is
+      not answering, or has no evidence on a call, hands its share to the others — so with the semantic service
+      down the other two decide at 59 % and 41 %, and nothing has to be re-tuned when it comes back. Every change
+      is sent to the server's combiner, so what you see here is exactly what <code>POST /detect</code> answers —
+      including for the judges. <b>reset</b> puts every knob back to the shipped default.
     </p>
     <div class="desk">
       <div>
@@ -218,9 +223,9 @@
           <label for="quality">scale each weight by how much evidence that layer actually had on the call</label>
         </div>
         <div class="presets">
-          <button class="tiny" data-preset="equal">reset: even split</button>
-          <button class="tiny" data-preset="acoustic">acoustic only</button>
-          <button class="tiny" data-preset="behaviour">behaviour only</button>
+          <button class="tiny" data-preset="defaults">reset: 50 / 35 / 15</button>
+          <button class="tiny" data-preset="equal">even split</button>
+          <span id="soloPresets"></span>
         </div>
       </div>
     </div>
@@ -315,14 +320,17 @@
       if (l.signal) bits.push(l.signal);
       if (l.model_dir) bits.push(`<b>${l.model_dir}</b>, layer ${l.layer}, ${l.vad} VAD`);
       if (l.n_features) bits.push(`<b>${l.n_features} timing features</b>, ${l.calibration}`);
-      return `<div class="strip" data-key="${l.key}" style="--chan:${c}">
+      const gone = !l.available;
+      return `<div class="strip${gone ? " gone" : ""}" data-key="${l.key}" style="--chan:${c}">
         <div>
           <div class="who">
             <span class="name">${l.display}</span>
             <span class="key">${l.key}</span>
-            ${l.available ? "" : '<span class="key" style="color:var(--synth);border-color:var(--synth)">unavailable</span>'}
+            ${gone ? '<span class="key" style="color:var(--amber);border-color:var(--amber)">not answering</span>' : ""}
           </div>
-          <p class="desc">${l.description}${bits.length ? "<br>" + bits.join(" · ") : ""}</p>
+          <p class="desc">${l.description}${bits.length ? "<br>" + bits.join(" · ") : ""}
+            ${gone ? `<br><span style="color:var(--amber)">not answering: it abstains on every call and its
+              share is handed to the other layers. ${l.load_error || (l.url ? "nothing at " + l.url : "")}</span>` : ""}</p>
         </div>
         <div class="fader">
           <div class="readout"><span class="share" id="share-${l.key}">–</span><span class="raw" id="raw-${l.key}"></span></div>
@@ -331,6 +339,8 @@
       </div>`;
     }).join("");
     S.layers.forEach((l) => $("w-" + l.key).addEventListener("input", onFader));
+    $("soloPresets").innerHTML = S.layers.map((l) =>
+      `<button class="tiny" data-preset="${l.key}">${l.key} only</button>`).join(" ");
     paintMix();
   }
 
@@ -394,15 +404,21 @@
   ["mode", "abstain", "quality", "thr"].forEach((id) =>
     $(id).addEventListener("input", () => { explain(); pushConfig(); }));
 
-  document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => {
+  // Delegated: the "<layer> only" buttons are generated from the registry after this runs, and a third
+  // layer must get its own button without anyone rebinding anything.
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-preset]");
+    if (!b) return;
     const p = b.dataset.preset;
     S.layers.forEach((l) => {
-      S.cfg.weights[l.key] = p === "equal" ? 1 / S.layers.length : (l.key === p ? 1 : 0);
+      S.cfg.weights[l.key] = p === "defaults" ? l.default_weight
+                           : p === "equal" ? 1 / S.layers.length
+                           : (l.key === p ? 1 : 0);
       $("w-" + l.key).value = S.cfg.weights[l.key];
     });
-    // "even split" is the way back to the shipped default, so it puts every other knob back too - the
+    // "reset" is the way back to the shipped default, so it puts every other knob back too - the
     // server's config is live, and /detect answers with whatever was last set here.
-    if (p === "equal") {
+    if (p === "defaults") {
       $("mode").value = "weighted_mean";
       $("abstain").value = "renormalise";
       $("quality").checked = false;
@@ -411,7 +427,7 @@
     }
     paintMix();
     pushConfig();
-  }));
+  });
 
   // ------------------------------------------------------------------ 02 the calls
   function renderHead() {
@@ -509,17 +525,23 @@
     }));
   }
 
-  /** Accuracy of ONE layer standing alone: its own probability against the threshold, no weights involved. */
+  /**
+   * Accuracy of ONE layer standing alone: its own probability against the threshold, no weights involved.
+   * Scored over the calls it was willing to judge - an abstention is not a wrong answer, it is no answer,
+   * and counting it as wrong would make a layer whose service is down look like a bad model rather than
+   * an absent one. The abstention count is reported beside it so nothing is hidden.
+   */
   function soloAccuracy(key, thr) {
     let n = 0, ok = 0, abst = 0;
     for (const c of S.calls) {
       const l = (c.layers || []).find((x) => x.key === key);
       if (!l) continue;
       n++;
-      if (l.abstained) { abst++; continue; }          // an abstention is not a vote, so it cannot be right
+      if (l.abstained) { abst++; continue; }
       if ((l.probability >= thr) === (c.label === "synthetic")) ok++;
     }
-    return { n, ok, abst, acc: n ? ok / n : null };
+    const answered = n - abst;
+    return { n, ok, abst, answered, acc: answered ? ok / answered : null };
   }
 
   function renderScores() {
@@ -527,10 +549,13 @@
     const scored = S.calls.filter((c) => c.layers && c.fused);
     const cards = S.layers.map((l, i) => {
       const s = soloAccuracy(l.key, thr);
-      return `<div class="score" style="--chan:${CHAN[i % CHAN.length]}">
+      const silent = s.n > 0 && s.answered === 0;
+      return `<div class="score" style="--chan:${CHAN[i % CHAN.length]}${silent ? ";opacity:.6" : ""}">
         <div class="lbl">${l.key} alone</div>
         <div class="big">${s.acc === null ? "–" : pct(s.acc)}</div>
-        <div class="det"><b>${s.ok}</b>/${s.n} calls${s.abst ? ` · ${s.abst} abstained` : ""}</div>
+        <div class="det">${silent
+            ? `<b>no answer</b> on any of ${s.n} calls<br>${l.available ? "abstained" : "service not answering"}`
+            : `<b>${s.ok}</b>/${s.answered} answered${s.abst ? ` · ${s.abst} abstained` : ""}`}</div>
       </div>`;
     });
     let tn = 0, fp = 0, fn = 0, tp = 0, brier = 0, undecided = 0;

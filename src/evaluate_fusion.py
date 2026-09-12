@@ -4,7 +4,7 @@ BATCH EVALUATION of the fusion on the held-out calls.
 Scores every call of a split through every detection layer ONCE, then re-decides that same set of
 scores under many weightings - so the weight sweep costs no model time at all.
 
-    python src/evaluate_fusion.py                     # the 71 held-out val calls, V1 acoustic + behaviour
+    python src/evaluate_fusion.py                     # the 71 held-out val calls, every registered layer
     python src/evaluate_fusion.py --acoustic-model robust_v2
     python src/evaluate_fusion.py --split train --refresh
 
@@ -16,7 +16,11 @@ Writes
 
 The validation split was never trained on by either layer, but it HAS been looked at during the
 development of both, so treat a sweep maximum as a description of this split and not as a tuned setting
-you can promise on the hidden test set. The honest default stays 50 / 50.
+you can promise on the hidden test set. The shipped weights (acoustic 0.50 / behaviour 0.35 / semantic
+0.15) are reported first, an even split second.
+
+A layer whose service is not answering still gets its column - every row an abstention - and combine()
+hands its share to the others, so the table shows exactly what the deployed fusion would decide today.
 """
 import argparse
 import json
@@ -48,7 +52,7 @@ def score_split(det, df, acoustic_model, refresh=False, cache=None):
     cache = load_cache() if cache is None else cache
     rows = []
     for i, r in enumerate(df.itertuples(), 1):
-        key = f"{acoustic_model}:{r.anon_id}"
+        key = f"{acoustic_model}|{'+'.join(det.keys())}:{r.anon_id}"
         if refresh or key not in cache:
             t0 = time.perf_counter()
             results = det.score_layers(open(r.path, "rb").read())
@@ -92,23 +96,34 @@ def metrics(rows, verdicts):
 
 
 def layer_only(rows, key):
-    """What one layer would decide on its own, for the per-system column of the report."""
+    """
+    What one layer would decide on its own, for the per-system column of the report.
+
+    Two different numbers, because they answer two different questions:
+      accuracy           over the calls the layer was WILLING to judge. An abstention is no answer, not a
+                         wrong one - counting it wrong would make an absent service look like a bad model.
+      accuracy_forced    over every call, with an abstention falling back to a non-flag at 0.5. This is
+                         what the layer alone would actually deliver in production, abstentions included.
+    """
+    from sklearn.metrics import roc_auc_score
     y = np.array([r["y"] for r in rows])
-    p, abst = [], 0
+    p, answered = [], []
     for r in rows:
         x = next((l for l in r["layers"] if l["key"] == key), None)
-        if x is None or x["abstained"]:
-            p.append(0.5)
-            abst += 1
-        else:
-            p.append(x["probability"])
-    p = np.array(p)
+        blank = x is None or x["abstained"]
+        p.append(0.5 if blank else x["probability"])
+        answered.append(not blank)
+    p, answered = np.array(p), np.array(answered)
     pred = (p >= config.DECISION_THRESHOLD).astype(int)
-    out = {"n": len(y), "accuracy": float((pred == y).mean()), "brier": float(np.mean((p - y) ** 2)),
-           "n_abstained_calls": abst}
-    if len(np.unique(y)) == 2:
-        from sklearn.metrics import roc_auc_score
-        out["roc_auc"] = float(roc_auc_score(y, p))
+    out = {"n": len(y), "n_answered": int(answered.sum()), "n_abstained_calls": int((~answered).sum()),
+           "accuracy_forced": float((pred == y).mean()), "brier": float(np.mean((p - y) ** 2))}
+    if answered.any():
+        out["accuracy"] = float((pred[answered] == y[answered]).mean())
+        out["brier_answered"] = float(np.mean((p[answered] - y[answered]) ** 2))
+        if len(np.unique(y[answered])) == 2:
+            out["roc_auc"] = float(roc_auc_score(y[answered], p[answered]))
+    else:
+        out["accuracy"] = out["roc_auc"] = None
     return out
 
 
@@ -117,13 +132,17 @@ def main():
     parser.add_argument("--split", default="val", choices=config.SPLITS)
     parser.add_argument("--acoustic-model", default="wav2vec2_spanish",
                         help="which acoustic model sits in the fusion (wav2vec2_spanish = V1, default)")
+    parser.add_argument("--semantic-url", default=None, help="the semantic service's /detect endpoint")
     parser.add_argument("--refresh", action="store_true", help="re-run the layers instead of using the cache")
     parser.add_argument("--mode", default="weighted_mean", choices=fusion.COMBINE_MODES)
     parser.add_argument("--on-abstain", default="renormalise", choices=fusion.ABSTAIN_POLICIES)
     parser.add_argument("--steps", type=int, default=21, help="points in the weight sweep")
     args = parser.parse_args()
 
-    det = fusion.FusionDetector(acoustic_model=args.acoustic_model)
+    # include_unavailable: the same registry the server serves, so a layer whose service is down still
+    # gets its column (every row an abstention) instead of vanishing from the table.
+    det = fusion.FusionDetector(layers=fusion.build_layers(args.acoustic_model, include_unavailable=True,
+                                                          semantic_url=args.semantic_url))
     if not det.layers:
         raise SystemExit("no detection layer is available: check models/ and behaviour/artifacts/")
     keys = det.keys()
@@ -135,8 +154,9 @@ def main():
     rows = score_split(det, df, args.acoustic_model, args.refresh)
     base = fusion.FusionConfig.from_dict({"mode": args.mode, "on_abstain": args.on_abstain},
                                          det.default_config())
+    shipped = base.weight_map()                       # acoustic 0.50 / behaviour 0.35 / semantic 0.15
     equal = {k: 1.0 / len(keys) for k in keys}
-    verdicts = decide(rows, base, equal)
+    verdicts = decide(rows, base, shipped)
 
     # -------------------------------------------------------------- per-call table
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -167,7 +187,8 @@ def main():
     summary = {"split": args.split, "acoustic_model": args.acoustic_model, "mode": args.mode,
                "on_abstain": args.on_abstain, "layers": det.describe(),
                "per_layer_alone": {k: layer_only(rows, k) for k in keys},
-               "equal_weights": {"weights": equal, **metrics(rows, verdicts)},
+               "shipped_weights": {"weights": shipped, **metrics(rows, verdicts)},
+               "equal_weights": {"weights": equal, **metrics(rows, decide(rows, base, equal))},
                "sweep": sweep,
                "note": "the val split is held out of training but was seen during development of both "
                        "layers; a sweep maximum describes this split, it is not a tuned setting"}
@@ -175,16 +196,18 @@ def main():
 
     # -------------------------------------------------------------- report
     print(f"\n{'=' * 78}\n{args.split} split, {len(rows)} calls - {args.acoustic_model} + behaviour, mode={args.mode}\n{'=' * 78}")
-    print(f"{'system':36s} {'acc':>7s} {'AUC':>7s} {'Brier':>7s} {'abstain':>8s}")
+    fmt = lambda v: f"{v:7.3f}" if v is not None else "      -"   # ASCII: the Windows console is cp1252
+    print(f"{'system':36s} {'acc':>7s} {'AUC':>7s} {'Brier':>7s} {'abstain':>8s}   (acc over the calls it answered)")
     for k in keys:
         m = summary["per_layer_alone"][k]
         display = next(l.display for l in det.layers if l.key == k)
-        print(f"{display:36s} {m['accuracy']:7.3f} {m.get('roc_auc', float('nan')):7.3f} "
-              f"{m['brier']:7.3f} {m['n_abstained_calls']:8d}")
-    m = summary["equal_weights"]
-    print(f"{'FUSED  ' + ' / '.join(f'{v:.0%}' for v in equal.values()):36s} "
-          f"{m['accuracy']:7.3f} {m.get('roc_auc', float('nan')):7.3f} {m['brier']:7.3f} "
-          f"{m['n_abstained_calls']:8d}    confusion {m['confusion_matrix']}")
+        print(f"{display:36s} {fmt(m['accuracy'])} {fmt(m.get('roc_auc'))} "
+              f"{fmt(m.get('brier_answered'))} {m['n_abstained_calls']:8d}"
+              + ("   never answered" if not m["n_answered"] else ""))
+    for label, m in (("FUSED  " + " / ".join(f"{shipped[k]:.0%}" for k in keys), summary["shipped_weights"]),
+                     ("FUSED  " + " / ".join(f"{equal[k]:.0%}" for k in keys), summary["equal_weights"])):
+        print(f"{label:36s} {m['accuracy']:7.3f} {m.get('roc_auc', float('nan')):7.3f} {m['brier']:7.3f} "
+              f"{m['n_abstained_calls']:8d}    confusion {m['confusion_matrix']}")
     if sweep:
         best = max(sweep, key=lambda s: (s["accuracy"], -s["brier"]))
         print(f"\nweight sweep ({keys[0]} weight -> accuracy):")

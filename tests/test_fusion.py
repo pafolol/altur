@@ -35,10 +35,44 @@ def test_equal_weights_average_the_two_probabilities():
     assert [c["share"] for c in r["layers"]] == [0.5, 0.5]
 
 
-def test_default_config_of_the_detector_is_equal_weight_per_layer():
+def test_default_config_uses_each_layers_own_default_weight():
+    """The shipped split is acoustic 0.50 / behaviour 0.35 / semantic 0.15, and it comes from the layers."""
+    det = fusion.FusionDetector(layers=fusion.build_layers(include_unavailable=True))
+    assert det.keys() == ["acoustic", "behaviour", "semantic"]
+    assert det.config.weight_map() == {"acoustic": 0.50, "behaviour": 0.35, "semantic": 0.15}
+    shares = {c["key"]: c["share"] for c in
+              combine([L(k, 0.9) for k in det.keys()], det.config)["layers"]}
+    assert shares == {"acoustic": pytest.approx(0.50), "behaviour": pytest.approx(0.35),
+                      "semantic": pytest.approx(0.15)}
+
+
+def test_a_missing_layer_leaves_its_share_to_the_others():
+    """With the semantic service down the registry holds two layers; 0.50 / 0.35 becomes 59 % / 41 %."""
+    det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.9, weight=0.50),
+                                        _Fake("behaviour", 0.1, weight=0.35)])
+    assert det.config.weight_map() == {"acoustic": 0.50, "behaviour": 0.35}
+    shares = {c["key"]: c["share"] for c in combine(det.score_layers(b""), det.config)["layers"]}
+    assert shares["acoustic"] == pytest.approx(0.50 / 0.85)
+    assert shares["behaviour"] == pytest.approx(0.35 / 0.85)
+
+
+def test_equal_config_is_still_available_as_the_assume_nothing_setting():
     det = fusion.FusionDetector(layers=[_Fake("a", 0.9), _Fake("b", 0.1), _Fake("c", 0.5)])
-    assert det.config.weight_map() == {"a": pytest.approx(1 / 3), "b": pytest.approx(1 / 3), "c": pytest.approx(1 / 3)}
-    assert combine(det.score_layers(b""), det.config)["synthetic_probability"] == pytest.approx(0.5)
+    assert det.equal_config().weight_map() == {"a": pytest.approx(1 / 3), "b": pytest.approx(1 / 3),
+                                               "c": pytest.approx(1 / 3)}
+    assert combine(det.score_layers(b""), det.equal_config())["synthetic_probability"] == pytest.approx(0.5)
+
+
+def test_the_three_way_split_decides_the_way_the_numbers_say():
+    """acoustic 0.50 + behaviour 0.35 + semantic 0.15: the two smaller layers together can outvote the big one."""
+    cfg3 = FusionConfig.from_dict({"weights": {"acoustic": 0.50, "behaviour": 0.35, "semantic": 0.15}})
+    r = combine([L("acoustic", 1.0), L("behaviour", 0.0), L("semantic", 0.0)], cfg3)
+    assert r["synthetic_probability"] == pytest.approx(0.50)
+    r = combine([L("acoustic", 0.9), L("behaviour", 0.2), L("semantic", 0.1)], cfg3)
+    assert r["synthetic_probability"] == pytest.approx(0.50 * 0.9 + 0.35 * 0.2 + 0.15 * 0.1)
+    # the semantic layer abstaining hands its 15 % to the other two in proportion
+    r = combine([L("acoustic", 1.0), L("behaviour", 0.0), L("semantic", 0.0, abstained=True)], cfg3)
+    assert r["synthetic_probability"] == pytest.approx(0.50 / 0.85)
 
 
 def test_only_the_ratio_of_the_weights_matters():
@@ -172,10 +206,11 @@ def test_invalid_configuration_is_rejected(bad):
 class _Fake(fusion.Layer):
     """Exactly what a third detection layer would have to implement."""
 
-    def __init__(self, key, p, quality=1.0, abstained=False, explode=False):
+    def __init__(self, key, p, quality=1.0, abstained=False, explode=False, weight=1.0):
         super().__init__()
         self.key, self.display, self.p = key, key.upper(), p
         self.quality, self.abstained, self.explode = quality, abstained, explode
+        self.default_weight = weight
 
     def available(self):
         return True
@@ -212,7 +247,82 @@ def test_every_layer_reports_its_own_latency():
 
 def test_registry_builds_the_real_layers_and_they_describe_themselves():
     layers = fusion.build_layers(include_unavailable=True)
-    assert [l.key for l in layers] == ["acoustic", "behaviour"]
+    assert [l.key for l in layers] == ["acoustic", "behaviour", "semantic"]
+    assert [l.default_weight for l in layers] == [0.50, 0.35, 0.15]
     for l in layers:
         d = l.describe()
         assert {"key", "display", "description", "default_weight", "available", "loaded"} <= set(d)
+
+
+# --------------------------------------------------------------------------- the semantic layer
+#
+# It is reached over HTTP, so these drive it against canned service responses - no socket, no API key.
+
+
+class _Resp:
+    def __init__(self, body):
+        self._body = body
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def _semantic_result(layer, payload):
+    import json
+    import urllib.request
+    real = urllib.request.urlopen
+    urllib.request.urlopen = lambda *a, **k: _Resp(json.dumps(payload).encode())
+    try:
+        return layer._score(b"RIFF")
+    finally:
+        urllib.request.urlopen = real
+
+
+def _semantic():
+    layer = fusion.SemanticLayer(url="http://127.0.0.1:1/detect")
+    layer._loaded = True
+    return layer
+
+
+def test_semantic_layer_reads_the_probability_not_the_confidence():
+    """The service returns confidence = P(the verdict is right); a fusion input must be P(synthetic)."""
+    r = _semantic_result(_semantic(), {"is_synthetic": False, "confidence": 0.93, "score": 0.07,
+                                       "abstain": False, "used": "f4+f5", "ms": 812})
+    assert r.probability == pytest.approx(0.07)
+    assert r.abstained is False and r.quality == 1.0
+    assert r.details["used"] == "f4+f5"
+
+
+def test_semantic_layer_reconstructs_the_probability_if_score_is_absent():
+    assert _semantic_result(_semantic(), {"is_synthetic": False, "confidence": 0.93}).probability == pytest.approx(0.07)
+    assert _semantic_result(_semantic(), {"is_synthetic": True, "confidence": 0.93}).probability == pytest.approx(0.93)
+
+
+def test_semantic_layer_degraded_path_is_worth_less_evidence():
+    full = _semantic_result(_semantic(), {"score": 0.8, "used": "f4+f5"})
+    degraded = _semantic_result(_semantic(), {"score": 0.8, "used": "f4"})
+    assert full.quality == 1.0 and degraded.quality == 0.5
+    assert full.probability == degraded.probability == pytest.approx(0.8)
+
+
+@pytest.mark.parametrize("payload", [{"score": 0.8, "abstain": True, "reason": "no_speech"},
+                                     {"score": 0.5, "used": "abstain", "reason": "deadline"}])
+def test_semantic_layer_abstains_when_the_service_says_so(payload):
+    r = _semantic_result(_semantic(), payload)
+    assert r.abstained is True and r.quality == 0.0 and r.reason == payload["reason"]
+
+
+def test_semantic_layer_abstains_when_nothing_answers():
+    """Nothing is listening on port 1. The layer must abstain, not raise, and not stall the verdict."""
+    layer = fusion.SemanticLayer(url="http://127.0.0.1:1/detect")
+    assert layer.available() is False
+    r = layer.score(b"RIFF")
+    assert r.abstained is True and r.probability == 0.5 and r.reason
+    det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.9, weight=0.5), layer])
+    assert det.score(b"RIFF")["synthetic_probability"] == pytest.approx(0.9)
