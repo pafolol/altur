@@ -15,6 +15,7 @@ from .detector import Detector, DetectorUnavailable, DetectorIncompatible
 from .feature_extractor import extract_features
 from .feature_validation import validate_finite_features
 from .fusion import Fusion, FusionError
+from .fusion_bridge import FusionBridge
 from .schemas import DetectRequest, DetectResponse
 
 logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -47,6 +48,13 @@ def create_app(config: Settings = settings) -> FastAPI:
         fusion = None
         fusion_error = str(exc)
         logger.error("Fusion unavailable: %s", fusion_error)
+    # DETECTOR_MODE=fusion: the repository's own detector answers instead of this backend's placeholder.
+    # Every guard above and below still runs; only the inference step changes.
+    bridge = FusionBridge(config.detector_mode == "fusion", config.acoustic_model,
+                          config.semantic_url or None)
+    if config.detector_mode == "fusion" and not bridge.available:
+        detector_error = bridge.error or "fusion bridge unavailable"
+        detector = None
 
     @asynccontextmanager
     async def lifespan(application):
@@ -65,6 +73,8 @@ def create_app(config: Settings = settings) -> FastAPI:
         try:
             if detector is not None:
                 detector.warm_up()
+            if bridge.available:
+                bridge.warm_up()
             if detector is None or fusion is None:
                 logger.error("Backend not ready: detector or fusion unavailable")
             else:
@@ -114,6 +124,11 @@ def create_app(config: Settings = settings) -> FastAPI:
             return JSONResponse(status_code=503, content={"status": "not_ready"})
         return {"status": "ready"}
 
+    @application.get("/fusion")
+    async def fusion_status():
+        """Which detector is actually answering /detect, and what it is made of."""
+        return {"detector_mode": config.detector_mode, **bridge.describe()}
+
     async def analyze(payload: DetectRequest, include_probability=False, request_id="-"):
         started = time.perf_counter()
         if detector is None or fusion is None:
@@ -129,15 +144,28 @@ def create_app(config: Settings = settings) -> FastAPI:
         if validate_duration < config.min_audio_duration_seconds: raise AudioValidationError("El audio es demasiado corto")
         features_start = time.perf_counter(); features = extract_features(caller, agent, sr, timing, config.enable_pitch_features); validate_finite_features(features); timing["feature_extraction_ms"] = (time.perf_counter() - features_start) * 1000
         if features["caller_speech_seconds"] < config.min_caller_speech_seconds: raise AudioValidationError("El caller no contiene suficiente voz para clasificar")
-        inference_start = time.perf_counter(); model_probability = detector.predict_synthetic_probability(features) if config.fusion_mode == "single_model" else None
-        probability = fusion.predict(single_model=model_probability); timing["inference_ms"] = (time.perf_counter() - inference_start) * 1000
-        logger.info("inference request_id=%s synthetic_probability=%.4f", request_id, probability)
-        is_synthetic = bool(probability >= detector.threshold)
-        confidence = probability if is_synthetic else 1.0 - probability
+        inference_start = time.perf_counter()
+        fused = None
+        if bridge.available:
+            # The fusion decides on the whole call. `is_synthetic` is ITS verdict, not a re-derivation
+            # from the probability: when no layer could vote it answers an explicit non-flag at 0.5, and
+            # `0.5 >= threshold` would otherwise accuse a caller on no evidence at all.
+            fused = bridge.predict(caller, agent, sr)
+            probability, is_synthetic, confidence = fused["probability"], fused["is_synthetic"], fused["confidence"]
+        else:
+            model_probability = detector.predict_synthetic_probability(features) if config.fusion_mode == "single_model" else None
+            probability = fusion.predict(single_model=model_probability)
+            is_synthetic = bool(probability >= detector.threshold)
+            confidence = probability if is_synthetic else 1.0 - probability
+        timing["inference_ms"] = (time.perf_counter() - inference_start) * 1000
+        logger.info("inference request_id=%s synthetic_probability=%.4f%s", request_id, probability,
+                    "" if fused is None else f" layers={ {l['key']: round(l['probability'], 3) for l in fused['layers']} }")
         timing["total_processing_ms"] = (time.perf_counter() - started) * 1000
         logger.info("timing request_id=%s %s", request_id, ", ".join(f"{name}={value:.2f}ms" for name, value in timing.items()))
         result = {"is_synthetic": is_synthetic, "confidence": float(confidence)}
-        if include_probability: result["probability_synthetic"] = float(probability); result["parameters"] = features; result["timing"] = timing
+        if include_probability:
+            result["probability_synthetic"] = float(probability); result["parameters"] = features; result["timing"] = timing
+            if fused is not None: result["fusion"] = fused
         return result
 
     @application.post("/detect", response_model=DetectResponse)

@@ -14,8 +14,10 @@ class DetectorIncompatible(RuntimeError): pass
 
 class Detector:
     def __init__(self, mode="mock", model_path="models/detector.joblib", threshold=0.5):
-        self.mode, self.model, self.threshold, self.available = mode, None, float(threshold), mode == "mock"
+        self.mode, self.model, self.threshold, self.available = mode, None, float(threshold), mode in {"mock", "fusion"}
+        self.warmed_up = False
         if mode == "mock": logger.warning("DETECTOR_MODE=mock: resultados simulados, no usar en producción")
+        elif mode == "fusion": logger.info("DETECTOR_MODE=fusion: la inferencia la resuelve src/fusion.py")
         elif mode == "model": self._load(model_path)
         else: raise DetectorUnavailable(f"Modo de detector inválido: {mode}")
 
@@ -52,6 +54,9 @@ class Detector:
     def predict_synthetic_probability(self, features):
         if not self.available: raise DetectorUnavailable("Detector no disponible")
         if self.mode == "mock": return 0.5
+        # In fusion mode the verdict comes from the whole call, not from this backend's feature vector,
+        # so analyze() never reaches here - see app/fusion_bridge.py.
+        if self.mode == "fusion": raise DetectorUnavailable("En modo fusion la inferencia la resuelve el bridge")
         vector = features_to_vector(features)
         try:
             if hasattr(self.model, "predict_proba"): probability = float(self.model.predict_proba(vector)[0, 1])

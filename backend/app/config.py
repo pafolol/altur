@@ -32,6 +32,11 @@ class Settings:
     min_caller_speech_seconds: float = float(os.getenv("MIN_CALLER_SPEECH_SECONDS", "0.10"))
     enable_pitch_features: bool = _boolean(os.getenv("ENABLE_PITCH_FEATURES", "true"))
     enable_feature_warmup: bool = _boolean(os.getenv("ENABLE_FEATURE_WARMUP", "true"))
+    # DETECTOR_MODE=fusion routes inference to the repository's own detector (src/fusion.py) instead of
+    # this backend's placeholder. SEMANTIC_URL is passed straight through to it; unset means the semantic
+    # verifier simply reports itself unavailable and its share goes to the other layers.
+    acoustic_model: str = os.getenv("ACOUSTIC_MODEL", "wav2vec2_spanish")
+    semantic_url: str = os.getenv("SEMANTIC_URL", "")
 
     def __post_init__(self):
         if self.fusion_weights is None:

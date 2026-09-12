@@ -319,9 +319,9 @@ web/INTEGRATION.md              how it is wired to the detector - LIVE when VITE
 web/src/admin/api.live.ts       the real IsisiApi; the seeded mock is kept as the no-backend fallback
 src/store.py                    THE CALL LOG: SQLite, one row per verdict, feeds the panel's history
 
-backend/                        THE SERVING SHELL, merged from the backend-esteban branch and not edited
-backend/INTEGRATION.md          how it relates to src/server.py - READ BEFORE SUBMITTING: two /detect exist
-backend/app/                    FastAPI with request limits, /ready, warm-up, request ids; detector is a stub
+backend/                        THE SERVING SHELL, merged from backend-esteban - now wired to the fusion
+backend/INTEGRATION.md          DETECTOR_MODE=fusion, what changed in app/, and which service to expose
+backend/app/fusion_bridge.py    the whole seam: this backend's validated audio -> src/fusion.py
 
 semantic/                       THE SEMANTIC LAYER, merged from the fusion branch and not edited
 semantic/server.py              its own FastAPI service - runs on its own Python 3.13 venv, see Setup

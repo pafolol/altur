@@ -1,68 +1,68 @@
-# The backend, and how it relates to the fusion
+# The backend, wired to the real detector
 
-Merged from the `backend-esteban` branch. **Nothing in `app/` has been edited** — this note only records
-how the two systems line up, because right now the repository contains *two* FastAPI services that both
-serve `POST /detect`, and only one of them can be the answer the judges get.
+Merged from the `backend-esteban` branch. It was written as a serving shell around a detector that did
+not exist yet; the detector exists now, and **`DETECTOR_MODE=fusion` points this shell at it**.
 
-## What this backend is
-
-An operational shell, and a good one. It has things `src/server.py` does not:
-
-| | `backend/app` | `src/server.py` |
-|---|---|---|
-| request size limit (413) | yes, `MAX_REQUEST_SIZE_MB`, checked on header *and* body | no |
-| request ids / structured logs | yes, `X-Request-ID` on every response | uvicorn's default |
-| readiness | `GET /ready` → 503 until warm-up finishes | `/health` only |
-| feature warm-up before traffic | yes, `ENABLE_FEATURE_WARMUP` | models loaded at startup |
-| input validation | min/max duration, minimum caller speech → 400 | decode errors only |
-| typed error contract | 400 / 413 / 422 / 503 / 500, all JSON | 400 + a 200 fallback |
-
-## What it does not have
-
-Its detector and its feature extractors are **placeholders**. `DETECTOR_MODE=mock` — the default — returns
-`0.5` for every call and says so in the logs. `app/semantic_features.py` returns `None` and is documented as
-"reserved for a future semantic model". `app/fusion.py` implements `single_model`, `weighted` and
-`meta_model`, but `weighted` is a plain weighted mean with no abstention handling, no evidence quality and
-no verifier stage.
-
-So: **this branch is the serving layer, and `src/fusion.py` is the detector it was written to wrap.** They
-were built to meet.
-
-## The seam
-
-`Fusion.predict()` already takes exactly the shape the fusion produces:
-
-```python
-scores = {"behavior": 0.97, "acoustic": 1.00, "semantic": None}
+```
+cd backend
+DETECTOR_MODE=fusion SEMANTIC_URL=http://127.0.0.1:8100/detect uvicorn app.main:app --port 8000
 ```
 
-and `src/fusion.py` produces precisely that, per layer, plus the things this backend's version cannot
-express: which layers abstained, how much evidence each had, and whether the verifier was consulted at all.
+`GET /fusion` reports which detector is actually answering and what it is made of. `GET /ready` returns
+503 until the layers are loaded, so a container never takes traffic before it can answer.
 
-Wiring them is a small, contained change — replace the body of `analyze()`'s inference step with a call to
-`fusion.FusionDetector.score()` and let `combine()` do the mixing, keeping every one of this backend's
-guards, limits and error codes. It has **not** been done here, because `app/` is someone else's work and
-which service answers `/detect` is a team decision, not a merge decision.
+## What changed, and what deliberately did not
 
-## ⚠ Before submitting: only one `/detect` can be live
+Everything this shell was written for still runs, and runs **first**: the request size limit on header and
+body (413), the base64 and WAV validation (400), the duration bounds, the minimum caller speech, the
+channel checks, the feature warm-up, the request id on every response, and the typed error contract.
 
-| service | port | what it answers today |
+Only the inference step is different. Instead of
+
+```python
+detector.predict_synthetic_probability(features)   # this backend's own feature vector
+```
+
+the validated audio goes to the two-stage fusion: **acoustic and behaviour decide 50 / 50, and the
+semantic verifier is consulted only when they do not settle the call**. `app/fusion_bridge.py` is the
+whole seam, about a hundred lines, and `app/` is otherwise untouched apart from the branch in `analyze()`
+and a third value for `DETECTOR_MODE`.
+
+Two details worth knowing:
+
+- **The WAV is re-encoded, not passed through.** By the time inference happens this backend has already
+  decoded, resampled and split the channels, and the behaviour layer requires stereo 16-bit PCM at 8 kHz
+  and validates it strictly. Re-encoding the channels this backend produced means the fusion scores
+  exactly the audio this backend validated, not the bytes that happened to arrive.
+- **`is_synthetic` comes from the fusion, not from `probability >= threshold`.** When no layer can vote,
+  the fusion answers an explicit non-flag at 0.5 — and `0.5 >= 0.5` would otherwise accuse a caller on no
+  evidence at all. There is a test for exactly that.
+
+This backend's own feature extraction still runs in fusion mode (~100 ms of a ~900 ms request). That is on
+purpose: `MIN_CALLER_SPEECH_SECONDS` is enforced from those features, and `/debug/analyze` reports them.
+
+## ⚠ DETECTOR_MODE=mock is worse than it sounds
+
+The mock probability is 0.5, `is_synthetic` is `probability >= threshold`, and `0.5 >= 0.5` is **True**.
+So the default mode does not answer "don't know" — it **flags every caller as synthetic** at 50 %
+confidence. It is left exactly as it was (it is this backend's own mode, and its README already says the
+mock is not a real detection), but it is why `.env.example` now ships `DETECTOR_MODE=fusion`.
+
+## Which service should judges hit?
+
+Either, now — they answer the same verdict from the same `src/fusion.py`:
+
+| | `python src/server.py` | `uvicorn app.main:app` with `DETECTOR_MODE=fusion` |
 |---|---|---|
-| `python src/server.py` | 8000 | the real three-layer verdict |
-| `uvicorn app.main:app` (this one) | 8000 | **`0.5` for every call**, in `mock` mode |
+| verdict | the real fusion | the same real fusion |
+| request size limit, `/ready`, request ids, typed errors | no | **yes** |
+| the fusion console and the inspector pages | **yes** | no |
+| the admin panel's `/api/*` and the call log | **yes** | no |
 
-Both default to port 8000. If the judges are pointed at this one as it stands, every answer is a coin flip
-at 50 % confidence. Decide which one is the endpoint before the deadline:
+If the judges get one URL and nothing else, this backend is the better-behaved front door. If the demo
+matters, `src/server.py` is the one with the pages. Running both is fine — they are the same detector.
 
-- **keep `src/server.py`** — it is the one with the models — and optionally port this backend's request
-  limits, `/ready` and request ids into it; or
-- **keep this backend** and wire its `analyze()` to `src/fusion.py` as described above.
+## Still no database here
 
-Either is a short job. Doing neither is the risk.
-
-## No database here either
-
-Worth stating plainly, since this branch was merged while looking for one: it has no persistence of any
-kind. `app/schemas.py` is Pydantic request/response models, not tables; `.env.example` has no connection
-string; no migrations, no ORM, nothing in `requirements.txt`. Nothing in this repository writes a verdict
-anywhere except the console's per-session cache in `outputs/fusion/`.
+`app/schemas.py` is Pydantic models, not tables. The call log that backs the admin panel lives in
+`src/store.py` and is written by `src/server.py`; requests served by this backend are not recorded in it.
