@@ -1,22 +1,38 @@
-# Altur HackMTY 2026 - acoustic synthetic-caller detector
+# Altur HackMTY 2026 - synthetic-caller detector (acoustic + behaviour)
 
-Acoustic branch of the "Defend the Bank Against Voice Deepfakes" challenge: given a stereo 8 kHz call
-(channel 0 = caller, channel 1 = bank agent), decide from the **caller's voice alone** whether the caller is
-a human or a synthetic voice.
+"Defend the Bank Against Voice Deepfakes": given a stereo 8 kHz call (channel 0 = caller, channel 1 = bank
+agent), decide whether the caller is a human or a synthetic voice.
+
+Two independent detectors answer that question from **different evidence**, and `POST /detect` returns their
+weighted vote. This repository is the merge of the `modelo` and `behaviour` branches.
 
 ```
 stereo 8 kHz WAV (base64 at the API)
-  -> channel 0 (caller)  -> voice activity detection -> caller speech chunks (<= 4 s), RMS-normalised
-  -> resample 16 kHz     -> FROZEN pretrained speech backbone -> hidden layer L, mean over time
-  -> small MLP           -> chunk log-odds -> mean over chunks -> calibrated synthetic probability
+  |
+  +-- ACOUSTIC LAYER  - how the caller SOUNDS
+  |     channel 0 -> VAD -> caller speech chunks (<= 4 s), RMS-normalised -> resample 16 kHz
+  |     -> FROZEN speech backbone, hidden layer 5 -> mean over time -> MLP -> calibrated P(synthetic)
+  |
+  +-- BEHAVIOUR LAYER - how the caller BEHAVES  (behaviour/, frozen, never edited here)
+  |     both channels -> Silero VAD at 8 kHz -> turns -> interruption / barge-in / response timing
+  |     -> 24 features -> logistic + sigmoid calibration -> calibrated P(synthetic) + evidence quality
+  |
+  +-> FUSION (src/fusion.py): weighted vote, 50 / 50 by default, every weight tunable at runtime
+      -> {"is_synthetic": bool, "confidence": float}
 ```
 
-There are **two models**, and both stay on disk:
+The two layers can fail in different places, which is the point of running both: the acoustic layer needs
+*audible* caller speech, the behaviour layer needs *interaction* — a caller who never gets interrupted leaves
+it nothing to time, and it says so instead of guessing.
+
+### The acoustic layer's two models
+
+Both stay on disk; **V1, the specialist, is the one in the fusion** (`--acoustic-model robust_v2` swaps it):
 
 | | trained on | segmentation | Altur validation | down a telephone line |
 |---|---|---|---|---|
-| **Specialist** (Model A) | the Altur recordings | energy VAD | 100.0% | 77.5% |
-| **Robust V2** (Model B) — *deployed* | + the same calls through telephone channels | Silero VAD | 100.0% | 100.0% |
+| **V1 — Specialist** (Model A) — *in the fusion* | the Altur recordings | energy VAD | 100.0% | 77.5% |
+| **V2 — Robust** (Model B) | + the same calls through telephone channels | Silero VAD | 100.0% | 100.0% |
 
 Model A is the original work and is untouched. Model B exists because Model A degrades badly on audio that has
 actually been through a phone call — the full story, with every number and figure, is in
@@ -35,6 +51,29 @@ The dataset stays where the challenge put it: `D:\altur\hackmty26` (manifest + t
 `D:\altur\altur-challenge-audio\audio` (unzipped WAVs); paths are in `config.py`. The telephone-channel
 dataset is generated into `D:\altur\channel_dataset` and the official one is never written to.
 `ffmpeg` must be on PATH (the real codecs run through it).
+
+**The behaviour layer** needs two frozen artifacts that are deliberately NOT in Git (`behaviour/.gitignore`
+keeps `artifacts/` out, because the same folder also holds per-call caches derived from the dataset):
+
+```
+behaviourrtifacts\modelsehavior.json     sha256 631dc6d7...  the fitted model  (52 KB)
+behaviourrtifactsad\silero_vad.onnx      sha256 1a153a22...  Silero v6.2.1, MIT (2.3 MB)
+```
+
+Copy the `artifacts/` folder of the behaviour deliverable to `behaviour/artifacts/`. Both hashes are checked
+at load time — the ONNX by the module itself, the model against
+`behaviour/reports/FINAL_BEHAVIOR_MANIFEST.json`. Without them the behaviour layer reports itself unavailable
+and the fusion runs on the acoustic layer alone.
+
+To run the behaviour module's *own* test suite it also wants the dataset beside it (its 41 tests read real
+calls); only the last line copies any bytes:
+
+```
+mklink /J D:lturcousticehaviourudio D:lturltur-challenge-audioudio
+copy D:ltur\hackmty26\manifest.csv D:lturcousticehaviourxcopy /E /I D:ltur\hackmty26	urns D:lturcousticehaviour	urns
+```
+
+All three are git-ignored. The fusion itself never needs them - it is given WAV bytes like any caller.
 
 ## Pipeline (in order)
 
@@ -69,45 +108,102 @@ dataset is generated into `D:\altur\channel_dataset` and the official one is nev
 | 15 | `python src/evaluate_models.py` | four models x six domains -> `reports/deployed_model.json` (~35 min) |
 | 16 | `python src/report_robust.py` | `reports/TELEPHONE_ROBUSTNESS_REPORT.{md,pdf}` |
 
+### Part 3 - the fusion
+
+| Step | Command | What it does |
+| --- | --- | --- |
+| 17 | `python src/evaluate_fusion.py` | scores the 71 held-out calls through **every** layer, sweeps the weights, writes the cache the console reads (~60 s) |
+| 18 | `python src/server.py --port 8000` | `/detect` answers with the fused verdict; `/fusion` is the console |
+
 Smoke tests: add `--fraction 0.05` to steps 4 and 8, `--limit 10` to step 10, `--limit 6 --skip-stress` to
 step 15. Step 15 can rebuild its tables and figures without re-scoring anything with `--from-cache`.
-Unit tests: `python -m pytest tests -q` (87 tests).
+Unit tests: `python -m pytest tests -q` (114 tests, 27 of them the fusion combiner) and, for the frozen
+behaviour module, `cd behaviour && python -m pytest tests -q` (41 tests).
 
-## Using the model
-
-Demo page — record from the microphone or upload a call, get the verdict and the explanation, and put the two
-models side by side on the same audio:
+## Using the detector
 
 ```
-python src/server.py --port 8000 --preload-all      # then open http://localhost:8000/
+python src/server.py --port 8000
 ```
 
-The page never tells the model where the audio came from: both paths produce the same 8 kHz stereo WAV and
-POST it to `/detect`. A "simulate telephone line" option is applied identically to recordings and to uploads
-that are not already 8 kHz phone audio, because the detector was trained on phone calls.
+Use **`http://127.0.0.1:8000`**, not `localhost` - uvicorn binds IPv4 only, and on Windows `localhost`
+resolves to `::1` first, which costs a two-second timeout on every request.
+
+Two pages, one process:
+
+| page | what it is for |
+| --- | --- |
+| `GET /` | **the inspector** - record from the microphone or upload one call, get the verdict and the explanation, and put the two acoustic models side by side |
+| `GET /fusion` | **the fusion console** - set what each layer's vote is worth, run all 71 held-out calls, and read every system's own score next to the decision they add up to |
+
+The console scores each call once per layer and caches the result, so moving a fader re-decides all 71 calls
+in about a millisecond without a model running. Every column, fader and card is generated from the layer
+registry, so a third layer appears in all of them on its own.
 
 ```
-python src/predict.py path\to\call.wav              # verdict, probability, chunk scores, latency
-python src/predict.py --demo                        # six validation calls with known labels
-python src/server.py --model specialist             # answer /detect with Model A instead
-python src/client_demo.py call.wav --url http://localhost:8000/detect
+python src/fusion.py call.wav                             # every layer's score + the fused verdict
+python src/fusion.py call.wav --weight acoustic=0.7 --weight behaviour=0.3
+python src/fusion.py call.wav --mode logit_mean           # average the log-odds instead
+python src/predict.py path	o\call.wav                    # the acoustic layer on its own
+python src/evaluate_fusion.py                             # the 71 held-out calls + the weight sweep
+python src/server.py --acoustic-model robust_v2           # put V2 in the acoustic slot instead of V1
+python src/server.py --weight acoustic=0.7                # start somewhere other than 50 / 50
+python src/client_demo.py call.wav --url http://127.0.0.1:8000/detect
 ```
 
 | endpoint | contract |
 | --- | --- |
-| `POST /detect` | `{"audio": "<base64 wav>"}` -> `{"is_synthetic", "confidence"}` — the challenge contract, unchanged |
-| `POST /detect_all` | the same body -> every loaded model's verdict, for the comparison panel |
-| `GET /models` | what is loaded, which layer, which VAD, which one answers `/detect` |
+| `POST /detect` | `{"audio": "<base64 wav>"}` -> `{"is_synthetic", "confidence"}` - the challenge contract, unchanged; the verdict is now the fused one and every layer's score is under `details` |
+| `POST /detect_layers` | the same body -> each layer's own score, quality and latency, plus the fused verdict. An optional `"config"` scores that one call under different weights without changing the server's |
+| `POST /fusion/recombine` | `{"calls": [{"id", "layers"}], "config"}` -> the decisions again from scores that already exist. **No model runs** - this is what the faders call |
+| `GET` / `POST /fusion/config` | read / live-tune the weights, the combine mode, the abstention policy and the threshold |
+| `GET /layers` | the registry: what detection systems exist, whether they loaded, what each one is looking at |
+| `GET /validation`, `/validation/{id}/score`, `/validation/scores` | the 71 held-out calls, scored server-side from disk and cached |
+| `POST /detect_all`, `GET /models` | unchanged: the two ACOUSTIC models side by side, for the inspector's A/B panel |
 
-From Python (what the fusion system will call):
+From Python:
 
 ```python
-from predict import predict_acoustic
-p = predict_acoustic("call.wav")      # path, bytes or base64 string -> float, 0 = human ... 1 = synthetic
+from fusion import FusionDetector, FusionConfig
+det = FusionDetector()                       # V1 acoustic + behaviour, equal weights
+det.score(open("call.wav", "rb").read())     # fused verdict + what every layer contributed
+
+det.config = FusionConfig.from_dict({"weights": {"acoustic": 0.7, "behaviour": 0.3}}, det.config)
+
+from predict import predict_acoustic         # one layer on its own, unchanged
 ```
 
-Which model answers is decided by `reports/deployed_model.json`, written by `evaluate_models.py` from the
-measured cross-domain matrix. `predict.py` and `server.py` both read it, so they cannot drift apart.
+### Adding a third layer
+
+`src/fusion.py` is the only file that has to change. Subclass `Layer` with `available()`, `_load()` and
+`_score()` returning a `LayerResult`, then add it to `build_layers()`. The endpoints, the console, the batch
+evaluation and the CSV export all iterate over the registry, so the new layer arrives in each of them with
+its own column, its own fader and its own share of the vote. A layer that raises is caught and abstains, so
+it can never take the verdict down with it - there is a test for exactly that.
+
+### How the votes are combined
+
+`combine()` is the single implementation, in `src/fusion.py`, and both `/detect` and the console's faders go
+through it. Only the *ratio* of the weights matters, so a 0..1 fader per layer behaves the way you expect and
+any number of layers works.
+
+| knob | options |
+| --- | --- |
+| weights | any non-negative number per layer. Equal is the default - with today's two layers, exactly 50 / 50 |
+| mode | `weighted_mean` (average the probabilities - the literal reading of "50 / 50") or `logit_mean` (average the log-odds; two layers that agree reinforce each other) |
+| on_abstain | `renormalise` (a layer with no evidence is dropped and the rest share its weight) or `neutral` (it stays in at 0.5) |
+| use_quality | multiply each weight by that layer's evidence quality on that call. Off by default, so 50 / 50 means 50 / 50 on every call |
+| threshold | where the fused probability becomes a verdict |
+
+If nothing is left voting - every layer abstained, or every weight is zero - the answer is an explicit
+non-flag, `is_synthetic: false` at confidence 0.5, and `decisive: false` says so. That is **not** a vote for
+"human": a probability of 0.5 would otherwise clear a threshold of 0.5 and accuse a caller on no evidence at
+all.
+
+Which acoustic model sits in the fusion is a flag (`--acoustic-model`, V1 by default). The separate
+single-model endpoints still follow `reports/deployed_model.json`, written by `evaluate_models.py`, so they
+and the report cannot drift apart.
+
 
 ## Layout
 
@@ -120,8 +216,8 @@ src/extract_embeddings.py       stage 2: frozen backbones -> cached embeddings
 src/train_classifier.py         stage 3: layer probe + classifiers (identical for every backbone)
 src/calibrate.py                probability calibration
 src/benchmark.py                stage 4: the controlled comparison
-src/predict.py                  inference (AcousticDetector, predict_acoustic)
-src/server.py                   POST /detect, POST /detect_all, GET /models
+src/predict.py                  acoustic inference (AcousticDetector, predict_acoustic)
+src/server.py                   the HTTP surface: /detect, /detect_layers, /fusion/*, /validation/*, both pages
 src/build_report.py             the specialist's report
 
 src/phone_channel.py            THE TELEPHONE CHANNEL: exact G.711, ffmpeg codecs, RTP loss, drift, AGC, alignment
@@ -133,8 +229,19 @@ src/train_robust.py             Model B + the orig_only / channel_only / mixed c
 src/evaluate_models.py          four models x six domains, AUC-vs-threshold analysis
 src/report_robust.py            the telephone-robustness report
 
-models/wav2vec2_spanish/        Model A (specialist) - never overwritten
-models/robust_v2/               Model B (deployed)
+src/fusion.py                   THE FUSION LAYER: Layer, LayerResult, FusionConfig, combine(), the registry
+src/evaluate_fusion.py          all 71 held-out calls through every layer + the weight sweep
+frontend/index.html             the single-call inspector (GET /)
+frontend/fusion.html            the fusion console (GET /fusion)
+
+behaviour/                      THE BEHAVIOUR LAYER, merged in frozen from the behaviour branch and not edited
+behaviour/behavior/             the module itself (inference.py, vad.py, features.py, events.py, ...)
+behaviour/artifacts/            its two frozen artifacts - git-ignored, see Setup
+behaviour/reports/              its report, its freeze record and its metrics
+outputs/fusion/                 the cached per-layer scores, the per-call CSV and the weight sweep
+
+models/wav2vec2_spanish/        Model A (specialist) = V1, in the fusion - never overwritten
+models/robust_v2/               Model B = V2 (phone-hardened), one flag away
 models/robust_{orig_only,channel_only,mixed,balanced}/   the controls, loadable for evaluation
 D:\altur\channel_dataset\       the transformed audio, manifests, logs, pilot, figures
 reports/                        ACOUSTIC_LEARNING_SUMMARY.{pdf,md}, TELEPHONE_ROBUSTNESS_REPORT.{pdf,md},
@@ -142,6 +249,44 @@ reports/                        ACOUSTIC_LEARNING_SUMMARY.{pdf,md}, TELEPHONE_RO
 ```
 
 ## Results
+
+### The fusion, on the 71 held-out calls
+
+Speaker-disjoint from everything either layer trained on. `python src/evaluate_fusion.py`:
+
+| system | accuracy | ROC AUC | Brier | calls it abstained on |
+|---|---|---|---|---|
+| Acoustic V1 alone | 100.0% | 1.000 | 0.000 | 0 |
+| Behaviour alone | 97.2% | 0.991 | 0.041 | 0 |
+| **Fused, 50 / 50** | **100.0%** | **1.000** | **0.010** | 0 |
+
+Confusion of the fused verdict: `[[37, 0], [0, 34]]` (rows and columns human, synthetic). Every layer answered
+on every call - neither abstained once on this split.
+
+The behaviour layer gets exactly two calls wrong and the acoustic layer rescues both, which is the whole
+argument for running two of them - but one rescue is narrow and the table above should not hide it:
+
+| call | truth | acoustic | behaviour | fused at 50 / 50 |
+|---|---|---|---|---|
+| `0847d7417bb1` | synthetic | 1.000 | 0.435 | 0.717 -> synthetic |
+| `569ffb0869eb` | human | 0.000 | 0.964 | **0.482** -> human, by 0.018 |
+
+That second row is why the sweep drops to 98.6% the moment the acoustic share falls below 50%: the behaviour
+layer is confidently wrong about that caller, and at 45% the acoustic layer no longer outvotes it.
+
+Accuracy as the acoustic layer's share of the vote moves (the behaviour layer holds the rest):
+
+| acoustic share | 0% | 15% | 25% | 50% | 75% | 100% |
+|---|---|---|---|---|---|---|
+| accuracy | 97.2% | 98.6% | 98.6% | **100.0%** | 100.0% | 100.0% |
+
+Read that honestly. This split is **saturated for the acoustic layer** - it is already at 100% alone, for the
+reason the next section explains - so the sweep cannot show the fusion beating its best member here, and a
+weighting that happens to be perfect on these 71 calls is a description of them, not a setting that transfers.
+Both layers were developed while looking at this split. The even split is the default precisely because it
+assumes nothing, and the case for the behaviour layer is not this table: it is that it reads a completely
+different signal, one that survives a codec, a re-recording and a new voice that the acoustic layer has never
+heard. A caller who sounds perfect still has to take their turn.
 
 ### The specialist, on the official split
 

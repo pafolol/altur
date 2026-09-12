@@ -2,6 +2,9 @@
 .cache/
 .venv/
 outputs/embeddings/
+# Per-call fusion scores: a derivative of the confidential dataset, and regenerable in ~60 s with
+# `python src/evaluate_fusion.py`. The behaviour branch keeps per-call caches out of Git; so do we.
+outputs/fusion/
 __pycache__/
 **/__pycache__/
 .pytest_cache/

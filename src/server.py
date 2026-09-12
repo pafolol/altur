@@ -8,17 +8,23 @@ Request body (JSON):  {"audio": "<base64 of a stereo 8 kHz WAV file>"}
 Response (JSON):      {"is_synthetic": true, "confidence": 0.87}
     is_synthetic  required by the challenge
     confidence    probability that the verdict is right (config.CONFIDENCE_MODE = "verdict")
-    Extra diagnostic fields (synthetic_probability, n_chunks, latency_ms, model) are added under "details";
-    they do not interfere with the required contract.
+    Extra diagnostic fields (the per-layer scores, the weights that produced the verdict, latency) are added
+    under "details"; they do not interfere with the required contract.
 
-Run:  python src/server.py [--host 0.0.0.0] [--port 8000] [--backbone wavlm]
+The verdict is now the FUSION of every available detection layer (src/fusion.py): the acoustic model on the
+caller's voice and the behaviour model on the conversation timing, weighted 50 / 50 by default. The weights
+are live-tunable (POST /fusion/config) and a third layer needs no change here - the endpoints iterate over
+the registry.
+
+Run:  python src/server.py [--host 0.0.0.0] [--port 8000] [--acoustic-model robust_v2] [--weight acoustic=0.7]
 Test: python src/client_demo.py path/to/call.wav --url http://localhost:8000/detect
 
-The acoustic detector is the only signal today; the fusion of acoustic + behavioural + semantic scores will
-replace `score_call()` later without touching the HTTP contract.
+Pages:  GET /         the single-call inspector (frontend/index.html)
+        GET /fusion   the fusion console: weights, the 71 held-out calls, every layer's score side by side
 """
 import argparse
 import base64
+import json
 import time
 
 import uvicorn
@@ -29,26 +35,84 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 
 import _bootstrap  # noqa: F401
 import config
+import fusion
 from predict import AcousticDetector
 
-app = FastAPI(title="Altur HackMTY 2026 - synthetic caller detector (acoustic branch)")
-# The demo page (frontend/index.html) is served by this same process at GET /, so microphone access works over
-# localhost and no cross-origin setup is needed; CORS is open so the file also works when opened from disk.
+app = FastAPI(title="Altur HackMTY 2026 - synthetic caller detector (acoustic + behaviour fusion)")
+# The demo pages are served by this same process at GET / and GET /fusion, so microphone access works over
+# localhost and no cross-origin setup is needed; CORS is open so the files also work when opened from disk.
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-FRONTEND = config.PROJECT_ROOT / "frontend" / "index.html"
+FRONTEND_DIR = config.PROJECT_ROOT / "frontend"
+FRONTEND = FRONTEND_DIR / "index.html"
+FUSION_PAGE = FRONTEND_DIR / "fusion.html"
 FIELDS = ("audio", "wav", "audio_base64", "file", "data", "audio_b64", "base64", "wav_base64")
 
-# Two models are served side by side so the demo page can show what a telephone line does to each of them:
-#   specialist  the Altur specialist, 100 % on the clean validation split, fitted on the recording pipeline
-#   robust_v2   the same frozen backbone with a classifier that has also seen telephone-channel audio
-# /detect (the challenge contract) answers with ONE of them - app.state.primary. /detect_all answers with both.
+# The acoustic models that can sit in the acoustic slot of the fusion. /detect_all and the A/B panel of the
+# inspector page score BOTH of them; the fusion uses ONE - app.state.acoustic_model, V1 by default.
 DETECTORS = {}
 CANDIDATES = {"specialist": "wav2vec2_spanish", "robust_v2": "robust_v2"}
-
 
 # Defaults so that importing this module (from a test, a notebook) gives a working app without calling main().
 app.state.classifier = "mlp"
 app.state.primary = None
+app.state.acoustic_model = "wav2vec2_spanish"   # V1, the specialist
+app.state.fusion = None
+
+
+# ============================================================================= the fusion
+
+
+def get_fusion():
+    """The single FusionDetector this process serves. Built on first use, layers loaded lazily."""
+    if app.state.fusion is None:
+        app.state.fusion = fusion.FusionDetector(acoustic_model=app.state.acoustic_model)
+    return app.state.fusion
+
+
+def fusion_config():
+    return get_fusion().config
+
+
+def score_call(wav_bytes, cfg=None):
+    """One place where the verdict is produced. Every layer runs; the config decides how they are mixed."""
+    det = get_fusion()
+    t0 = time.perf_counter()
+    results = det.score_layers(wav_bytes)
+    verdict = fusion.combine(results, cfg or det.config)
+    layers = [r.to_dict() for r in results]
+    acoustic = next((r for r in layers if r["key"] == "acoustic"), None)
+    verdict["details"] = {
+        "synthetic_probability": verdict["synthetic_probability"],
+        "layers": layers,
+        "branches": {r["key"]: r["probability"] for r in layers},
+        "weights": verdict["config"]["weights"],
+        "mode": verdict["config"]["mode"],
+        "on_abstain": verdict["config"]["on_abstain"],
+        "threshold": verdict["config"]["threshold"],
+        "n_layers_used": verdict["n_layers_used"],
+        "latency_ms": round((time.perf_counter() - t0) * 1000),
+        "acoustic_model": app.state.acoustic_model,
+    }
+    # Fields the original single-model contract exposed, kept so the inspector page - which explains a
+    # verdict with the acoustic model's chunk scores - keeps working now that /detect answers with a fusion.
+    used = [c for c in verdict["layers"] if c["share"] > 0]
+    verdict["details"]["model_display"] = (
+        "fusion — " + " + ".join(f"{c['display']} {c['share']:.0%}" for c in used) if used
+        else "fusion — no layer is voting")
+    if acoustic:
+        d = acoustic["details"]
+        verdict["details"] |= {"raw_score": d.get("raw_score"), "n_chunks": d.get("n_chunks"),
+                               "speech_s": d.get("speech_s"), "duration_s": d.get("duration_s"),
+                               "n_speech_regions": d.get("n_speech_regions"), "vad": d.get("vad"),
+                               "model": d.get("model"), "calibration": d.get("calibration", "none"),
+                               "chunk_scores": d.get("chunk_scores", []),
+                               "chunk_spans": d.get("chunk_spans", [])}
+    if verdict["note"]:
+        verdict["details"]["warning"] = verdict["note"]
+    return verdict
+
+
+# ============================================================================= single-model access (A/B panel)
 
 
 def available_models():
@@ -56,8 +120,7 @@ def available_models():
 
 
 def default_model():
-    """The same pointer predict.py reads, so the endpoint and the fusion interface never disagree."""
-    import json
+    """The same pointer predict.py reads, so the single-model endpoints and the report never disagree."""
     names = available_models()
     if not names:
         raise RuntimeError("no trained model found under models/")
@@ -78,32 +141,30 @@ def get_detector(name=None):
     return DETECTORS[name]
 
 
-def score_call(wav_bytes, model=None):
-    """One place where the verdict is produced. Fusion with other branches will plug in here."""
+def score_acoustic_only(wav_bytes, model=None):
+    """One acoustic model, no fusion: what /detect_all and the A/B panel compare."""
     det = get_detector(model)
     result = det.predict_wav(wav_bytes)
     verdict = det.verdict(result)
     verdict["details"] = {
         "synthetic_probability": round(result["synthetic_probability"], 4),
-        "raw_score": round(result["score"], 3),
-        "n_chunks": result["n_chunks"],
-        "speech_s": round(result["speech_s"], 1),
-        "duration_s": round(result["duration_s"], 1),
+        "raw_score": round(result["score"], 3), "n_chunks": result["n_chunks"],
+        "speech_s": round(result["speech_s"], 1), "duration_s": round(result["duration_s"], 1),
         "latency_ms": round(result["timings"].get("total_s", 0) * 1000),
         "model": f"{det.backbone} layer {det.layer} + {det.classifier_name}",
         "model_key": next((k for k, v in CANDIDATES.items() if v == det.backbone), det.backbone),
-        "vad": det.vad,
-        "model_display": f"{det.display}, hidden layer {det.layer}, frozen + MLP",
-        "calibration": det.calibration.get("method", "none"),
-        "threshold": config.DECISION_THRESHOLD,
-        "n_speech_regions": result["n_speech_regions"],
-        "chunk_scores": result.get("chunk_scores", []),
+        "vad": det.vad, "model_display": f"{det.display}, hidden layer {det.layer}, frozen + MLP",
+        "calibration": det.calibration.get("method", "none"), "threshold": config.DECISION_THRESHOLD,
+        "n_speech_regions": result["n_speech_regions"], "chunk_scores": result.get("chunk_scores", []),
         "chunk_spans": result.get("chunk_spans", []),
         "branches": {"acoustic": round(result["synthetic_probability"], 4)},
     }
     if "warning" in result:
         verdict["details"]["warning"] = result["warning"]
     return verdict
+
+
+# ============================================================================= request helpers
 
 
 def _extract_base64(payload):
@@ -117,6 +178,26 @@ def _extract_base64(payload):
             if isinstance(v, str) and len(v) > 100:
                 return v
     return None
+
+
+async def _payload(request):
+    body = await request.body()
+    try:
+        return await request.json()
+    except Exception:
+        return body.decode("utf-8", errors="ignore").strip().strip('"')
+
+
+async def _wav_from(request):
+    b64 = _extract_base64(await _payload(request))
+    if b64 is None:
+        return None
+    if b64.startswith("data:"):  # data URL
+        b64 = b64.split(",", 1)[1]
+    return base64.b64decode(b64)
+
+
+# ============================================================================= the contract
 
 
 @app.post("/detect")
@@ -135,17 +216,9 @@ async def detect(request: Request):
                     wav_bytes = base64.b64decode(v)
                     break
         else:
-            body = await request.body()
-            try:
-                payload = await request.json()
-            except Exception:
-                payload = body.decode("utf-8", errors="ignore").strip().strip('"')
-            b64 = _extract_base64(payload)
-            if b64 is None:
-                return JSONResponse({"error": f"no base64 audio found; send JSON {{'audio': '<base64 wav>'}}"}, status_code=400)
-            if b64.startswith("data:"):  # data URL
-                b64 = b64.split(",", 1)[1]
-            wav_bytes = base64.b64decode(b64)
+            wav_bytes = await _wav_from(request)
+            if wav_bytes is None:
+                return JSONResponse({"error": "no base64 audio found; send JSON {'audio': '<base64 wav>'}"}, status_code=400)
         if not wav_bytes:
             return JSONResponse({"error": "empty audio"}, status_code=400)
         verdict = score_call(wav_bytes)
@@ -155,28 +228,103 @@ async def detect(request: Request):
         return JSONResponse({"is_synthetic": False, "confidence": 0.5, "error": f"{type(exc).__name__}: {exc}"}, status_code=200)
 
 
+@app.post("/detect_layers")
+async def detect_layers(request: Request):
+    """
+    Every layer's own score plus the fused verdict, for the fusion console.
+
+    Optional body keys alongside the audio: "config" (a partial FusionConfig) scores this one call with
+    different weights without changing the server's own configuration.
+    """
+    payload = await _payload(request)
+    wav_bytes = await _wav_from(request)
+    if wav_bytes is None:
+        return JSONResponse({"error": "no base64 audio found"}, status_code=400)
+    cfg = fusion_config()
+    if isinstance(payload, dict) and payload.get("config"):
+        try:
+            cfg = fusion.FusionConfig.from_dict(payload["config"], cfg)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+    t0 = time.perf_counter()
+    det = get_fusion()
+    results = det.score_layers(wav_bytes)
+    out = fusion.combine(results, cfg)
+    out["layer_details"] = [r.to_dict() for r in results]
+    out["latency_ms"] = round((time.perf_counter() - t0) * 1000)
+    return out
+
+
+@app.post("/fusion/recombine")
+async def recombine(request: Request):
+    """
+    Re-decide from scores that already exist. No model runs.
+
+    Body: {"layers": [ <LayerResult dicts, or {key, probability, quality, abstained}> ], "config": {...}}
+       or {"calls": [{"id": "...", "layers": [...]}, ...], "config": {...}}  for a whole batch at once.
+
+    This is what the weight sliders call: the page scores the 71 calls once, then re-tunes as often as it
+    likes. One combiner, one source of truth - the page never re-implements the arithmetic.
+    """
+    payload = await _payload(request)
+    if not isinstance(payload, dict):
+        return JSONResponse({"error": "send a JSON object"}, status_code=400)
+    try:
+        cfg = fusion.FusionConfig.from_dict(payload.get("config"), fusion_config())
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    if "calls" in payload:
+        return {"config": cfg.to_dict(),
+                "calls": [{"id": c.get("id"), **fusion.combine(c.get("layers") or [], cfg)}
+                          for c in payload["calls"]]}
+    return fusion.combine(payload.get("layers") or [], cfg)
+
+
+# ============================================================================= configuration
+
+
+@app.get("/layers")
+def layers():
+    """The registry: what detection systems exist, whether they loaded, and their current weight."""
+    det = get_fusion()
+    return {"layers": det.describe(), "config": det.config.to_dict(),
+            "acoustic_model": app.state.acoustic_model,
+            "modes": list(fusion.COMBINE_MODES), "abstain_policies": list(fusion.ABSTAIN_POLICIES)}
+
+
+@app.get("/fusion/config")
+def get_config():
+    return fusion_config().to_dict()
+
+
+@app.post("/fusion/config")
+async def set_config(request: Request):
+    """Live-tune the weights / combine mode / abstention policy. Takes a partial config."""
+    payload = await _payload(request)
+    if not isinstance(payload, dict):
+        return JSONResponse({"error": "send a JSON object"}, status_code=400)
+    det = get_fusion()
+    try:
+        det.config = fusion.FusionConfig.from_dict(payload, det.config)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    return det.config.to_dict()
+
+
 @app.post("/detect_all")
 async def detect_all(request: Request):
     """
-    The demo endpoint: the same audio scored by every loaded model, so the page can put them side by side.
+    The A/B endpoint: the same audio scored by every ACOUSTIC model, so the page can put them side by side.
     Not part of the challenge contract - /detect is, and its shape is unchanged.
     """
-    body = await request.body()
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = body.decode("utf-8", errors="ignore").strip().strip('"')
-    b64 = _extract_base64(payload)
-    if b64 is None:
+    wav_bytes = await _wav_from(request)
+    if wav_bytes is None:
         return JSONResponse({"error": "no base64 audio found"}, status_code=400)
-    if b64.startswith("data:"):
-        b64 = b64.split(",", 1)[1]
-    wav_bytes = base64.b64decode(b64)
     out = {}
     for name in available_models():
         t0 = time.perf_counter()
         try:
-            verdict = score_call(wav_bytes, name)
+            verdict = score_acoustic_only(wav_bytes, name)
             verdict["details"]["request_ms"] = round((time.perf_counter() - t0) * 1000)
             out[name] = verdict
         except Exception as exc:
@@ -186,31 +334,45 @@ async def detect_all(request: Request):
 
 @app.get("/models")
 def models():
-    """What the page can ask for, and which one /detect answers with."""
+    """What the A/B panel can ask for, and which acoustic model sits in the fusion."""
     rows = []
     for name in available_models():
         det = get_detector(name)
         rows.append({"key": name, "display": det.display, "layer": det.layer, "vad": det.vad,
                      "calibration": det.calibration.get("method", "none"),
                      "trained_on": det.meta.get("train_sets", ["altur_original"]),
+                     "in_fusion": CANDIDATES[name] == app.state.acoustic_model,
                      "is_primary": name == (getattr(app.state, "primary", None) or default_model())})
     return rows
 
 
+# ============================================================================= the held-out calls
+
+
 @app.get("/")
 def index():
-    """The one-file demo page: record or upload a call, get the verdict and the explanation."""
+    """The single-call inspector: record or upload a call, get the verdict and the explanation."""
     if FRONTEND.exists():
         return FileResponse(str(FRONTEND), media_type="text/html")
     return JSONResponse({"status": "ok", "hint": "POST /detect with {'audio': '<base64 wav>'}"})
 
 
+@app.get("/fusion")
+def fusion_page():
+    """The fusion console: tune the weights, score all 71 held-out calls, see every layer's own score."""
+    if FUSION_PAGE.exists():
+        return FileResponse(str(FUSION_PAGE), media_type="text/html")
+    return JSONResponse({"error": "frontend/fusion.html is missing"}, status_code=404)
+
+
 _VAL = None
+SCORE_CACHE_FILE = config.OUTPUTS_DIR / "fusion" / "validation_layer_scores.json"
+_SCORE_CACHE = None
 
 
 def _validation():
     """The held-out validation calls (never used for training). Labels are served so the page can reveal them AFTER
-    the verdict; the detector itself only ever receives the WAV through /detect, like any other call."""
+    the verdict; the detectors themselves only ever receive the WAV, like any other call."""
     global _VAL
     if _VAL is None:
         import dataset
@@ -220,9 +382,33 @@ def _validation():
     return _VAL
 
 
+def _cache():
+    """Per-layer scores of the held-out calls, kept on disk so a restart does not re-score 71 calls."""
+    global _SCORE_CACHE
+    if _SCORE_CACHE is None:
+        _SCORE_CACHE = {}
+        if SCORE_CACHE_FILE.exists():
+            try:
+                _SCORE_CACHE = json.loads(SCORE_CACHE_FILE.read_text())
+            except Exception:
+                _SCORE_CACHE = {}
+    return _SCORE_CACHE
+
+
+def _cache_key(anon_id):
+    return f"{app.state.acoustic_model}:{anon_id}"
+
+
+def _cache_save():
+    SCORE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SCORE_CACHE_FILE.write_text(json.dumps(_cache(), indent=1))
+
+
 @app.get("/validation")
 def validation_list():
-    return [{k: v for k, v in c.items() if k != "path"} for c in _validation()]
+    cached = _cache()
+    return [{k: v for k, v in c.items() if k != "path"} | {"scored": _cache_key(c["anon_id"]) in cached}
+            for c in _validation()]
 
 
 @app.get("/validation/{anon_id}/audio")
@@ -233,12 +419,65 @@ def validation_audio(anon_id: str):
     return JSONResponse({"error": "unknown validation call"}, status_code=404)
 
 
+@app.get("/validation/{anon_id}/score")
+def validation_score(anon_id: str, refresh: bool = False):
+    """
+    Score ONE held-out call through every layer, reading the WAV from disk instead of asking the page to
+    upload it back. The per-layer scores are cached (they do not depend on the weights), so re-tuning the
+    fusion afterwards costs nothing: that is what /fusion/recombine is for.
+    """
+    call = next((c for c in _validation() if c["anon_id"] == anon_id), None)
+    if call is None:
+        return JSONResponse({"error": "unknown validation call"}, status_code=404)
+    cache, key = _cache(), _cache_key(anon_id)
+    if refresh or key not in cache:
+        t0 = time.perf_counter()
+        results = get_fusion().score_layers(open(call["path"], "rb").read())
+        cache[key] = {"layers": [r.to_dict() for r in results],
+                      "scored_ms": round((time.perf_counter() - t0) * 1000),
+                      "acoustic_model": app.state.acoustic_model}
+        _cache_save()
+    entry = cache[key]
+    out = fusion.combine(entry["layers"], fusion_config())
+    return {"anon_id": anon_id, "index": call["index"], "label": call["label"],
+            "duration_s": call["duration_s"], "layers": entry["layers"],
+            "scored_ms": entry["scored_ms"], "cached": not (refresh or False), **out}
+
+
+@app.get("/validation/scores")
+def validation_scores():
+    """Everything already scored, in one response - so a reloaded page comes back instantly."""
+    cache = _cache()
+    out = []
+    for c in _validation():
+        entry = cache.get(_cache_key(c["anon_id"]))
+        if entry:
+            out.append({"anon_id": c["anon_id"], "index": c["index"], "label": c["label"],
+                        "duration_s": c["duration_s"], "layers": entry["layers"],
+                        "scored_ms": entry["scored_ms"]})
+    return {"acoustic_model": app.state.acoustic_model, "n_total": len(_validation()),
+            "n_scored": len(out), "calls": out}
+
+
+@app.delete("/validation/scores")
+def clear_scores():
+    cache = _cache()
+    for k in [k for k in cache if k.startswith(f"{app.state.acoustic_model}:")]:
+        del cache[k]
+    _cache_save()
+    return {"cleared": True, "n_scored": 0}
+
+
 @app.get("/health")
 def health():
-    det = get_detector()
-    return {"status": "ok", "model": f"{det.backbone} layer {det.layer} + {det.classifier_name}",
+    det = get_fusion()
+    return {"status": "ok", "mode": "fusion",
+            "layers": [{"key": l.key, "display": l.display, "loaded": l._loaded} for l in det.layers],
+            "weights": det.config.weight_map(), "acoustic_model": app.state.acoustic_model,
+            "model": f"fusion of {len(det.layers)} layers",
             "primary": getattr(app.state, "primary", None) or default_model(),
-            "available": available_models(), "device": det.device.type}
+            "available": available_models(),
+            "device": config.get_device(verbose=False).type}
 
 
 @app.post("/detect_file")
@@ -251,19 +490,36 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--acoustic-model", default="wav2vec2_spanish",
+                        help="which acoustic model sits in the fusion: wav2vec2_spanish (V1, default) or robust_v2")
+    parser.add_argument("--weight", action="append", default=[], metavar="KEY=W",
+                        help="starting weight of one layer, e.g. --weight acoustic=0.7 (tunable live afterwards)")
+    parser.add_argument("--mode", default="weighted_mean", choices=fusion.COMBINE_MODES)
     parser.add_argument("--model", default=None, choices=[None, *CANDIDATES],
-                        help="which model answers /detect (default: robust_v2 if it exists)")
+                        help="which single acoustic model the A/B endpoints call primary")
     parser.add_argument("--classifier", default="mlp", choices=["mlp", "logreg"])
-    parser.add_argument("--preload-all", action="store_true", help="load every model at startup (demo mode)")
+    parser.add_argument("--no-preload", action="store_true", help="load the layers on the first request instead")
     args = parser.parse_args()
     app.state.classifier = args.classifier
-    names = available_models()
-    if not names:
+    app.state.acoustic_model = args.acoustic_model
+    if not available_models():
         raise SystemExit("no trained model found under models/")
     app.state.primary = args.model or default_model()
-    for name in (names if args.preload_all else [app.state.primary]):
-        get_detector(name)  # load before accepting requests
-    print(f"[server] models available: {names}; /detect answers with '{app.state.primary}'")
+
+    det = get_fusion()
+    if not det.layers:
+        raise SystemExit("no detection layer is available: check models/ and behaviour/artifacts/")
+    overrides = {k: float(v) for k, v in (w.split("=", 1) for w in args.weight)}
+    det.config = fusion.FusionConfig.from_dict({"weights": overrides, "mode": args.mode}, det.config)
+    if not args.no_preload:
+        det.preload()
+    print(f"[server] fusion layers: " +
+          ", ".join(f"{l.display} (w={det.config.weight_of(l):.2f})" for l in det.layers))
+    print(f"[server] acoustic slot: {app.state.acoustic_model}; A/B models available: {available_models()}")
+    # 127.0.0.1, not localhost: uvicorn binds IPv4 only, and on Windows "localhost" resolves to ::1
+    # first, which costs a two-second connection timeout on every single request.
+    print(f"[server] pages: http://127.0.0.1:{args.port}/  (inspector)   "
+          f"http://127.0.0.1:{args.port}/fusion  (fusion console)")
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 

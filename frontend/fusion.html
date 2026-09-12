@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fusion Console — Altur synthetic caller detector</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0f14'/%3E%3Cpath d='M4 8h10M4 24h10M14 8c6 0 6 8 10 8M14 24c6 0 6-8 10-8' stroke='%238ee3ff' stroke-width='2.5' fill='none'/%3E%3Ccircle cx='25' cy='16' r='4' fill='%23f2b64b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,800;1,9..144,300&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0b0f14;
+    --ink-2: #121821;
+    --panel: #161d28;
+    --line: #2a3442;
+    --paper: #efe7d6;
+    --paper-dim: #b9b0a0;
+    --muted: #7d8794;
+    --human: #5fd18a;
+    --human-dim: rgba(95, 209, 138, 0.16);
+    --synth: #ff6b4a;
+    --synth-dim: rgba(255, 107, 74, 0.16);
+    --amber: #f2b64b;
+    --trace: #8ee3ff;
+    --violet: #b48ef5;
+    --serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: 14px; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(142, 227, 255, 0.07), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(255, 107, 74, 0.06), transparent 60%),
+      var(--ink);
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .35;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 32px 24px 90px; }
+
+  header { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
+  .eyebrow { color: var(--amber); letter-spacing: .18em; text-transform: uppercase; font-size: 11px; }
+  h1 { font-family: var(--serif); font-weight: 800; font-size: clamp(34px, 5vw, 58px); line-height: .95; margin: 8px 0 6px; letter-spacing: -.01em; }
+  h1 em { font-style: italic; font-weight: 300; color: var(--paper-dim); }
+  .sub { color: var(--muted); max-width: 66ch; line-height: 1.55; }
+  .sub a, .status a { color: var(--trace); text-decoration: none; border-bottom: 1px dotted var(--trace); }
+  .status { text-align: right; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  .status b { color: var(--paper); font-weight: 500; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
+  .dot.ok { background: var(--human); box-shadow: 0 0 10px var(--human); }
+  .dot.bad { background: var(--synth); }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; position: relative; margin-top: 40px; }
+  .panel h2 { font-family: var(--serif); font-weight: 600; font-size: 23px; margin: 0 0 4px; }
+  .panel .hint { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 0 0 18px; max-width: 78ch; }
+  .num { position: absolute; top: -12px; left: 16px; background: var(--ink); border: 1px solid var(--line); color: var(--amber); font-size: 11px; letter-spacing: .14em; padding: 2px 8px; border-radius: 3px; }
+
+  button { font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: .04em; border: 1px solid var(--line); background: var(--ink-2); color: var(--paper); padding: 9px 13px; border-radius: 4px; cursor: pointer; transition: transform .08s, background .15s, border-color .15s; }
+  button:hover:not(:disabled) { border-color: var(--paper-dim); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.primary { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+  button.primary.busy { background: var(--amber); border-color: var(--amber); }
+  button.tiny { padding: 5px 9px; font-size: 11px; font-weight: 500; }
+  select, input[type=number] { font-family: var(--mono); font-size: 12px; background: var(--ink); color: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; }
+
+  /* ------------------------------------------------------------ the mixing desk */
+  .desk { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 26px; align-items: stretch; }
+  .desk > div:first-child { display: flex; flex-direction: column; }
+  @media (max-width: 1020px) { .desk { grid-template-columns: 1fr; } header { grid-template-columns: 1fr; } .status { text-align: left; } }
+
+  .strips { display: grid; gap: 14px; align-content: start; margin-bottom: 16px; }
+  .strip { background: var(--ink); border: 1px solid var(--line); border-left: 3px solid var(--chan, var(--muted)); border-radius: 5px; padding: 15px 17px; display: grid; grid-template-columns: minmax(0,1fr) 190px; gap: 18px; align-items: center; transition: opacity .2s, border-color .2s; }
+  .strip.off { opacity: .45; }
+  .strip.gone { border-left-color: var(--synth); }
+  .strip .who { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .strip .name { font-family: var(--serif); font-size: 19px; font-weight: 600; color: var(--chan, var(--paper)); }
+  .strip .key { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; }
+  .strip .desc { color: var(--muted); font-size: 11.5px; line-height: 1.55; margin: 6px 0 0; }
+  .strip .desc b { color: var(--paper-dim); font-weight: 500; }
+  .fader { display: grid; gap: 6px; }
+  .fader .readout { display: flex; justify-content: space-between; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .fader .share { font-family: var(--serif); font-size: 30px; font-weight: 800; line-height: 1; color: var(--chan, var(--paper)); }
+  .fader .raw { font-size: 11px; color: var(--muted); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, var(--chan, var(--amber)) var(--pct, 50%), var(--line) var(--pct, 50%)); border-radius: 2px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--paper); border: 2px solid var(--chan, var(--amber)); box-shadow: 0 0 10px rgba(0,0,0,.6); }
+  input[type=range]::-moz-range-track { height: 4px; background: var(--line); border-radius: 2px; }
+  input[type=range]::-moz-range-progress { height: 4px; background: var(--chan, var(--amber)); border-radius: 2px; }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--paper); border: 2px solid var(--chan, var(--amber)); }
+
+  .mixbar { display: flex; height: 26px; margin-top: auto; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--ink); }
+  .mixbar i { display: flex; align-items: center; justify-content: center; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink); font-weight: 600; transition: flex-grow .35s cubic-bezier(.2,.9,.2,1); overflow: hidden; white-space: nowrap; min-width: 0; }
+  .mixnote { font-size: 11px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+
+  .knobs { background: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 16px; display: grid; gap: 13px; }
+  .knobs h3 { font-family: var(--serif); font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+  .knob { display: grid; gap: 5px; }
+  .knob label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .knob select { width: 100%; }
+  .knob .exp { font-size: 10.5px; color: var(--muted); line-height: 1.5; }
+  .knob.check { grid-template-columns: auto 1fr; align-items: start; gap: 9px; }
+  .knob.check input { margin-top: 2px; accent-color: var(--amber); }
+  .knob.check label { text-transform: none; letter-spacing: 0; font-size: 11.5px; color: var(--paper-dim); }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+
+  /* ------------------------------------------------------------ the batch */
+  .bar { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .bar .spacer { flex: 1; }
+  .bar .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .progress { height: 3px; background: var(--ink); border-radius: 2px; overflow: hidden; margin-bottom: 14px; }
+  .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--amber), var(--trace)); transition: width .2s; }
+
+  .scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .score { background: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 13px 15px; border-top: 2px solid var(--chan, var(--line)); }
+  .score.fused { border-top-color: var(--amber); background: linear-gradient(180deg, rgba(242,182,75,.07), transparent 60%), var(--ink); }
+  .score .lbl { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); }
+  .score .big { font-family: var(--serif); font-size: 34px; font-weight: 800; line-height: 1.05; margin: 5px 0 1px; font-variant-numeric: tabular-nums; color: var(--chan, var(--paper)); }
+  .score.fused .big { color: var(--amber); }
+  .score .det { font-size: 11px; color: var(--muted); line-height: 1.5; font-variant-numeric: tabular-nums; }
+  .score .det b { color: var(--paper-dim); font-weight: 500; }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 5px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+  thead th { position: sticky; top: 0; background: var(--ink-2); text-align: left; font-weight: 500; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 10px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; z-index: 2; }
+  thead th.chan { color: var(--chan, var(--muted)); border-bottom-color: var(--chan, var(--line)); }
+  tbody td { padding: 7px 9px; border-bottom: 1px solid rgba(42,52,66,.5); white-space: nowrap; }
+  tbody tr:hover { background: rgba(142,227,255,.035); }
+  tbody tr.sel { background: rgba(242,182,75,.06); }
+  tbody tr.wrong { background: rgba(255,107,74,.1); }
+  tbody tr.wrong:hover { background: rgba(255,107,74,.15); }
+  tbody tr.playing td:first-child { box-shadow: inset 3px 0 0 var(--trace); }
+  td.id { font-size: 11px; color: var(--paper-dim); }
+  td.n { color: var(--muted); }
+  input[type=checkbox] { accent-color: var(--amber); cursor: pointer; }
+
+  .pcell { display: flex; align-items: center; gap: 8px; min-width: 112px; }
+  .pcell .track { flex: 1; height: 6px; background: var(--ink); border: 1px solid var(--line); border-radius: 3px; position: relative; overflow: hidden; }
+  .pcell .track i { position: absolute; top: 0; bottom: 0; left: 0; width: 0; transition: width .4s cubic-bezier(.2,.9,.2,1); }
+  .pcell .track .mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(185,176,160,.45); }
+  .pcell .v { width: 40px; text-align: right; font-size: 11px; }
+  .pcell.abst .v { color: var(--amber); }
+  .pcell.abst .track i { background: repeating-linear-gradient(45deg, var(--amber) 0 3px, transparent 3px 6px) !important; width: 100% !important; opacity: .5; }
+  .tag { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; border: 1px solid currentColor; }
+  .tag.human { color: var(--human); }
+  .tag.synthetic { color: var(--synth); }
+  .tag.muted { color: var(--muted); }
+  .mark { font-size: 14px; font-weight: 600; }
+  .mark.ok { color: var(--human); }
+  .mark.no { color: var(--synth); }
+  .fusedcell { font-weight: 600; }
+  .blur { filter: blur(5px); opacity: .55; transition: filter .2s; }
+  .blur:hover { filter: none; opacity: 1; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); line-height: 1.8; font-size: 13px; }
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; line-height: 1.75; }
+  .kbd { border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: var(--paper-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="eyebrow">Altur · HackMTY 2026 · fusion layer</div>
+      <h1>Fusion <em>Console</em></h1>
+      <p class="sub">
+        Two independent detectors listen to the same call and vote. The <b>acoustic</b> layer judges the caller's
+        voice; the <b>behaviour</b> layer never hears a voice at all — it times the conversation. Set how much each
+        vote is worth, run the 71 held-out calls, and watch every system's own score and the decision they add up to.
+        <br><a href="/">← the single-call inspector</a>
+      </p>
+    </div>
+    <div class="status" id="status"><span class="dot"></span>connecting…</div>
+  </header>
+
+  <!-- =============================================================== 01 the mix -->
+  <section class="panel">
+    <span class="num">01 — the mix</span>
+    <h2>What each vote is worth</h2>
+    <p class="hint">
+      The faders are raw weights; only their ratio matters, so the big number is the share of the decision each
+      layer actually holds. Both at the same value is an even split — the default, and the honest one. Every
+      change is sent to the server's combiner, so what you see here is exactly what <code>POST /detect</code> answers - including for the judges. <b>reset: even split</b> puts every knob back to the shipped default.
+    </p>
+    <div class="desk">
+      <div>
+        <div class="strips" id="strips"></div>
+        <div class="mixbar" id="mixbar"></div>
+        <div class="mixnote" id="mixnote"></div>
+      </div>
+      <div class="knobs">
+        <h3>How the votes combine</h3>
+        <div class="knob">
+          <label for="mode">combine</label>
+          <select id="mode">
+            <option value="weighted_mean">average the probabilities</option>
+            <option value="logit_mean">average the log-odds</option>
+          </select>
+          <span class="exp" id="modeExp"></span>
+        </div>
+        <div class="knob">
+          <label for="abstain">when a layer has no evidence</label>
+          <select id="abstain">
+            <option value="renormalise">drop it, split its weight</option>
+            <option value="neutral">keep it in at 0.5</option>
+          </select>
+          <span class="exp" id="abstainExp"></span>
+        </div>
+        <div class="knob">
+          <label for="thr">decision threshold <span id="thrVal" style="color:var(--paper)"></span></label>
+          <input type="range" id="thr" min="0.05" max="0.95" step="0.01" value="0.5">
+        </div>
+        <div class="knob check">
+          <input type="checkbox" id="quality">
+          <label for="quality">scale each weight by how much evidence that layer actually had on the call</label>
+        </div>
+        <div class="presets">
+          <button class="tiny" data-preset="equal">reset: even split</button>
+          <button class="tiny" data-preset="acoustic">acoustic only</button>
+          <button class="tiny" data-preset="behaviour">behaviour only</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 02 the batch -->
+  <section class="panel">
+    <span class="num">02 — the held-out calls</span>
+    <h2>Every system's score, then the verdict they agree on</h2>
+    <p class="hint">
+      The 71 validation calls, speaker-disjoint from everything either layer trained on. Each call is scored once
+      per layer and the scores are cached, so moving a fader afterwards re-decides all 71 instantly without a model
+      running. Rows the fusion gets wrong are flagged red. <span class="kbd">hide the truth</span> blanks the labels
+      if you would rather guess along.
+    </p>
+
+    <div class="bar">
+      <button class="primary" id="run">Evaluate the selected calls</button>
+      <button id="selAll">select all 71</button>
+      <button id="selNone">none</button>
+      <button id="selWrong">only the misses</button>
+      <span class="spacer"></span>
+      <label class="count"><input type="checkbox" id="hideTruth"> hide the truth</label>
+      <span class="count" id="counts"></span>
+      <button class="tiny" id="rescore" title="ignore the cache and run the models again">re-score</button>
+      <button class="tiny" id="csv">export CSV</button>
+    </div>
+    <div class="progress"><i id="progress"></i></div>
+
+    <div class="scores" id="scores"></div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"><tr><td class="empty" colspan="9">Loading the held-out calls…</td></tr></tbody>
+      </table>
+    </div>
+    <audio id="player" style="display:none"></audio>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const BASE = location.protocol.startsWith("http") ? location.origin : "http://localhost:8000";
+  const CHAN = ["#8ee3ff", "#b48ef5", "#f2b64b", "#5fd18a"];   // one colour per layer, in registry order
+
+  const S = {
+    layers: [],          // from /layers - the registry drives every column, card and fader
+    cfg: null,           // the live FusionConfig
+    calls: [],           // {anon_id, label, duration_s, index, selected, layers?, fused?}
+    byId: new Map(),
+    running: false,
+    hideTruth: false,
+  };
+
+  const pct = (x) => (100 * x).toFixed(0) + "%";
+  const colourOf = (key) => CHAN[S.layers.findIndex((l) => l.key === key) % CHAN.length] || "#7d8794";
+
+  // ------------------------------------------------------------------ boot
+  async function boot() {
+    try {
+      const j = await (await fetch(BASE + "/layers")).json();
+      S.layers = j.layers;
+      S.cfg = j.config;
+      $("status").innerHTML = `<span class="dot ok"></span><b>${j.layers.length} layers</b> loaded`
+        + `<br>acoustic slot: <b>${j.acoustic_model}</b>`
+        + `<br><span style="color:var(--muted)">${BASE}</span>`;
+      $("mode").value = S.cfg.mode;
+      $("abstain").value = S.cfg.on_abstain;
+      $("quality").checked = !!S.cfg.use_quality;
+      $("thr").value = S.cfg.threshold;
+      renderStrips();
+      renderHead();
+      explain();
+      await loadCalls();
+    } catch (e) {
+      $("status").innerHTML = `<span class="dot bad"></span>cannot reach the server<br><span style="color:var(--muted)">${e.message}</span>`;
+      $("rows").innerHTML = `<tr><td class="empty" colspan="9">No server at <b>${BASE}</b>.<br>Start it with <code>python src/server.py</code> and reload.</td></tr>`;
+    }
+  }
+
+  // ------------------------------------------------------------------ 01 the faders
+  function renderStrips() {
+    $("strips").innerHTML = S.layers.map((l, i) => {
+      const w = S.cfg.weights[l.key] ?? l.default_weight;
+      const c = CHAN[i % CHAN.length];
+      const bits = [];
+      if (l.signal) bits.push(l.signal);
+      if (l.model_dir) bits.push(`<b>${l.model_dir}</b>, layer ${l.layer}, ${l.vad} VAD`);
+      if (l.n_features) bits.push(`<b>${l.n_features} timing features</b>, ${l.calibration}`);
+      return `<div class="strip" data-key="${l.key}" style="--chan:${c}">
+        <div>
+          <div class="who">
+            <span class="name">${l.display}</span>
+            <span class="key">${l.key}</span>
+            ${l.available ? "" : '<span class="key" style="color:var(--synth);border-color:var(--synth)">unavailable</span>'}
+          </div>
+          <p class="desc">${l.description}${bits.length ? "<br>" + bits.join(" · ") : ""}</p>
+        </div>
+        <div class="fader">
+          <div class="readout"><span class="share" id="share-${l.key}">–</span><span class="raw" id="raw-${l.key}"></span></div>
+          <input type="range" min="0" max="1" step="0.01" value="${w}" id="w-${l.key}" data-key="${l.key}">
+        </div>
+      </div>`;
+    }).join("");
+    S.layers.forEach((l) => $("w-" + l.key).addEventListener("input", onFader));
+    paintMix();
+  }
+
+  function onFader(e) {
+    S.cfg.weights[e.target.dataset.key] = parseFloat(e.target.value);
+    paintMix();
+    pushConfig();
+  }
+
+  function paintMix() {
+    const total = S.layers.reduce((a, l) => a + (S.cfg.weights[l.key] ?? 0), 0);
+    S.layers.forEach((l, i) => {
+      const w = S.cfg.weights[l.key] ?? 0;
+      const share = total > 0 ? w / total : 0;
+      $("share-" + l.key).textContent = total > 0 ? pct(share) : "off";
+      $("raw-" + l.key).textContent = "weight " + w.toFixed(2);
+      const slider = $("w-" + l.key);
+      slider.style.setProperty("--pct", (w * 100) + "%");
+      slider.closest(".strip").classList.toggle("off", w <= 0);
+    });
+    $("mixbar").innerHTML = total <= 0
+      ? '<i style="flex:1;background:var(--line);color:var(--paper-dim)">every layer is turned off</i>'
+      : S.layers.map((l, i) => {
+          const share = (S.cfg.weights[l.key] ?? 0) / total;
+          return share <= 0 ? "" :
+            `<i style="flex:${share};background:${CHAN[i % CHAN.length]}" title="${l.display}">${share > .12 ? l.key + " " + pct(share) : ""}</i>`;
+        }).join("");
+    const on = S.layers.filter((l) => (S.cfg.weights[l.key] ?? 0) > 0);
+    $("mixnote").textContent = total <= 0 ? "Nothing votes: every call comes back as a non-flag at confidence 0.5."
+      : on.length === 1 ? `Only ${on[0].display} decides — this is the single-model system, not a fusion.`
+      : `${on.length} layers vote on every call.`;
+  }
+
+  function explain() {
+    $("modeExp").textContent = $("mode").value === "logit_mean"
+      ? "Log-odds: two layers that agree reinforce each other, so the fused score lands further from 0.5 than either input."
+      : "The literal reading of a 50 / 50 split: the fused score is the weighted mean of the probabilities.";
+    $("abstainExp").textContent = $("abstain").value === "neutral"
+      ? "A layer with nothing to go on still votes 0.5, pulling every verdict toward the middle."
+      : "A layer with nothing to go on is removed from the vote and the others share its weight.";
+    $("thrVal").textContent = parseFloat($("thr").value).toFixed(2);
+  }
+
+  let pushTimer = null;
+  function pushConfig() {
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(async () => {
+      const body = {
+        weights: S.cfg.weights, mode: $("mode").value, on_abstain: $("abstain").value,
+        use_quality: $("quality").checked, threshold: parseFloat($("thr").value),
+      };
+      try {
+        S.cfg = await (await fetch(BASE + "/fusion/config", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        })).json();
+      } catch (e) { /* keep the local view; the next push retries */ }
+      await recombine();
+    }, 90);
+  }
+
+  ["mode", "abstain", "quality", "thr"].forEach((id) =>
+    $(id).addEventListener("input", () => { explain(); pushConfig(); }));
+
+  document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => {
+    const p = b.dataset.preset;
+    S.layers.forEach((l) => {
+      S.cfg.weights[l.key] = p === "equal" ? 1 / S.layers.length : (l.key === p ? 1 : 0);
+      $("w-" + l.key).value = S.cfg.weights[l.key];
+    });
+    // "even split" is the way back to the shipped default, so it puts every other knob back too - the
+    // server's config is live, and /detect answers with whatever was last set here.
+    if (p === "equal") {
+      $("mode").value = "weighted_mean";
+      $("abstain").value = "renormalise";
+      $("quality").checked = false;
+      $("thr").value = 0.5;
+      explain();
+    }
+    paintMix();
+    pushConfig();
+  }));
+
+  // ------------------------------------------------------------------ 02 the calls
+  function renderHead() {
+    $("head").innerHTML = '<th style="width:28px"></th><th>#</th><th>call</th><th>truth</th>'
+      + S.layers.map((l, i) => `<th class="chan" style="--chan:${CHAN[i % CHAN.length]}">${l.display}</th>`).join("")
+      + '<th style="border-left:1px solid var(--line)">fused</th><th>verdict</th><th>conf.</th><th></th>';
+  }
+
+  async function loadCalls() {
+    const list = await (await fetch(BASE + "/validation")).json();
+    S.calls = list.map((c) => ({ ...c, selected: true }));
+    S.byId = new Map(S.calls.map((c) => [c.anon_id, c]));
+    // Anything already scored (this run or a previous one) comes straight back from the cache.
+    const cached = await (await fetch(BASE + "/validation/scores")).json();
+    cached.calls.forEach((c) => { const row = S.byId.get(c.anon_id); if (row) row.layers = c.layers; });
+    await recombine();
+  }
+
+  /** Only these fields take part in the decision; the rest of a layer's details would just bloat the post. */
+  const slim = (l) => ({ key: l.key, display: l.display, probability: l.probability,
+                         quality: l.quality, abstained: l.abstained });
+
+  async function recombine() {
+    const scored = S.calls.filter((c) => c.layers);
+    if (scored.length) {
+      const body = {
+        config: { weights: S.cfg.weights, mode: $("mode").value, on_abstain: $("abstain").value,
+                  use_quality: $("quality").checked, threshold: parseFloat($("thr").value) },
+        calls: scored.map((c) => ({ id: c.anon_id, layers: c.layers.map(slim) })),
+      };
+      try {
+        const j = await (await fetch(BASE + "/fusion/recombine", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        })).json();
+        j.calls.forEach((r) => { const row = S.byId.get(r.id); if (row) row.fused = r; });
+      } catch (e) { /* leave the last good decisions on screen */ }
+    }
+    render();
+  }
+
+  function render() {
+    renderRows();
+    renderScores();
+    const sel = S.calls.filter((c) => c.selected).length;
+    const done = S.calls.filter((c) => c.layers).length;
+    $("counts").textContent = `${sel} selected · ${done}/${S.calls.length} scored`;
+    $("run").disabled = S.running || sel === 0;
+  }
+
+  function pcell(l, layerKey) {
+    if (!l) return '<td><span class="tag muted">–</span></td>';
+    const c = colourOf(layerKey);
+    if (l.abstained) return `<td><div class="pcell abst" title="${l.reason || "no evidence"}">`
+      + '<div class="track"><i></i><span class="mid"></span></div><span class="v">abst.</span></div></td>';
+    const p = l.probability;
+    const col = p >= 0.5 ? "var(--synth)" : "var(--human)";
+    return `<td><div class="pcell" title="quality ${l.quality.toFixed(2)} · ${l.latency_ms.toFixed(0)} ms">`
+      + `<div class="track"><i style="width:${(p * 100).toFixed(1)}%;background:${col}"></i><span class="mid"></span></div>`
+      + `<span class="v" style="color:${col}">${p.toFixed(3)}</span></div></td>`;
+  }
+
+  function renderRows() {
+    if (!S.calls.length) return;
+    const blur = S.hideTruth ? " blur" : "";
+    $("rows").innerHTML = S.calls.map((c) => {
+      const f = c.fused;
+      const truth = c.label;
+      const wrong = f && f.is_synthetic !== (truth === "synthetic");
+      const mark = !f ? "" : wrong ? '<span class="mark no">✗</span>' : '<span class="mark ok">✓</span>';
+      const fusedCol = !f ? "var(--muted)" : f.is_synthetic ? "var(--synth)" : "var(--human)";
+      return `<tr data-id="${c.anon_id}" class="${c.selected ? "sel" : ""}${wrong ? " wrong" : ""}">
+        <td><input type="checkbox" ${c.selected ? "checked" : ""} data-id="${c.anon_id}"></td>
+        <td class="n">${c.index + 1}</td>
+        <td class="id"><a href="#" data-play="${c.anon_id}" style="color:var(--trace);text-decoration:none">▶</a> ${c.anon_id.replace("call_", "")}</td>
+        <td><span class="tag ${truth}${blur}">${truth}</span></td>
+        ${S.layers.map((l) => pcell((c.layers || []).find((x) => x.key === l.key), l.key)).join("")}
+        <td class="fusedcell" style="border-left:1px solid var(--line);color:${fusedCol}">${f ? f.synthetic_probability.toFixed(3) : "–"}</td>
+        <td>${f ? `<span class="tag ${f.is_synthetic ? "synthetic" : "human"}">${f.is_synthetic ? "synthetic" : "human"}</span>` : '<span class="tag muted">not scored</span>'}</td>
+        <td style="color:var(--muted)">${f ? f.confidence.toFixed(3) : "–"}</td>
+        <td class="${blur}">${mark}</td>
+      </tr>`;
+    }).join("");
+    $("rows").querySelectorAll('input[type=checkbox]').forEach((b) => b.addEventListener("change", () => {
+      S.byId.get(b.dataset.id).selected = b.checked;
+      b.closest("tr").classList.toggle("sel", b.checked);
+      render();
+    }));
+    $("rows").querySelectorAll("[data-play]").forEach((a) => a.addEventListener("click", (e) => {
+      e.preventDefault();
+      const p = $("player");
+      p.src = `${BASE}/validation/${a.dataset.play}/audio`;
+      p.play();
+      $("rows").querySelectorAll("tr").forEach((t) => t.classList.remove("playing"));
+      a.closest("tr").classList.add("playing");
+    }));
+  }
+
+  /** Accuracy of ONE layer standing alone: its own probability against the threshold, no weights involved. */
+  function soloAccuracy(key, thr) {
+    let n = 0, ok = 0, abst = 0;
+    for (const c of S.calls) {
+      const l = (c.layers || []).find((x) => x.key === key);
+      if (!l) continue;
+      n++;
+      if (l.abstained) { abst++; continue; }          // an abstention is not a vote, so it cannot be right
+      if ((l.probability >= thr) === (c.label === "synthetic")) ok++;
+    }
+    return { n, ok, abst, acc: n ? ok / n : null };
+  }
+
+  function renderScores() {
+    const thr = parseFloat($("thr").value);
+    const scored = S.calls.filter((c) => c.layers && c.fused);
+    const cards = S.layers.map((l, i) => {
+      const s = soloAccuracy(l.key, thr);
+      return `<div class="score" style="--chan:${CHAN[i % CHAN.length]}">
+        <div class="lbl">${l.key} alone</div>
+        <div class="big">${s.acc === null ? "–" : pct(s.acc)}</div>
+        <div class="det"><b>${s.ok}</b>/${s.n} calls${s.abst ? ` · ${s.abst} abstained` : ""}</div>
+      </div>`;
+    });
+    let tn = 0, fp = 0, fn = 0, tp = 0, brier = 0, undecided = 0;
+    scored.forEach((c) => {
+      const synth = c.label === "synthetic", said = c.fused.is_synthetic;
+      if (said && synth) tp++; else if (said && !synth) fp++; else if (!said && synth) fn++; else tn++;
+      brier += Math.pow(c.fused.synthetic_probability - (synth ? 1 : 0), 2);
+      if (!c.fused.decisive) undecided++;
+    });
+    const n = scored.length;
+    const acc = n ? (tp + tn) / n : null;
+    cards.push(`<div class="score fused">
+      <div class="lbl">fused verdict</div>
+      <div class="big">${acc === null ? "–" : pct(acc)}</div>
+      <div class="det"><b>${tp + tn}</b>/${n} calls · Brier ${n ? (brier / n).toFixed(3) : "–"}
+        <br>${fp} false alarm${fp === 1 ? "" : "s"} · ${fn} missed${undecided ? ` · ${undecided} undecided` : ""}</div>
+    </div>`);
+    $("scores").innerHTML = cards.join("");
+    $("footer").innerHTML = n === 0 ? "Nothing scored yet."
+      : `Scored ${n} of ${S.calls.length} held-out calls · combine <b>${$("mode").value}</b> ·
+         threshold ${thr.toFixed(2)} · weights ${S.layers.map((l) => `${l.key} ${(S.cfg.weights[l.key] ?? 0).toFixed(2)}`).join(", ")}.
+         <br>The validation split is speaker-disjoint from training, but it was looked at while both layers were
+         developed — a weighting that happens to be perfect here is a description of these 71 calls, not a promise
+         about the hidden test set. The default even split is the setting that assumes nothing.`;
+  }
+
+  // ------------------------------------------------------------------ running the batch
+  async function run(refresh) {
+    const todo = S.calls.filter((c) => c.selected && (refresh || !c.layers));
+    if (!todo.length) { await recombine(); return; }
+    S.running = true;
+    $("run").classList.add("busy");
+    $("run").textContent = "scoring…";
+    render();
+    for (let i = 0; i < todo.length; i++) {
+      const c = todo[i];
+      try {
+        const url = `${BASE}/validation/${c.anon_id}/score` + (refresh ? "?refresh=true" : "");
+        const j = await (await fetch(url)).json();
+        c.layers = j.layers;
+        c.fused = j;
+      } catch (e) {
+        c.layers = null;
+      }
+      $("progress").style.width = pct((i + 1) / todo.length);
+      $("run").textContent = `scoring… ${i + 1}/${todo.length}`;
+      if (i % 3 === 2 || i === todo.length - 1) render();
+    }
+    S.running = false;
+    $("run").classList.remove("busy");
+    $("run").textContent = "Evaluate the selected calls";
+    $("progress").style.width = "0";
+    await recombine();
+  }
+
+  $("run").addEventListener("click", () => run(false));
+  $("rescore").addEventListener("click", () => run(true));
+  $("selAll").addEventListener("click", () => { S.calls.forEach((c) => c.selected = true); render(); });
+  $("selNone").addEventListener("click", () => { S.calls.forEach((c) => c.selected = false); render(); });
+  $("selWrong").addEventListener("click", () => {
+    S.calls.forEach((c) => c.selected = !!(c.fused && c.fused.is_synthetic !== (c.label === "synthetic")));
+    render();
+  });
+  $("hideTruth").addEventListener("change", (e) => { S.hideTruth = e.target.checked; render(); });
+
+  $("csv").addEventListener("click", () => {
+    const head = ["call", "truth", "duration_s",
+      ...S.layers.flatMap((l) => [`${l.key}_p`, `${l.key}_quality`, `${l.key}_abstained`]),
+      "fused_p", "verdict", "confidence", "correct"];
+    const lines = [head.join(",")];
+    S.calls.filter((c) => c.layers).forEach((c) => {
+      const f = c.fused || {};
+      const cells = [c.anon_id, c.label, c.duration_s];
+      S.layers.forEach((l) => {
+        const x = c.layers.find((y) => y.key === l.key);
+        cells.push(x && !x.abstained ? x.probability.toFixed(6) : "", x ? x.quality.toFixed(4) : "", x ? x.abstained : "");
+      });
+      cells.push(f.synthetic_probability ?? "", f.is_synthetic === undefined ? "" : (f.is_synthetic ? "synthetic" : "human"),
+                 f.confidence ?? "", f.is_synthetic === undefined ? "" : (f.is_synthetic === (c.label === "synthetic")));
+      lines.push(cells.join(","));
+    });
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "fusion_validation_scores.csv"; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>
