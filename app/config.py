@@ -1,6 +1,10 @@
 import os
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def _boolean(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}

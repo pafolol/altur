@@ -69,3 +69,5 @@ El WAV debe ser estéreo; si el sample rate no es 8000 Hz se remuestrea en memor
 ## Demo Twilio Voice
 
 Configura el webhook de voz entrante como `POST https://TU_HOST_PUBLICO/twilio/voice`. La demo responde con TwiML, graba hasta que se presiona `#` y envía la grabación a `/twilio/playback`, que la reproduce y finaliza la llamada. No guarda ni analiza la grabación. La URL pública debe ser la de tu túnel o deployment, no está hardcodeada en el backend. La validación de firma de Twilio debe agregarse antes de producción.
+
+Para probar una llamada saliente, define en `.env` `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` y `TWILIO_TO_NUMBER`, inicia el backend y ejecuta `POST /twilio/call` desde Swagger o un cliente HTTP. Devuelve solo estado, SID y estado de llamada; no devuelve credenciales ni números. Usa TwiML inline y no analiza ni guarda grabaciones. La validación de firma y controles de autorización deben agregarse antes de producción.

@@ -10,3 +10,5 @@ httpx
 requests
 scikit-learn
 python-multipart
+twilio==9.11.1
+python-dotenv
