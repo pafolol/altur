@@ -1,0 +1,9 @@
+# Python 3.14; model.pkl was pickled with scikit-learn 1.9.1 (the server warns on any other version)
+numpy==2.5.3
+scipy==1.18.1
+scikit-learn==1.9.1
+httpx==0.28.1
+fastapi==0.141.1
+uvicorn==0.52.4
+pydantic==2.13.5
+pytest==9.1.1
