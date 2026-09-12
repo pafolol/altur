@@ -144,6 +144,12 @@
   .pcell .track .mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(185,176,160,.45); }
   .pcell .v { width: 40px; text-align: right; font-size: 11px; }
   .pcell.abst .v { color: var(--amber); }
+  .pcell.skip .v { color: var(--muted); font-style: italic; }
+  .pcell.skip .track i { background: repeating-linear-gradient(45deg, var(--line) 0 4px, transparent 4px 8px) !important; width: 100% !important; }
+  .rolebadge { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; }
+  .rolebadge.primary { color: var(--human); }
+  .rolebadge.verifier { color: var(--amber); }
+  .strip.verifier { border-left-style: dashed; }
   .pcell.abst .track i { background: repeating-linear-gradient(45deg, var(--amber) 0 3px, transparent 3px 6px) !important; width: 100% !important; opacity: .5; }
   .tag { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; border: 1px solid currentColor; }
   .tag.human { color: var(--human); }
@@ -183,12 +189,14 @@
     <span class="num">01 — the mix</span>
     <h2>What each vote is worth</h2>
     <p class="hint">
-      The faders are raw weights; only their ratio matters, so the big number is the share of the decision each
-      layer actually holds. The shipped split is <b>acoustic 50 / behaviour 35 / semantic 15</b>. A layer that is
-      not answering, or has no evidence on a call, hands its share to the others — so with the semantic service
-      down the other two decide at 59 % and 41 %, and nothing has to be re-tuned when it comes back. Every change
-      is sent to the server's combiner, so what you see here is exactly what <code>POST /detect</code> answers —
-      including for the judges. <b>reset</b> puts every knob back to the shipped default.
+      Two stages, not one. The <b>primary</b> layers — acoustic and behaviour, <b>50 / 50</b> — decide every call.
+      Only when they fail to settle it between them (joint confidence under the gate on the right) is the
+      <b>verifier</b> asked, and it is the one that costs a paid ASR call, a paid LLM call and a couple of seconds
+      of network. On these 71 calls the primaries settle <b>66</b> and the verifier is asked <b>5</b> times.
+      <br>The faders are raw weights and only their ratio matters, so the big number is the share each layer
+      actually holds on the calls it votes on. A layer that is not answering, or has no evidence, hands its share
+      to the others. Every change is sent to the server's combiner, so what you see here is exactly what
+      <code>POST /detect</code> answers — including for the judges. <b>reset</b> puts every knob back.
     </p>
     <div class="desk">
       <div>
@@ -217,6 +225,15 @@
         <div class="knob">
           <label for="thr">decision threshold <span id="thrVal" style="color:var(--paper)"></span></label>
           <input type="range" id="thr" min="0.05" max="0.95" step="0.01" value="0.5">
+        </div>
+        <div class="knob">
+          <label for="vthr">ask the verifier below <span id="vthrVal" style="color:var(--amber)"></span> confidence</label>
+          <input type="range" id="vthr" min="0.5" max="1" step="0.01" value="0.8">
+          <span class="exp" id="vthrExp"></span>
+        </div>
+        <div class="knob check">
+          <input type="checkbox" id="useVerifiers" checked>
+          <label for="useVerifiers">use the two-stage gate (off = every layer votes on every call)</label>
         </div>
         <div class="knob check">
           <input type="checkbox" id="quality">
@@ -301,6 +318,8 @@
       $("abstain").value = S.cfg.on_abstain;
       $("quality").checked = !!S.cfg.use_quality;
       $("thr").value = S.cfg.threshold;
+      $("vthr").value = S.cfg.verify_threshold;
+      $("useVerifiers").checked = S.cfg.use_verifiers !== false;
       renderStrips();
       renderHead();
       explain();
@@ -321,14 +340,16 @@
       if (l.model_dir) bits.push(`<b>${l.model_dir}</b>, layer ${l.layer}, ${l.vad} VAD`);
       if (l.n_features) bits.push(`<b>${l.n_features} timing features</b>, ${l.calibration}`);
       const gone = !l.available;
-      return `<div class="strip${gone ? " gone" : ""}" data-key="${l.key}" style="--chan:${c}">
+      const verifier = l.role === "verifier";
+      return `<div class="strip${gone ? " gone" : ""}${verifier ? " verifier" : ""}" data-key="${l.key}" style="--chan:${c}">
         <div>
           <div class="who">
             <span class="name">${l.display}</span>
             <span class="key">${l.key}</span>
+            <span class="rolebadge ${l.role}">${verifier ? "verifier" : "primary"}</span>
             ${gone ? '<span class="key" style="color:var(--amber);border-color:var(--amber)">not answering</span>' : ""}
           </div>
-          <p class="desc">${l.description}${bits.length ? "<br>" + bits.join(" · ") : ""}
+          <p class="desc">${verifier ? `<span style="color:var(--amber)">Only consulted when the primary layers do not settle a call.</span> ` : ""}${l.description}${bits.length ? "<br>" + bits.join(" · ") : ""}
             ${gone ? `<br><span style="color:var(--amber)">not answering: it abstains on every call and its
               share is handed to the other layers. ${l.load_error || (l.url ? "nothing at " + l.url : "")}</span>` : ""}</p>
         </div>
@@ -351,27 +372,45 @@
   }
 
   function paintMix() {
-    const total = S.layers.reduce((a, l) => a + (S.cfg.weights[l.key] ?? 0), 0);
-    S.layers.forEach((l, i) => {
-      const w = S.cfg.weights[l.key] ?? 0;
-      const share = total > 0 ? w / total : 0;
-      $("share-" + l.key).textContent = total > 0 ? pct(share) : "off";
-      $("raw-" + l.key).textContent = "weight " + w.toFixed(2);
+    // With the gate on there are TWO splits, not one: the primaries decide most calls between
+    // themselves (50 / 50), and only on an escalation does the verifier take a slice of the whole. The
+    // big number per channel is the share that layer actually holds on the calls it votes on.
+    const gateOn = $("useVerifiers").checked && S.layers.some((l) => l.role === "verifier");
+    const w = (l) => S.cfg.weights[l.key] ?? 0;
+    const total = S.layers.reduce((a, l) => a + w(l), 0);
+    const primTotal = S.layers.filter((l) => l.role !== "verifier").reduce((a, l) => a + w(l), 0);
+    const shareOf = (l) => {
+      if (total <= 0) return 0;
+      if (!gateOn) return w(l) / total;
+      return l.role === "verifier" ? w(l) / total : (primTotal > 0 ? w(l) / primTotal : 0);
+    };
+    S.layers.forEach((l) => {
+      $("share-" + l.key).textContent = total > 0 ? pct(shareOf(l)) : "off";
+      $("raw-" + l.key).textContent = "weight " + w(l).toFixed(2)
+        + (gateOn && l.role === "verifier" ? " · when asked" : "");
       const slider = $("w-" + l.key);
-      slider.style.setProperty("--pct", (w * 100) + "%");
-      slider.closest(".strip").classList.toggle("off", w <= 0);
+      slider.style.setProperty("--pct", (w(l) * 100) + "%");
+      slider.closest(".strip").classList.toggle("off", w(l) <= 0);
     });
     $("mixbar").innerHTML = total <= 0
       ? '<i style="flex:1;background:var(--line);color:var(--paper-dim)">every layer is turned off</i>'
       : S.layers.map((l, i) => {
-          const share = (S.cfg.weights[l.key] ?? 0) / total;
-          return share <= 0 ? "" :
-            `<i style="flex:${share};background:${CHAN[i % CHAN.length]}" title="${l.display}">${share > .12 ? l.key + " " + pct(share) : ""}</i>`;
+          const share = shareOf(l);
+          if (share <= 0) return "";
+          const dashed = gateOn && l.role === "verifier";
+          return `<i style="flex:${share};background:${CHAN[i % CHAN.length]}${dashed ? ";opacity:.55" : ""}" `
+            + `title="${l.display}${dashed ? " — only on an escalation" : ""}">`
+            + `${share > .12 ? l.key + " " + pct(share) : ""}</i>`;
         }).join("");
     const on = S.layers.filter((l) => (S.cfg.weights[l.key] ?? 0) > 0);
+    const prim = on.filter((l) => l.role !== "verifier");
+    const ver = on.filter((l) => l.role === "verifier");
+    const gate = $("useVerifiers").checked && ver.length;
     $("mixnote").textContent = total <= 0 ? "Nothing votes: every call comes back as a non-flag at confidence 0.5."
       : on.length === 1 ? `Only ${on[0].display} decides — this is the single-model system, not a fusion.`
-      : `${on.length} layers vote on every call.`;
+      : !gate ? `${on.length} layers vote on every call.`
+      : `${prim.length} primary layer${prim.length === 1 ? " decides" : "s decide"} every call; `
+        + `${ver.map((l) => l.key).join(", ")} only when they do not settle it.`;
   }
 
   function explain() {
@@ -382,6 +421,13 @@
       ? "A layer with nothing to go on still votes 0.5, pulling every verdict toward the middle."
       : "A layer with nothing to go on is removed from the vote and the others share its weight.";
     $("thrVal").textContent = parseFloat($("thr").value).toFixed(2);
+    const v = parseFloat($("vthr").value);
+    $("vthrVal").textContent = pct(v);
+    const nv = S.layers.filter((l) => l.role === "verifier").map((l) => l.key).join(", ");
+    $("vthrExp").textContent = !nv ? "No verifier layer is registered."
+      : !$("useVerifiers").checked ? `Gate off: ${nv} votes on every call like any other layer.`
+      : `A call the primary layers jointly call at ${pct(v)} confidence or better never reaches ${nv} — `
+        + "which is the one that costs a paid API request and a couple of seconds.";
   }
 
   let pushTimer = null;
@@ -391,6 +437,7 @@
       const body = {
         weights: S.cfg.weights, mode: $("mode").value, on_abstain: $("abstain").value,
         use_quality: $("quality").checked, threshold: parseFloat($("thr").value),
+        verify_threshold: parseFloat($("vthr").value), use_verifiers: $("useVerifiers").checked,
       };
       try {
         S.cfg = await (await fetch(BASE + "/fusion/config", {
@@ -401,7 +448,7 @@
     }, 90);
   }
 
-  ["mode", "abstain", "quality", "thr"].forEach((id) =>
+  ["mode", "abstain", "quality", "thr", "vthr", "useVerifiers"].forEach((id) =>
     $(id).addEventListener("input", () => { explain(); pushConfig(); }));
 
   // Delegated: the "<layer> only" buttons are generated from the registry after this runs, and a third
@@ -423,6 +470,8 @@
       $("abstain").value = "renormalise";
       $("quality").checked = false;
       $("thr").value = 0.5;
+      $("vthr").value = 0.8;
+      $("useVerifiers").checked = true;
       explain();
     }
     paintMix();
@@ -455,7 +504,8 @@
     if (scored.length) {
       const body = {
         config: { weights: S.cfg.weights, mode: $("mode").value, on_abstain: $("abstain").value,
-                  use_quality: $("quality").checked, threshold: parseFloat($("thr").value) },
+                  use_quality: $("quality").checked, threshold: parseFloat($("thr").value),
+                  verify_threshold: parseFloat($("vthr").value), use_verifiers: $("useVerifiers").checked },
         calls: scored.map((c) => ({ id: c.anon_id, layers: c.layers.map(slim) })),
       };
       try {
@@ -477,9 +527,13 @@
     $("run").disabled = S.running || sel === 0;
   }
 
-  function pcell(l, layerKey) {
+  function pcell(l, layerKey, contrib) {
     if (!l) return '<td><span class="tag muted">–</span></td>';
     const c = colourOf(layerKey);
+    // Three different kinds of "no number": never asked, asked but had no evidence, or turned off.
+    if (l.scored === false || (contrib && contrib.consulted === false && contrib.role === "verifier"))
+      return `<td><div class="pcell skip" title="${(l.reason || "the primary layers settled this call").replace(/"/g, "")}">`
+        + '<div class="track"><i></i><span class="mid"></span></div><span class="v">not asked</span></div></td>';
     if (l.abstained) return `<td><div class="pcell abst" title="${l.reason || "no evidence"}">`
       + '<div class="track"><i></i><span class="mid"></span></div><span class="v">abst.</span></div></td>';
     const p = l.probability;
@@ -503,7 +557,8 @@
         <td class="n">${c.index + 1}</td>
         <td class="id"><a href="#" data-play="${c.anon_id}" style="color:var(--trace);text-decoration:none">▶</a> ${c.anon_id.replace("call_", "")}</td>
         <td><span class="tag ${truth}${blur}">${truth}</span></td>
-        ${S.layers.map((l) => pcell((c.layers || []).find((x) => x.key === l.key), l.key)).join("")}
+        ${S.layers.map((l) => pcell((c.layers || []).find((x) => x.key === l.key), l.key,
+                                    (f && f.layers || []).find((x) => x.key === l.key))).join("")}
         <td class="fusedcell" style="border-left:1px solid var(--line);color:${fusedCol}">${f ? f.synthetic_probability.toFixed(3) : "–"}</td>
         <td>${f ? `<span class="tag ${f.is_synthetic ? "synthetic" : "human"}">${f.is_synthetic ? "synthetic" : "human"}</span>` : '<span class="tag muted">not scored</span>'}</td>
         <td style="color:var(--muted)">${f ? f.confidence.toFixed(3) : "–"}</td>
@@ -537,7 +592,7 @@
       const l = (c.layers || []).find((x) => x.key === key);
       if (!l) continue;
       n++;
-      if (l.abstained) { abst++; continue; }
+      if (l.abstained || l.scored === false) { abst++; continue; }
       if ((l.probability >= thr) === (c.label === "synthetic")) ok++;
     }
     const answered = n - abst;

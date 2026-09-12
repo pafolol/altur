@@ -4,34 +4,44 @@
 agent), decide whether the caller is a human or a synthetic voice.
 
 Independent detectors answer that question from **different evidence**, and `POST /detect` returns their
-weighted vote: **acoustic 50 % / behaviour 35 % / semantic 15 %**, every weight tunable at runtime. This
-repository is the merge of the `modelo`, `behaviour` and `fusion` branches; the semantic layer is reached over HTTP.
+verdict in **two stages**: the acoustic and behaviour layers decide every call **50 / 50**, and the semantic
+layer is a **verifier** consulted only when those two do not settle it. Every weight, role and gate is tunable
+at runtime. This repository is the merge of the `modelo`, `behaviour` and `fusion` branches.
 
 ```
 stereo 8 kHz WAV (base64 at the API)
   |
-  +-- ACOUSTIC LAYER  - how the caller SOUNDS                                                w 0.50
+  +-- ACOUSTIC LAYER  - how the caller SOUNDS                                       PRIMARY    w 0.50
   |     channel 0 -> VAD -> caller speech chunks (<= 4 s), RMS-normalised -> resample 16 kHz
   |     -> FROZEN speech backbone, hidden layer 5 -> mean over time -> MLP -> calibrated P(synthetic)
   |
-  +-- BEHAVIOUR LAYER - how the caller BEHAVES  (behaviour/, frozen, never edited here)      w 0.35
+  +-- BEHAVIOUR LAYER - how the caller BEHAVES  (behaviour/, frozen, unedited)      PRIMARY    w 0.50
   |     both channels -> Silero VAD at 8 kHz -> turns -> interruption / barge-in / response timing
   |     -> 24 features -> logistic + sigmoid calibration -> calibrated P(synthetic) + evidence quality
   |
-  +-- SEMANTIC LAYER  - what the caller SAYS  (a separate service, reached over HTTP)        w 0.15
+  +-> the two of them, 50 / 50                                                  -> p_primary
+  |
+  |     confident?  |p - 0.5| puts it at >= 80 % -> THAT IS THE VERDICT. Stop. Nothing else is asked.
+  |     unsure?     they disagree, or neither is committed -> escalate:
+  |
+  +-- SEMANTIC LAYER - what the caller SAYS  (separate service, HTTP, PAID, ~2.6 s)   VERIFIER   w 0.15
   |     agent channel -> trap bank;  caller channel -> VAD -> ElevenLabs Scribe -> words + logprobs
   |     -> text features + a 7-dimension Gemini rubric -> logistic, Platt-calibrated -> P(synthetic)
   |
-  +-> FUSION (src/fusion.py): weighted vote, 50 / 35 / 15 by default, every weight tunable at runtime
-      -> {"is_synthetic": bool, "confidence": float}
+  +-> FUSION (src/fusion.py)                          -> {"is_synthetic": bool, "confidence": float}
 ```
 
 The layers fail in different places, which is the point of running more than one: the acoustic layer needs
 *audible* caller speech, the behaviour layer needs *interaction* (a caller who never gets interrupted leaves
 it nothing to time), and the semantic layer needs a *transcript* and two third-party APIs. Each one says when
-it has nothing to go on instead of guessing, and its share of the vote goes to the others — a real example is
-in `semantic/samples/call.wav`, a 13.5 s clip with a silent agent channel, where the behaviour layer abstains
-because there is no interaction to time and the other two decide it between them.
+it has nothing to go on instead of guessing, and its share of the vote goes to the others.
+
+**Why the semantic layer is a verifier rather than a third vote.** It is the only one that leaves the machine:
+a paid ASR call, a paid LLM call and about 2.6 s of network per call, against ~500 ms locally for the other
+two. Asking it about a call the acoustic and behaviour layers already agree on at 95 % confidence buys nothing
+and costs money. So it is asked only when they do not settle it. On the 71 held-out calls that is **5 of
+71** — the primaries settle **66** on their own, and a confident call answers in **~1.0 s instead of
+~3.9 s** because the service is never contacted.
 
 ### The acoustic layer's two models
 
@@ -248,7 +258,10 @@ any number of layers works.
 
 | knob | options |
 | --- | --- |
-| weights | any non-negative number per layer. The shipped split is acoustic 0.50 / behaviour 0.35 / semantic 0.15 |
+| weights | any non-negative number per layer. Shipped: acoustic 0.50 / behaviour 0.50 as primaries, semantic 0.15 when it is asked |
+| roles | `primary` votes on every call; `verifier` only on an escalation. Shipped: acoustic and behaviour primary, semantic verifier |
+| verify_threshold | the joint confidence the primaries must reach for the verifier to be skipped (0.80) |
+| use_verifiers | `false` turns the gate off, and every layer becomes a plain weighted vote again |
 | mode | `weighted_mean` (average the probabilities - the literal reading of "50 / 50") or `logit_mean` (average the log-odds; two layers that agree reinforce each other) |
 | on_abstain | `renormalise` (a layer with no evidence is dropped and the rest share its weight) or `neutral` (it stays in at 0.5) |
 | use_quality | multiply each weight by that layer's evidence quality on that call. Off by default, so the split means exactly what it says on every call |
@@ -328,48 +341,55 @@ Speaker-disjoint from everything any layer trained on. `python src/evaluate_fusi
 | Acoustic V1 alone | 100.0% | 1.000 | 0.000 | how the caller sounds |
 | Behaviour alone | 97.2% | 0.991 | 0.041 | when the caller speaks, yields, interrupts |
 | Semantic alone | 91.5% | 0.975 | 0.070 | what the caller actually says |
-| **Fused, 50 / 35 / 15** | **100.0%** | **1.000** | **0.009** | all three |
-| Fused, even split | 100.0% | 1.000 | 0.017 | all three |
+| **Fused, 50 / 50 + verifier** | **100.0%** | **1.000** | **0.010** | the two primaries, plus the verifier on 5 calls |
+| Flat three-way vote, no gate | 100.0% | 1.000 | 0.009 | all three, on every call |
 
 Confusion of the fused verdict: `[[37, 0], [0, 34]]` (rows and columns human, synthetic). No layer
 abstained on this split.
+
+**The gate costs nothing and saves almost everything.** The primaries settle **66 of 71** calls on
+their own; the verifier is asked on **5** — 7% of the paid API calls a flat three-way vote
+would have made — and the accuracy is identical either way. These are the five:
+
+| call | truth | acoustic | behaviour | primary | conf. | semantic | fused |
+|---|---|---|---|---|---|---|---|
+| `0847d7417bb1` | synthetic | 1.000 | 0.435 | 0.717 | 72 % | 0.952 | 0.748 -> synthetic |
+| `569ffb0869eb` | human | 0.000 | 0.964 | 0.482 | 52 % | 0.046 | 0.425 -> human |
+| `678ee1dd2242` | human | 0.001 | 0.476 | 0.239 | 76 % | 0.178 | 0.231 -> human |
+| `95ccefc6e4ce` | human | 0.013 | 0.428 | 0.221 | 78 % | 0.280 | 0.228 -> human |
+| `b658b1155216` | human | 0.000 | 0.434 | 0.217 | 78 % | 0.390 | 0.240 -> human |
+
+Every escalation is a call where the behaviour layer is sitting near the fence and drags the pair's confidence
+under the gate. `569ffb0869eb` is the interesting one: the behaviour layer is not merely unsure there, it is
+confidently **wrong** (0.964 for a human caller), and the verifier independently agrees with the acoustic
+layer at 0.046. That is the case the second stage exists for.
 
 **The semantic column is not scored through the live service, on purpose.** Its shipped `model.pkl` is
 refitted on all 353 calls, so asking it about a validation call would be asking a model about audio it has
 already seen. `Layer.held_out_score()` exists for exactly this: an evaluation path passes the call's
 `anon_id`, and a layer that was fitted on it answers from its own held-out scores instead. Live `/detect`
-never has an `anon_id`, so it always runs every layer for real. The acoustic and behaviour layers are fitted
-on the train split alone, so for them the validation WAV is already a held-out input and they return `None`.
+never has an `anon_id`, so it always runs every layer it actually needs, for real. The acoustic and behaviour
+layers are fitted on the train split alone, so for them the validation WAV is already a held-out input and
+they return `None`. A held-out lookup is free, so the evaluation path fills the semantic column on all 71 even
+where the live path would have skipped it - which is what lets the console re-tune the gate after the fact.
 
-The semantic numbers above come from `semantic/scores_val_trainfit.csv` — the served configuration fitted on
-the 282 train calls and applied to the 71 val ones, written by `semantic/holdout_val.py` from the caches with
-no API calls. The module's own `scores_semantico.csv` gives 0.973 instead of 0.975, because its rows come
-from a random 5-fold over all 353 calls, which ignores the speaker-disjoint official split; its own code
-calls that "slightly optimistic". The two agreeing to 0.002 is reassuring rather than alarming.
+The semantic numbers come from `semantic/scores_val_trainfit.csv` - the served configuration fitted on the 282
+train calls and applied to the 71 val ones, written by `semantic/holdout_val.py` from the caches with no API
+calls. The module's own `scores_semantico.csv` gives 0.973 instead of 0.975, because its rows come from a
+random 5-fold over all 353 calls, which ignores the speaker-disjoint official split; its own code calls that
+"slightly optimistic". The two agreeing to 0.002 is reassuring rather than alarming.
 
 > One inconsistency worth flagging to whoever owns that module: `AUDIT.md` labels a **10-feature** row
 > ("F4 limpio + F5 2 dims", val AUC 0.921) as *"lo que se sirve ahora"*, but `model.py` actually serves
-> **15** features — F4 with `SEMANTIC_EXTRA` on (12), plus `overlap_agent`, plus the 2 rubric dimensions.
+> **15** features - F4 with `SEMANTIC_EXTRA` on (12), plus `overlap_agent`, plus the 2 rubric dimensions.
 > The audit table and the served configuration have drifted apart; 0.975 is the served one measured the
 > same way.
 
-The behaviour layer gets two calls wrong and the acoustic layer rescues both:
-
-| call | truth | acoustic | behaviour | semantic | fused at 50 / 35 / 15 |
-|---|---|---|---|---|---|
-| `0847d7417bb1` | synthetic | 1.000 | 0.435 | 0.952 | 0.795 -> synthetic |
-| `569ffb0869eb` | human | 0.000 | 0.964 | 0.046 | 0.344 -> human |
-
-On that second call the semantic layer agrees with the acoustic one and the margin widens further — which is
-the shape of the argument for a third reading of the same call, even though this split is far too small and
-too saturated to prove it.
-
 Read the whole table honestly: the split is **saturated for the acoustic layer**, which is already at 100 %
-alone for the reason the next section explains. No weighting can be justified from these 71 calls, and a
-sweep maximum here describes them rather than transferring. Every layer was also developed while looking at
-this split. The case for three layers is not the accuracy column: it is that they fail in different places —
-a codec destroys the voice, a scripted bot still has to take its turn, and a fluent synthetic caller still
-has to say something that holds together.
+alone for the reason the next section explains. No weighting and no gate can be justified from these 71 calls,
+and a sweep maximum here describes them rather than transferring. Every layer was also developed while looking
+at this split. The case for the arrangement is not the accuracy column - it is that the layers fail in
+different places, and that the expensive one is spent only where the cheap ones ran out of confidence.
 
 ### The specialist, on the official split
 

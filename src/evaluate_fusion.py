@@ -88,7 +88,10 @@ def metrics(rows, verdicts):
     tp = int(((pred == 1) & (y == 1)).sum()); tn = int(((pred == 0) & (y == 0)).sum())
     fp = int(((pred == 1) & (y == 0)).sum()); fn = int(((pred == 0) & (y == 1)).sum())
     out |= {"confusion_matrix": [[tn, fp], [fn, tp]],
-            "fpr": fp / (fp + tn) if fp + tn else None, "fnr": fn / (fn + tp) if fn + tp else None}
+            "fpr": fp / (fp + tn) if fp + tn else None, "fnr": fn / (fn + tp) if fn + tp else None,
+            # how often the second stage was actually needed - the whole point of the verifier role
+            "n_verifier_consulted": int(sum(1 for v in verdicts if v.get("verifiers_consulted"))),
+            "n_settled_by_primaries": int(sum(1 for v in verdicts if v.get("settled_by_primaries")))}
     if len(np.unique(y)) == 2:
         from sklearn.metrics import roc_auc_score
         out["roc_auc"] = float(roc_auc_score(y, p))
@@ -205,9 +208,19 @@ def main():
               f"{fmt(m.get('brier_answered'))} {m['n_abstained_calls']:8d}"
               + ("   never answered" if not m["n_answered"] else ""))
     for label, m in (("FUSED  " + " / ".join(f"{shipped[k]:.0%}" for k in keys), summary["shipped_weights"]),
-                     ("FUSED  " + " / ".join(f"{equal[k]:.0%}" for k in keys), summary["equal_weights"])):
+                     ("FUSED  " + " / ".join(f"{equal[k]:.0%}" for k in keys) + " (no gate)", summary["equal_weights"])):
         print(f"{label:36s} {m['accuracy']:7.3f} {m.get('roc_auc', float('nan')):7.3f} {m['brier']:7.3f} "
               f"{m['n_abstained_calls']:8d}    confusion {m['confusion_matrix']}")
+    v = summary["shipped_weights"]
+    verifiers = [l["key"] for l in det.describe() if l.get("role") == "verifier"]
+    if verifiers:
+        n = v["n_verifier_consulted"]
+        print()
+        print(f"the verifier gate ({', '.join(verifiers)} at {base.verify_threshold:.0%} confidence):")
+        print(f"  settled by the primary layers alone   {v['n_settled_by_primaries']:3d} / {len(rows)} calls"
+              f"   -> the verifier was never asked")
+        print(f"  escalated to the verifier             {n:3d} / {len(rows)} calls"
+              f"   -> {n / max(len(rows), 1):.0%} of the paid API calls a flat three-way vote would have made")
     if sweep:
         best = max(sweep, key=lambda s: (s["accuracy"], -s["brier"]))
         print(f"\nweight sweep ({keys[0]} weight -> accuracy):")

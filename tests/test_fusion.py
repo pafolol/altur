@@ -35,15 +35,18 @@ def test_equal_weights_average_the_two_probabilities():
     assert [c["share"] for c in r["layers"]] == [0.5, 0.5]
 
 
-def test_default_config_uses_each_layers_own_default_weight():
-    """The shipped split is acoustic 0.50 / behaviour 0.35 / semantic 0.15, and it comes from the layers."""
+def test_default_config_uses_each_layers_own_default_weight_and_role():
+    """Shipped: acoustic 0.50 and behaviour 0.50 as primaries, semantic 0.15 as the verifier."""
     det = fusion.FusionDetector(layers=fusion.build_layers(include_unavailable=True))
     assert det.keys() == ["acoustic", "behaviour", "semantic"]
-    assert det.config.weight_map() == {"acoustic": 0.50, "behaviour": 0.35, "semantic": 0.15}
+    assert det.config.weight_map() == {"acoustic": 0.50, "behaviour": 0.50, "semantic": 0.15}
+    assert det.config.role_map() == {"acoustic": "primary", "behaviour": "primary",
+                                     "semantic": "verifier"}
+    # primaries that do not settle it -> all three vote, 0.50 / 0.50 / 0.15 normalised
     shares = {c["key"]: c["share"] for c in
-              combine([L(k, 0.9) for k in det.keys()], det.config)["layers"]}
-    assert shares == {"acoustic": pytest.approx(0.50), "behaviour": pytest.approx(0.35),
-                      "semantic": pytest.approx(0.15)}
+              combine([L("acoustic", 0.6), L("behaviour", 0.6), L("semantic", 0.6)], det.config)["layers"]}
+    assert shares == {"acoustic": pytest.approx(0.5 / 1.15), "behaviour": pytest.approx(0.5 / 1.15),
+                      "semantic": pytest.approx(0.15 / 1.15)}
 
 
 def test_a_missing_layer_leaves_its_share_to_the_others():
@@ -211,6 +214,7 @@ class _Fake(fusion.Layer):
         self.key, self.display, self.p = key, key.upper(), p
         self.quality, self.abstained, self.explode = quality, abstained, explode
         self.default_weight = weight
+        self.scored_times = 0
 
     def available(self):
         return True
@@ -220,6 +224,7 @@ class _Fake(fusion.Layer):
             raise RuntimeError("weights not found")
 
     def _score(self, wav_bytes):
+        self.scored_times += 1
         return LayerResult(self.key, self.display, self.p, self.quality, self.abstained)
 
 
@@ -248,10 +253,11 @@ def test_every_layer_reports_its_own_latency():
 def test_registry_builds_the_real_layers_and_they_describe_themselves():
     layers = fusion.build_layers(include_unavailable=True)
     assert [l.key for l in layers] == ["acoustic", "behaviour", "semantic"]
-    assert [l.default_weight for l in layers] == [0.50, 0.35, 0.15]
+    assert [l.default_weight for l in layers] == [0.50, 0.50, 0.15]
+    assert [l.role for l in layers] == ["primary", "primary", "verifier"]
     for l in layers:
         d = l.describe()
-        assert {"key", "display", "description", "default_weight", "available", "loaded"} <= set(d)
+        assert {"key", "display", "description", "default_weight", "role", "available", "loaded"} <= set(d)
 
 
 # --------------------------------------------------------------------------- the semantic layer
@@ -333,12 +339,14 @@ def test_held_out_scores_are_only_used_for_dataset_calls(tmp_path):
     assert layer.held_out_score("call_unknown") is None
 
     det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.2, weight=0.5), layer])
-    # with an id: the held-out score votes, no HTTP at all
+    # with an id the held-out score is free, so it is filled in even though the primary settled the call
     known = det.score_layers(b"RIFF", anon_id="call_aaa")
     assert [x.probability for x in known] == [pytest.approx(0.2), pytest.approx(0.9)]
-    assert not known[1].abstained
-    # without one: the layer really is called, and abstains because nothing is listening on port 1
-    live = det.score_layers(b"RIFF")
+    assert known[1].abstained is False and known[1].scored is True
+    # without one, and with the primary unsure, the layer really is called - and abstains because
+    # nothing is listening on port 1
+    unsure = fusion.FusionDetector(layers=[_Fake("acoustic", 0.55, weight=0.5), layer])
+    live = unsure.score_layers(b"RIFF")
     assert live[1].abstained is True
 
 
@@ -369,3 +377,122 @@ def test_semantic_layer_abstains_when_nothing_answers():
     assert r.abstained is True and r.probability == 0.5 and r.reason
     det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.9, weight=0.5), layer])
     assert det.score(b"RIFF")["synthetic_probability"] == pytest.approx(0.9)
+
+
+# --------------------------------------------------------------------------- the verifier gate
+#
+# acoustic + behaviour decide. The semantic layer is a VERIFIER: it is only consulted when those two
+# did not settle the call between them, because it is the one that costs a paid API call and ~2.6 s.
+
+
+def gated(**kw):
+    return FusionConfig.from_dict({"weights": {"acoustic": 0.5, "behaviour": 0.5, "semantic": 0.15},
+                                   "roles": {"acoustic": "primary", "behaviour": "primary",
+                                             "semantic": "verifier"}, **kw})
+
+
+def three(a, b, sem, **kw):
+    return combine([L("acoustic", a), L("behaviour", b), L("semantic", sem)], gated(**kw))
+
+
+@pytest.mark.parametrize("a,b", [(0.99, 0.95), (0.02, 0.05), (0.85, 0.78), (1.0, 1.0)])
+def test_confident_primaries_settle_it_and_the_verifier_is_not_consulted(a, b):
+    r = three(a, b, 0.99)
+    assert r["settled_by_primaries"] is True and r["verifiers_consulted"] is False
+    assert r["synthetic_probability"] == pytest.approx(r["primary_probability"])
+    sem = next(c for c in r["layers"] if c["key"] == "semantic")
+    assert sem["consulted"] is False and sem["share"] == 0.0
+    assert "not consulted" in r["note"]
+
+
+def test_the_verifier_cannot_overturn_a_settled_call():
+    """A confident pair plus a verifier screaming the opposite: the verifier is never asked."""
+    r = three(0.97, 0.93, 0.0)
+    assert r["synthetic_probability"] == pytest.approx(0.95) and r["is_synthetic"] is True
+
+
+@pytest.mark.parametrize("a,b,why", [(0.95, 0.05, "they disagree"), (0.6, 0.62, "neither is committed"),
+                                     (0.79, 0.79, "just under the gate")])
+def test_unsure_primaries_escalate_to_the_verifier(a, b, why):
+    r = three(a, b, 0.95)
+    assert r["settled_by_primaries"] is False and r["verifiers_consulted"] is True, why
+    sem = next(c for c in r["layers"] if c["key"] == "semantic")
+    assert sem["consulted"] is True and sem["share"] == pytest.approx(0.15 / 1.15)
+    assert "consulted to break the tie" in r["note"]
+
+
+def test_the_verifier_breaks_a_deadlock():
+    """Primaries exactly split; the verifier is what decides the verdict."""
+    for sem, verdict in ((0.95, True), (0.05, False)):
+        r = three(0.95, 0.05, sem)
+        assert r["primary_probability"] == pytest.approx(0.5)
+        assert r["is_synthetic"] is verdict
+
+
+def test_the_gate_is_tunable():
+    assert three(0.85, 0.78, 0.99, verify_threshold=0.80)["verifiers_consulted"] is False
+    assert three(0.85, 0.78, 0.99, verify_threshold=0.90)["verifiers_consulted"] is True
+    assert three(0.60, 0.62, 0.99, verify_threshold=0.55)["verifiers_consulted"] is False
+
+
+def test_use_verifiers_false_makes_it_a_plain_three_way_vote():
+    """The switch turns the GATE off, not the verifier: with no gate every layer votes on every call."""
+    r = three(0.97, 0.93, 0.0, use_verifiers=False)
+    assert r["verifiers_consulted"] is True and r["settled_by_primaries"] is True
+    sem = next(c for c in r["layers"] if c["key"] == "semantic")
+    assert sem["consulted"] is True and sem["share"] == pytest.approx(0.15 / 1.15)
+    assert r["synthetic_probability"] == pytest.approx((0.5 * 0.97 + 0.5 * 0.93) / 1.15)
+
+
+def test_a_verifier_that_was_never_asked_cannot_vote_even_if_the_gate_reopens():
+    """Re-tuning the gate after the fact must not turn an unscored layer into a number."""
+    rows = [L("acoustic", 0.6), L("behaviour", 0.62),
+            LayerResult("semantic", "S", 0.5, 0.0, False, "not consulted", scored=False)]
+    r = combine(rows, gated())
+    sem = next(c for c in r["layers"] if c["key"] == "semantic")
+    assert sem["consulted"] is False and sem["share"] == 0.0
+    assert r["synthetic_probability"] == pytest.approx(0.61)
+
+
+def test_primaries_that_all_abstain_still_escalate():
+    r = combine([L("acoustic", 0.9, abstained=True), L("behaviour", 0.1, abstained=True),
+                 L("semantic", 0.9)], gated())
+    assert r["settled_by_primaries"] is False
+    assert r["synthetic_probability"] == pytest.approx(0.9)
+
+
+def test_the_executor_does_not_even_call_a_verifier_it_does_not_need():
+    """The point of the role: a settled call must not cost a paid API request."""
+    sem = _Fake("semantic", 0.9, weight=0.15)
+    sem.role = "verifier"
+    det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.97, weight=0.5),
+                                        _Fake("behaviour", 0.93, weight=0.5), sem])
+    r = det.score(b"x")
+    assert sem.scored_times == 0
+    assert r["synthetic_probability"] == pytest.approx(0.95)
+    assert next(c for c in r["layers"] if c["key"] == "semantic")["scored"] is False
+
+
+def test_the_executor_does_call_the_verifier_when_the_primaries_are_split():
+    sem = _Fake("semantic", 0.9, weight=0.15)
+    sem.role = "verifier"
+    det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.95, weight=0.5),
+                                        _Fake("behaviour", 0.05, weight=0.5), sem])
+    r = det.score(b"x")
+    assert sem.scored_times == 1
+    assert r["synthetic_probability"] > 0.5
+
+
+def test_equal_config_turns_the_gate_off_so_an_even_split_is_really_even():
+    det = fusion.FusionDetector(layers=fusion.build_layers(include_unavailable=True))
+    cfg = det.equal_config()
+    assert cfg.use_verifiers is False and set(cfg.role_map().values()) == {"primary"}
+    r = combine([L(k, 0.9) for k in det.keys()], cfg)
+    assert all(c["share"] == pytest.approx(1 / 3) for c in r["layers"])
+
+
+@pytest.mark.parametrize("bad", [{"verify_threshold": 0.2}, {"verify_threshold": 1.5},
+                                 {"roles": {"acoustic": "referee"}}])
+def test_invalid_role_configuration_is_rejected(bad):
+    with pytest.raises(ValueError):
+        FusionConfig.from_dict(bad)

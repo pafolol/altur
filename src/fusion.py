@@ -4,11 +4,14 @@ FUSION - the modular decision layer.
 One call in, one verdict out, but the verdict is a weighted vote of independent detection systems:
 
     stereo 8 kHz WAV bytes
-      -> layer 1  acoustic    (frozen Wav2Vec2 Spanish + MLP on the caller's voice)      -> p, quality, abstain?   w 0.50
-      -> layer 2  behaviour   (Silero turn timing + logistic on the interaction)         -> p, quality, abstain?   w 0.35
-      -> layer 3  semantic    (Scribe transcript + Gemini rubric + logistic, over HTTP)  -> p, quality, abstain?   w 0.15
-      -> layer N  ...                                                                     -> ...
-      -> combine(weights, mode, abstention policy)                                        -> fused probability
+      -> PRIMARY  acoustic    (frozen Wav2Vec2 Spanish + MLP on the caller's voice)      -> p, quality, abstain?   w 0.50
+      -> PRIMARY  behaviour   (Silero turn timing + logistic on the interaction)         -> p, quality, abstain?   w 0.50
+      -> combine(weights, mode, abstention policy)                                        -> p_primary
+         |
+         |-- confident enough (>= verify_threshold, 0.80)?  -> that IS the verdict; stop here
+         |
+         `-- unsure? consult the VERIFIERS and re-combine:
+             -> VERIFIER semantic  (Scribe + Gemini rubric, over HTTP, paid, ~2.6 s)     -> p, quality, abstain?   w 0.15
       -> threshold                                                                        -> {"is_synthetic", "confidence"}
 
 Everything that varies is data, not code:
@@ -16,10 +19,12 @@ Everything that varies is data, not code:
     LAYERS          the registry. Adding a semantic (or any other) layer is ONE Layer subclass plus one
                     line in build_layers(); the endpoints, the frontend and the batch evaluation are all
                     driven by the registry and need no edit.
-    FusionConfig    the tunable part: per-layer weights, how the scores are combined, what happens when a
-                    layer has no evidence, and where the decision threshold sits. The shipped weights are
-                    acoustic 0.50 / behaviour 0.35 / semantic 0.15, and every one of them is live-tunable.
-                    A layer that is missing or has no evidence leaves its share to the others.
+    FusionConfig    the tunable part: per-layer weights and ROLES, how the scores are combined, what
+                    happens when a layer has no evidence, where the decision threshold sits, and how
+                    confident the primaries must be before a verifier is skipped. The shipped setting is
+                    acoustic 0.50 / behaviour 0.50 as primaries, semantic 0.15 as a verifier at a 0.80
+                    confidence gate. Every one of them is live-tunable. A layer that is missing or has no
+                    evidence leaves its share to the others.
 
 The split between `Layer.score()` (expensive, runs the models) and `combine()` (pure arithmetic on
 numbers already computed) is deliberate: the frontend scores a call once and then re-tunes the weights
@@ -37,6 +42,7 @@ BEHAVIOUR_ROOT = config.PROJECT_ROOT / "behaviour"
 
 COMBINE_MODES = ("weighted_mean", "logit_mean")
 ABSTAIN_POLICIES = ("renormalise", "neutral")
+ROLES = ("primary", "verifier")
 _EPS = 1e-6
 
 
@@ -53,12 +59,14 @@ class LayerResult:
     abstained: bool = False           # True = the layer saw no usable evidence; its probability means nothing
     reason: str = ""                  # why it abstained / failed, for the page to show
     latency_ms: float = 0.0
+    scored: bool = True               # False = never even asked (a verifier the primaries made unnecessary)
     details: dict = field(default_factory=dict)
 
     def to_dict(self):
         return {"key": self.key, "display": self.display, "probability": round(float(self.probability), 6),
                 "quality": round(float(self.quality), 4), "abstained": bool(self.abstained),
-                "reason": self.reason, "latency_ms": round(float(self.latency_ms), 1), "details": self.details}
+                "reason": self.reason, "latency_ms": round(float(self.latency_ms), 1),
+                "scored": bool(self.scored), "details": self.details}
 
 
 @dataclass(frozen=True)
@@ -79,13 +87,24 @@ class FusionConfig:
     threshold       decision threshold on the fused probability
     confidence_mode "verdict"    confidence = P(the returned verdict is right) = max(p, 1 - p)
                     "synthetic"  confidence = P(synthetic) = the fused score itself
+
+    roles           {layer key: "primary" | "verifier"}. Primaries always vote. A verifier is consulted
+                    ONLY when the primaries did not settle the call on their own. Anything the map does
+                    not mention keeps the layer's own `role`.
+    verify_threshold  the confidence the primaries have to reach for a verifier to be skipped. At 0.80,
+                    a call the acoustic and behaviour layers jointly call at p >= 0.80 or p <= 0.20 never
+                    reaches the semantic service.
+    use_verifiers   False turns the second stage off entirely: every layer becomes a plain weighted vote.
     """
     weights: tuple = ()               # tuple of (key, weight) pairs - hashable, so the config stays frozen
+    roles: tuple = ()                 # tuple of (key, role) pairs, same reason
     mode: str = "weighted_mean"
     on_abstain: str = "renormalise"
     use_quality: bool = False
     threshold: float = config.DECISION_THRESHOLD
     confidence_mode: str = config.CONFIDENCE_MODE
+    verify_threshold: float = 0.80
+    use_verifiers: bool = True
 
     @classmethod
     def from_dict(cls, data, base=None):
@@ -95,12 +114,18 @@ class FusionConfig:
         weights = base.weight_map()
         for k, v in (data.get("weights") or {}).items():
             weights[k] = float(v)
+        roles = base.role_map()
+        for k, v in (data.get("roles") or {}).items():
+            roles[k] = str(v)
         cfg = replace(base, weights=tuple(sorted(weights.items())),
+                      roles=tuple(sorted(roles.items())),
                       mode=str(data.get("mode", base.mode)),
                       on_abstain=str(data.get("on_abstain", base.on_abstain)),
                       use_quality=bool(data.get("use_quality", base.use_quality)),
                       threshold=float(data.get("threshold", base.threshold)),
-                      confidence_mode=str(data.get("confidence_mode", base.confidence_mode)))
+                      confidence_mode=str(data.get("confidence_mode", base.confidence_mode)),
+                      verify_threshold=float(data.get("verify_threshold", base.verify_threshold)),
+                      use_verifiers=bool(data.get("use_verifiers", base.use_verifiers)))
         cfg.validate()
         return cfg
 
@@ -116,19 +141,32 @@ class FusionConfig:
         for k, w in self.weights:
             if not np.isfinite(w) or w < 0:
                 raise ValueError(f"weight for {k!r} must be finite and >= 0, got {w}")
+        for k, r in self.roles:
+            if r not in ROLES:
+                raise ValueError(f"role for {k!r} must be one of {ROLES}, got {r!r}")
+        if not 0.5 <= self.verify_threshold <= 1.0:
+            raise ValueError(f"verify_threshold is a confidence, so it must be in [0.5, 1.0], "
+                             f"got {self.verify_threshold}")
         return self
 
     def weight_map(self):
         return dict(self.weights)
 
+    def role_map(self):
+        return dict(self.roles)
+
     def weight_of(self, layer):
         """A layer the config has never heard of contributes with its own default weight."""
         return self.weight_map().get(layer.key, layer.default_weight)
 
+    def role_of(self, layer):
+        return self.role_map().get(layer.key, layer.role)
+
     def to_dict(self):
-        return {"weights": self.weight_map(), "mode": self.mode, "on_abstain": self.on_abstain,
-                "use_quality": self.use_quality, "threshold": self.threshold,
-                "confidence_mode": self.confidence_mode}
+        return {"weights": self.weight_map(), "roles": self.role_map(), "mode": self.mode,
+                "on_abstain": self.on_abstain, "use_quality": self.use_quality,
+                "threshold": self.threshold, "confidence_mode": self.confidence_mode,
+                "verify_threshold": self.verify_threshold, "use_verifiers": self.use_verifiers}
 
 
 # ============================================================================= the combiner
@@ -143,6 +181,19 @@ def _sigmoid(z):
     return float(1.0 / (1.0 + np.exp(-np.clip(z, -40, 40))))
 
 
+def _mix(contributions, mode):
+    """Weighted mean (of probabilities, or of log-odds) over whatever is left carrying weight."""
+    total = sum(c["effective_weight"] for c in contributions)
+    if total <= 0:
+        return 0.5, [], 0.0
+    for c in contributions:
+        c["share"] = c["effective_weight"] / total
+    used = [c for c in contributions if c["effective_weight"] > 0]
+    if mode == "logit_mean":
+        return _sigmoid(sum(c["share"] * _logit(c["probability"]) for c in used)), used, total
+    return sum(c["share"] * c["probability"] for c in used), used, total
+
+
 def combine(results, cfg, weights_by_key=None):
     """
     The whole decision, as pure arithmetic on numbers the layers already produced.
@@ -152,15 +203,27 @@ def combine(results, cfg, weights_by_key=None):
     `weights_by_key`  the per-layer weights; defaults to the ones in `cfg`, falling back to the layer's
                       own default for anything the config does not mention.
 
-    Returns a dict with the fused probability, the verdict, and - the part that matters for a demo -
-    exactly how much each layer contributed to it.
+    TWO STAGES, because not every layer costs the same thing to ask.
+
+      1. The PRIMARY layers decide - acoustic and behaviour, 50 / 50. Both run offline on this machine,
+         so they always run.
+      2. If that decision is already confident (|p - 0.5| puts it at or above cfg.verify_threshold, 0.80
+         by default) it stands, and the VERIFIER layers are not consulted at all. Only when the primaries
+         are unsure - they disagree, or neither is committed - is a verifier mixed in to break the tie.
+
+    The semantic layer is the verifier: it is the one that costs a paid ASR call, a paid LLM call and
+    ~2.6 s of network, so spending it on calls the other two already agree about is waste. This is a
+    decision policy, not a shortcut - the result says for every call whether it was consulted and why.
+
+    Returns a dict with the fused probability, the verdict, and exactly how much each layer contributed.
     """
     rows = [r if isinstance(r, LayerResult) else LayerResult(**{k: v for k, v in r.items()
                                                                if k in LayerResult.__dataclass_fields__})
             for r in results]
     weights_by_key = dict(weights_by_key or cfg.weight_map())
+    roles = cfg.role_map()
 
-    contributions, total = [], 0.0
+    contributions = []
     for r in rows:
         raw = float(weights_by_key.get(r.key, 0.0))
         # Two different reasons a layer can drop out: the user turned it off (weight 0), or the layer
@@ -170,29 +233,55 @@ def combine(results, cfg, weights_by_key=None):
         else:
             effective = raw * (r.quality if cfg.use_quality else 1.0)
         p = 0.5 if r.abstained else float(np.clip(r.probability, 0.0, 1.0))
+        if not r.scored:
+            effective = 0.0        # never asked: it cannot vote, whatever the weight says
         contributions.append({"key": r.key, "display": r.display, "probability": p,
                               "raw_probability": float(r.probability), "quality": float(r.quality),
                               "abstained": bool(r.abstained), "reason": r.reason,
-                              "weight": raw, "effective_weight": effective})
-        total += effective
+                              "role": roles.get(r.key, "primary"), "scored": bool(r.scored),
+                              "weight": raw, "effective_weight": effective, "share": 0.0,
+                              "consulted": bool(r.scored)})
+
+    primaries = [c for c in contributions if c["role"] == "primary"]
+    verifiers = [c for c in contributions if c["role"] == "verifier"]
+
+    # ---- stage 1: the primaries, on their own
+    p_primary, used_primary, _ = _mix([dict(c) for c in primaries], cfg.mode)
+    primary_confidence = max(p_primary, 1 - p_primary) if used_primary else 0.0
+    settled = bool(used_primary) and primary_confidence >= cfg.verify_threshold
+
+    # ---- stage 2: consult the verifiers only if the primaries did not settle it
+    # use_verifiers=False switches the SECOND STAGE off, not the verifiers: with no gate, every layer is
+    # a plain weighted vote. The gate only ever removes a verifier from a call the primaries settled.
+    gate_on = bool(verifiers) and cfg.use_verifiers
+    consult = bool(verifiers) and (not gate_on or not settled)
+    for c in verifiers:
+        # A verifier votes only if the gate opened AND it was actually asked. The executor applies the
+        # same gate before spending the call, so on live traffic these two agree; on the evaluation path
+        # every verifier is scored up front (a held-out lookup is free) so the gate can be re-tuned after.
+        if not consult or not c["scored"]:
+            c["effective_weight"] = 0.0
+            c["consulted"] = False
+    voting = primaries + (verifiers if consult else [])
+    for c in contributions:
+        if c not in voting:
+            c["effective_weight"] = 0.0
+    fused, used, total = _mix(contributions, cfg.mode)
 
     if total <= 0:
-        # Nobody had both evidence and weight. Never guess: sit on the fence and say why.
-        fused = 0.5
-        used = []
+        fused, used = 0.5, []
         note = ("every layer abstained" if rows and all(r.abstained for r in rows)
                 else "no layer carries weight" if rows else "no layer is loaded")
-    else:
-        for c in contributions:
-            c["share"] = c["effective_weight"] / total
-        used = [c for c in contributions if c["effective_weight"] > 0]
-        if cfg.mode == "logit_mean":
-            fused = _sigmoid(sum(c["share"] * _logit(c["probability"]) for c in used))
-        else:
-            fused = sum(c["share"] * c["probability"] for c in used)
+    elif not gate_on:
         note = ""
-    for c in contributions:
-        c.setdefault("share", 0.0)
+    elif settled:
+        note = (f"the primaries settled it at {primary_confidence:.0%} confidence "
+                f"(>= {cfg.verify_threshold:.0%}); "
+                + ", ".join(c["display"] for c in verifiers) + " not consulted")
+    else:
+        note = (f"the primaries reached only {primary_confidence:.0%} confidence "
+                f"(< {cfg.verify_threshold:.0%}); "
+                + ", ".join(c["display"] for c in verifiers) + " consulted to break the tie")
 
     if used:
         is_synthetic = bool(fused >= cfg.threshold)
@@ -209,6 +298,10 @@ def combine(results, cfg, weights_by_key=None):
         "decisive": bool(used),
         "note": note,
         "n_layers_used": len(used),
+        "primary_probability": round(float(p_primary), 6),
+        "primary_confidence": round(float(primary_confidence), 4),
+        "verifiers_consulted": bool(consult and used),
+        "settled_by_primaries": settled,
         "layers": contributions,
         "config": cfg.to_dict() | {"weights": weights_by_key},
     }
@@ -232,6 +325,7 @@ class Layer:
     display = "Layer"
     description = ""
     default_weight = 1.0
+    role = "primary"        # "primary" votes on every call; "verifier" only when the primaries are unsure
 
     # A layer whose load just failed is not retried on every single call: a batch of 71 would otherwise
     # pay one connection timeout each. It abstains instantly until the window passes, then tries again.
@@ -305,8 +399,9 @@ class Layer:
 
     def describe(self):
         return {"key": self.key, "display": self.display, "description": self.description,
-                "default_weight": self.default_weight, "available": bool(self.available()),
-                "loaded": self._loaded, "load_error": self.load_error, **self.info()}
+                "default_weight": self.default_weight, "role": self.role,
+                "available": bool(self.available()), "loaded": self._loaded,
+                "load_error": self.load_error, **self.info()}
 
 
 class AcousticLayer(Layer):
@@ -323,6 +418,7 @@ class AcousticLayer(Layer):
     display = "Acoustic V1 (specialist)"
     description = "Frozen Wav2Vec2 Spanish layer 5 + MLP on the caller's voice, Platt-calibrated."
     default_weight = 0.50
+    role = "primary"
 
     def __init__(self, model_dir="wav2vec2_spanish", classifier="mlp", display=None):
         super().__init__()
@@ -380,7 +476,8 @@ class BehaviourLayer(Layer):
     key = "behaviour"
     display = "Behaviour (conversation timing)"
     description = "Separated-channel Silero VAD -> turn-taking timing -> 24 features -> calibrated logistic."
-    default_weight = 0.35
+    default_weight = 0.50
+    role = "primary"
 
     def __init__(self, root=BEHAVIOUR_ROOT):
         super().__init__()
@@ -458,6 +555,7 @@ class SemanticLayer(Layer):
     display = "Semantic (what the caller says)"
     description = "Scribe transcript -> text features + a 7-dimension Gemini rubric -> calibrated logistic."
     default_weight = 0.15
+    role = "verifier"
 
     # The degraded path is worth less than the full one: the rubric is most of the signal.
     QUALITY_BY_PATH = {"f4+f5": 1.0, "f4": 0.5}
@@ -579,9 +677,9 @@ class SemanticLayer(Layer):
 #
 def build_layers(acoustic_model="wav2vec2_spanish", include_unavailable=False, semantic_url=None):
     layers = [
-        AcousticLayer(acoustic_model, display=_acoustic_display(acoustic_model)),   # 0.50
-        BehaviourLayer(),                                                           # 0.35
-        SemanticLayer(semantic_url),                                                # 0.15
+        AcousticLayer(acoustic_model, display=_acoustic_display(acoustic_model)),   # primary, 0.50
+        BehaviourLayer(),                                                           # primary, 0.50
+        SemanticLayer(semantic_url),                                                # verifier, 0.15
     ]
     return [l for l in layers if include_unavailable or l.available()]
 
@@ -603,19 +701,25 @@ class FusionDetector:
 
     def default_config(self):
         """
-        Each layer's own default_weight: acoustic 0.50, behaviour 0.35, semantic 0.15.
+        Each layer's own default_weight and role: acoustic 0.50 and behaviour 0.50 as PRIMARIES, semantic
+        0.15 as the VERIFIER consulted only when those two do not settle a call between them.
 
-        They are NOT renormalised here. A layer that is unavailable today simply never appears, and
-        combine() divides by the weight actually present - so with the semantic service down, 0.50 and
-        0.35 become shares of 59 % and 41 %, and the moment it answers the split is 50 / 35 / 15 again
-        without anyone touching a fader.
+        Weights are NOT renormalised here. A layer that is unavailable simply never appears and combine()
+        divides by the weight actually present, so nothing has to be re-tuned when a service comes back.
         """
-        return FusionConfig(weights=tuple(sorted((l.key, float(l.default_weight)) for l in self.layers)))
+        return FusionConfig(weights=tuple(sorted((l.key, float(l.default_weight)) for l in self.layers)),
+                            roles=tuple(sorted((l.key, l.role) for l in self.layers)))
 
     def equal_config(self):
-        """Every available layer weighted the same - the "assume nothing" setting the page also offers."""
+        """
+        Every available layer weighted the same AND voting on every call - the "assume nothing" setting
+        the page also offers. Turning the verifier stage off is part of it: an equal split in which one
+        layer is usually skipped would not be an equal split.
+        """
         n = max(len(self.layers), 1)
-        return FusionConfig(weights=tuple(sorted((l.key, 1.0 / n) for l in self.layers)))
+        return FusionConfig(weights=tuple(sorted((l.key, 1.0 / n) for l in self.layers)),
+                            roles=tuple(sorted((l.key, "primary") for l in self.layers)),
+                            use_verifiers=False)
 
     def keys(self):
         return [l.key for l in self.layers]
@@ -636,24 +740,58 @@ class FusionDetector:
                 pass  # l.load_error holds the reason; describe() and /layers report it
         return self
 
-    def score_layers(self, wav_bytes, anon_id=None):
+    def _score_one(self, layer, wav_bytes, anon_id):
         """
-        Run every layer. This is the expensive half; the result is cacheable and re-combinable.
-
         `anon_id` is only ever passed by the EVALUATION paths (the console's 71 held-out calls,
         evaluate_fusion.py). A layer whose deployed model was fitted on that call answers from its own
         held-out scores instead, so the table measures the layer rather than flattering it. Live traffic
         has no anon_id, so /detect always runs every layer for real.
         """
-        out = []
-        for l in self.layers:
-            r = l.held_out_score(anon_id) if anon_id else None
-            out.append(r if r is not None else l.score(wav_bytes))
-        return out
+        r = layer.held_out_score(anon_id) if anon_id else None
+        return r if r is not None else layer.score(wav_bytes)
+
+    def score_layers(self, wav_bytes, anon_id=None, cfg=None):
+        """
+        Run the layers, in two stages, and skip what the first stage made unnecessary.
+
+        The primaries always run - they are local and cheap. The verifiers run only if the primaries did
+        NOT settle the call, and that is the whole point of the role: the semantic layer costs a paid ASR
+        call, a paid LLM call and a couple of seconds of network, so a call that the acoustic and
+        behaviour layers already agree on at >= 80 % confidence never reaches it. A skipped verifier comes
+        back as `scored=False` with the reason, so the page can say "not asked" rather than inventing a
+        number or pretending the layer had no evidence.
+
+        The exception is a verifier that can answer for free - a held-out score for a dataset call is a
+        dict lookup. Those are always filled in, so the console has a complete table and the gate can be
+        moved afterwards without re-running anything.
+        """
+        cfg = cfg or self.config
+        primaries = [l for l in self.layers if cfg.role_of(l) == "primary"]
+        verifiers = [l for l in self.layers if cfg.role_of(l) == "verifier"]
+
+        out = [self._score_one(l, wav_bytes, anon_id) for l in primaries]
+        if not verifiers:
+            return out
+
+        consult = cfg.use_verifiers and not combine(out, cfg)["settled_by_primaries"]
+        for l in verifiers:
+            free = l.held_out_score(anon_id) if anon_id else None
+            if free is not None:
+                out.append(free)
+            elif consult:
+                out.append(self._score_one(l, wav_bytes, anon_id))
+            else:
+                out.append(LayerResult(
+                    l.key, l.display, 0.5, 0.0, False,
+                    "not consulted: the primary layers settled this call on their own", scored=False))
+        # Keep the registry's order, so every column, fader and row lines up with /layers.
+        order = {l.key: i for i, l in enumerate(self.layers)}
+        return sorted(out, key=lambda r: order.get(r.key, len(order)))
 
     def score(self, wav_bytes, cfg=None, anon_id=None):
-        results = self.score_layers(wav_bytes, anon_id)
-        return combine(results, cfg or self.config) | {"layer_details": [r.to_dict() for r in results]}
+        cfg = cfg or self.config
+        results = self.score_layers(wav_bytes, anon_id, cfg)
+        return combine(results, cfg) | {"layer_details": [r.to_dict() for r in results]}
 
 
 # --------------------------------------------------------------------------- module-level convenience
