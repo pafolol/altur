@@ -6,7 +6,8 @@ agent), decide whether the caller is a human or a synthetic voice.
 Independent detectors answer that question from **different evidence**, and `POST /detect` returns their
 verdict in **two stages**: the acoustic and behaviour layers decide every call **50 / 50**, and the semantic
 layer is a **verifier** consulted only when those two do not settle it. Every weight, role and gate is tunable
-at runtime. This repository is the merge of the `modelo`, `behaviour`, `fusion` and `backend-esteban` branches.
+at runtime. This repository is the merge of the `modelo`, `behaviour`, `fusion`, `backend-esteban` and `frontend`
+branches.
 
 ```
 stereo 8 kHz WAV (base64 at the API)
@@ -219,6 +220,7 @@ python src/client_demo.py call.wav --url http://127.0.0.1:8000/detect
 | `GET /layers` | the registry: what detection systems exist, whether they are answering, why not if not, and what each one is looking at |
 | `GET /validation`, `/validation/{id}/score`, `/validation/scores` | the 71 held-out calls, scored server-side from disk and cached |
 | `POST /detect_all`, `GET /models` | unchanged: the two ACOUSTIC models side by side, for the inspector's A/B panel |
+| `GET /api/calls`, `/api/stats`, `/api/health` | the admin panel's `IsisiApi`, backed by the call log. `POST /detect` also takes an optional `"queue"` label |
 
 From Python:
 
@@ -311,6 +313,11 @@ behaviour/                      THE BEHAVIOUR LAYER, merged in frozen from the b
 behaviour/behavior/             the module itself (inference.py, vad.py, features.py, events.py, ...)
 behaviour/artifacts/            its two frozen artifacts - git-ignored, see Setup
 behaviour/reports/              its report, its freeze record and its metrics
+
+web/                            THE LANDING PAGE + ADMIN PANEL, merged from the frontend branch
+web/INTEGRATION.md              how it is wired to the detector - LIVE when VITE_API_URL is set
+web/src/admin/api.live.ts       the real IsisiApi; the seeded mock is kept as the no-backend fallback
+src/store.py                    THE CALL LOG: SQLite, one row per verdict, feeds the panel's history
 
 backend/                        THE SERVING SHELL, merged from the backend-esteban branch and not edited
 backend/INTEGRATION.md          how it relates to src/server.py - READ BEFORE SUBMITTING: two /detect exist

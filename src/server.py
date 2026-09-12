@@ -36,6 +36,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 import _bootstrap  # noqa: F401
 import config
 import fusion
+import store
 from predict import AcousticDetector
 
 app = FastAPI(title="Altur HackMTY 2026 - synthetic caller detector (acoustic + behaviour fusion)")
@@ -115,11 +116,91 @@ def score_call(wav_bytes, cfg=None):
                                "speech_s": d.get("speech_s"), "duration_s": d.get("duration_s"),
                                "n_speech_regions": d.get("n_speech_regions"), "vad": d.get("vad"),
                                "model": d.get("model"), "calibration": d.get("calibration", "none"),
+                               "channels": d.get("channels", 2),
                                "chunk_scores": d.get("chunk_scores", []),
                                "chunk_spans": d.get("chunk_spans", [])}
     if verdict["note"]:
         verdict["details"]["warning"] = verdict["note"]
     return verdict
+
+
+# ============================================================================= the admin panel's API
+#
+# web/ (the landing page + admin panel) defines an `IsisiApi` interface in src/admin/api.ts and ships a
+# seeded mock behind it. These four endpoints are the real implementation of that interface, and the
+# field names below are ITS names, not this server's: `conversational` is the behaviour layer, and
+# `evidence` is the three modality scores. Where this system genuinely does not have something the panel
+# asks for, it says so rather than inventing a number - see /api/health.
+
+
+def _evidence(layers):
+    """The panel's three-modality shape. A layer that abstained or was never asked reads 0."""
+    by = {l["key"]: l for l in layers}
+    def score(key):
+        l = by.get(key)
+        if not l or l.get("abstained") or l.get("scored") is False:
+            return 0.0
+        return round(float(l["probability"]), 4)
+    return {"acoustic": score("acoustic"), "conversational": score("behaviour"),
+            "semantic": score("semantic")}
+
+
+def _call_row(r):
+    # duration_s is whole seconds on purpose: the panel's formatter renders it as m:ss and the mock it
+    # was written against always produced integers, so a raw float shows up as "2:22.80000000000001".
+    return {"id": r["id"], "at": r["at"], "duration_s": round(r.get("duration_s") or 0),
+            "channels": r.get("channels") or 2, "verdict": r["verdict"],
+            "confidence": round(float(r["confidence"]), 4),
+            "evidence": _evidence(r["layers"]) | {"decided_at_s": r.get("decided_at_s")},
+            "latency_ms": round(float(r["latency_ms"])), "trap": r.get("trap") or "none",
+            "queue": r.get("queue") or "api"}
+
+
+@app.get("/api/calls")
+def api_calls(range: str = "24h", limit: int = 500):
+    hours = {"24h": 24, "7d": 168}.get(range, 24)
+    return [_call_row(r) for r in store.recent(hours, limit)]
+
+
+@app.get("/api/stats")
+def api_stats(range: str = "24h"):
+    hours = {"24h": 24, "7d": 168}.get(range, 24)
+    return {"latency_series": store.latency_series(hours)}
+
+
+@app.get("/api/health")
+def api_health():
+    """
+    What the panel's health card shows. Two of its fields this system does not have, and they are
+    answered honestly rather than dressed up:
+
+      streaming    false - the detector scores a complete call, it does not decide as audio arrives.
+      queue_depth  0 - requests are handled synchronously; there is no queue to be deep.
+
+    `calibrated_on` is the real mtime of the deployed acoustic model, not a marketing date.
+    """
+    import datetime
+    det = get_fusion()
+    layers = det.describe()
+    up = all(l["available"] for l in layers if l["role"] == "primary")
+    degraded = up and not all(l["available"] for l in layers)
+    h = store.health_stats(24)
+    model_dir = config.MODELS_DIR / app.state.acoustic_model
+    meta = model_dir / "meta.json"
+    calibrated = (datetime.datetime.fromtimestamp(meta.stat().st_mtime, datetime.timezone.utc).date().isoformat()
+                  if meta.exists() else "unknown")
+    return {
+        "endpoint": "up" if up and not degraded else "degraded" if up else "down",
+        "model": " + ".join(f"{l['key']} {det.config.weight_of_key(l['key']):.2f}" for l in layers
+                            if l["available"]) or "no layer available",
+        "calibrated_on": calibrated,
+        "streaming": False,
+        "uptime_24h": h["uptime_24h"],
+        "queue_depth": 0,
+        "checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "layers": layers,
+        "calls_24h": h["n"],
+    }
 
 
 # ============================================================================= single-model access (A/B panel)
@@ -214,7 +295,7 @@ async def _wav_from(request):
 async def detect(request: Request):
     t0 = time.perf_counter()
     content_type = request.headers.get("content-type", "")
-    wav_bytes = None
+    wav_bytes, queue_label = None, "api"
     try:
         if content_type.startswith("multipart/form-data"):
             form = await request.form()
@@ -226,6 +307,9 @@ async def detect(request: Request):
                     wav_bytes = base64.b64decode(v)
                     break
         else:
+            payload = await _payload(request)
+            if isinstance(payload, dict) and isinstance(payload.get("queue"), str):
+                queue_label = payload["queue"][:40]
             wav_bytes = await _wav_from(request)
             if wav_bytes is None:
                 return JSONResponse({"error": "no base64 audio found; send JSON {'audio': '<base64 wav>'}"}, status_code=400)
@@ -233,8 +317,18 @@ async def detect(request: Request):
             return JSONResponse({"error": "empty audio"}, status_code=400)
         verdict = score_call(wav_bytes)
         verdict["details"]["request_ms"] = round((time.perf_counter() - t0) * 1000)
+        # Logged AFTER the verdict exists, so a store failure can never cost a detection. `queue` is
+        # the caller's own label for where the call came from - the admin panel groups by it - and it
+        # is optional: anything that just posts audio lands in "api".
+        verdict["details"]["call_id"] = store.record(
+            verdict,
+            duration_s=verdict["details"].get("duration_s"),
+            channels=verdict["details"].get("channels", 2),
+            queue=queue_label)
         return verdict
     except Exception as exc:  # never leave the judges without an answer
+        store.record({"is_synthetic": False, "confidence": 0.5, "decisive": False,
+                      "details": {"latency_ms": (time.perf_counter() - t0) * 1000}}, ok=False)
         return JSONResponse({"is_synthetic": False, "confidence": 0.5, "error": f"{type(exc).__name__}: {exc}"}, status_code=200)
 
 

@@ -1,0 +1,18 @@
+/* ISISI design tokens, shared by the landing (index.css) and the admin panel (admin/admin.css). */
+@theme {
+  --color-abyss: #03080E;
+  --color-deep: #071825;
+  --color-panel: #0C2133;
+  --color-foam: #E6F0FB;   /* moonlight — headings */
+  --color-body: #9AB5D1;   /* body text */
+  --color-dim: #6F8BA8;
+  --color-glint: #7FC4FF;  /* the system's colour: light, detection, the burst */
+  --color-edge: rgba(191, 217, 242, .13);
+
+  /* Titles and anything that asks for attention: a serif in caps at leading 1 (mijares.mx).
+     Labels: mono, the way that site sets its parentheticals. Running text: a neutral
+     grotesque in the Apple register. */
+  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+}

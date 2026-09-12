@@ -159,6 +159,9 @@ class FusionConfig:
         """A layer the config has never heard of contributes with its own default weight."""
         return self.weight_map().get(layer.key, layer.default_weight)
 
+    def weight_of_key(self, key, default=0.0):
+        return self.weight_map().get(key, default)
+
     def role_of(self, layer):
         return self.role_map().get(layer.key, layer.role)
 
@@ -447,6 +450,7 @@ class AcousticLayer(Layer):
             details={"raw_score": round(float(r["score"]), 3), "n_chunks": r["n_chunks"],
                      "n_speech_regions": r["n_speech_regions"], "speech_s": round(float(r["speech_s"]), 1),
                      "duration_s": round(float(r["duration_s"]), 1), "vad": r["vad"],
+                     "channels": int(r.get("channels", 2)), "sample_rate": int(r.get("sample_rate", 8000)),
                      "model": f"{r['backbone']} layer {r['layer']} + {r['classifier']}",
                      "calibration": self.detector.calibration.get("method", "none"),
                      "model_display": f"{r['display']}, hidden layer {r['layer']}, frozen + MLP",
