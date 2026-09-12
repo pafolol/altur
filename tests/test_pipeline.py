@@ -112,7 +112,7 @@ def test_metrics_perfect_and_random():
 def test_endpoint_contract():
     from fastapi.testclient import TestClient
     import server
-    server.app.state.backbone, server.app.state.classifier = None, "mlp"
+    server.app.state.primary, server.app.state.classifier = "specialist", "mlp"
     client = TestClient(server.app)
     stereo, sr = synthetic_call()
     b64 = base64.b64encode(wav_bytes(stereo, sr)).decode()
@@ -142,7 +142,7 @@ def test_truncated_backbone_matches_full_model():
     from transformers import AutoModel
     from predict import AcousticDetector
     det = AcousticDetector(verbose=False)
-    full = AutoModel.from_pretrained(config.BACKBONES[det.backbone]["hf_name"]).to(det.device).eval()
+    full = AutoModel.from_pretrained(det.hf_name).to(det.device).eval()
     stereo, sr = synthetic_call()
     chunks, _ = audio.caller_chunks(stereo, sr)
     x = torch.from_numpy(audio.normalize_for_model(chunks[0], det.do_normalize))[None].to(det.device)
@@ -158,7 +158,7 @@ def test_demo_page_and_details():
     """GET / serves the one-file demo page; /detect returns the fields the page explains the verdict with."""
     from fastapi.testclient import TestClient
     import server
-    server.app.state.backbone, server.app.state.classifier = None, "mlp"
+    server.app.state.primary, server.app.state.classifier = "specialist", "mlp"
     client = TestClient(server.app)
     r = client.get("/")
     assert r.status_code == 200 and "Line" in r.text and "Ask the detector" in r.text

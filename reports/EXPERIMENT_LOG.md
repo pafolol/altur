@@ -475,3 +475,358 @@ One record per experiment, appended by the scripts (never edited by hand; newest
 - **loo_synthetic**: {'min_held_out_accuracy': 0.17486338797814208, 'call_weighted_accuracy': 0.2561576354679803, 'clusters_below_0.9': 1}
 - **loo_human**: {'min_held_out_accuracy': 0.10884353741496598, 'call_weighted_accuracy': 0.12666666666666668, 'clusters_below_0.9': 1}
 
+## 2026-09-12 07:15:42 - channel pilot - train/seen
+
+- **model**: deployed specialist (Model A)
+- **n_samples**: 10
+- **accuracy_original**: 1.0000
+- **accuracy_channel**: 0.7000
+- **accuracy_channel_silero**: 0.7000
+- **verdict_flips**: 3
+- **segmentation_failures**: 4
+- **mean_abs_delta_p**: 0.3393
+- **decision**: GO
+- **notes**: 10-call gate before generating the full channel dataset
+
+## 2026-09-12 07:38:56 - channel pilot - train/seen
+
+- **model**: deployed specialist (Model A)
+- **n_samples**: 10
+- **accuracy_original**: 1.0000
+- **accuracy_channel**: 0.7000
+- **accuracy_channel_silero**: 0.7000
+- **verdict_flips**: 3
+- **segmentation_failures**: 4
+- **mean_abs_delta_p**: 0.3337
+- **decision**: GO
+- **notes**: 10-call gate before generating the full channel dataset
+
+## 2026-09-12 07:40:02 - channel pilot - train/seen
+
+- **model**: deployed specialist (Model A)
+- **n_samples**: 10
+- **accuracy_original**: 1.0000
+- **accuracy_channel**: 0.7000
+- **accuracy_channel_silero**: 0.7000
+- **verdict_flips**: 3
+- **segmentation_failures**: 4
+- **mean_abs_delta_p**: 0.3297
+- **decision**: GO
+- **notes**: 10-call gate before generating the full channel dataset
+
+## 2026-09-12 08:02:36 - embedding extraction - original + telephone channel
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2
+- **segmentation**: silero VAD + 4s chunks, RMS -26.0 dB
+- **device**: NVIDIA GeForce RTX 4080 Laptop GPU
+- **sets**: {'train_original': 3861, 'train_channel': 6528, 'val_original': 935, 'val_channel_seen': 815, 'val_channel_unseen': 821}
+- **runtime_s**: 1337.2000
+- **notes**: frozen backbone, mean pooling of every hidden layer; train sets are the only ones that may be trained on
+
+## 2026-09-12 08:03:50 - Robust Acoustic V2 - orig_only
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original
+- **n_train_chunks**: 3861
+- **selected_layer**: 1
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 10
+- **device**: cuda
+- **runtime_s**: 4.6000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0000 (n=71)
+- **val_channel_seen**: acc=0.5493 bal_acc=0.5294 f1=0.1111 AUC=0.9316 EER=14.11% FAR=0.941 FRR=0.000 brier=0.4321 (n=71)
+- **val_channel_unseen**: acc=0.5352 bal_acc=0.5147 f1=0.0571 AUC=0.9388 EER=14.11% FAR=0.971 FRR=0.000 brier=0.4550 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:03:50 - Robust Acoustic V2 - channel_only
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_channel
+- **n_train_chunks**: 6528
+- **selected_layer**: 1
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 10
+- **device**: cuda
+- **runtime_s**: 3.6000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0002 (n=71)
+- **val_channel_seen**: acc=0.9577 bal_acc=0.9595 f1=0.9577 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.081 brier=0.0390 (n=71)
+- **val_channel_unseen**: acc=0.9577 bal_acc=0.9571 f1=0.9552 AUC=0.9944 EER=2.82% FAR=0.059 FRR=0.027 brier=0.0305 (n=71)
+- **notes**: DEPLOYED as Model B; channel_unseen never used for selection
+
+## 2026-09-12 08:03:50 - Robust Acoustic V2 - mixed
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original, train_channel
+- **n_train_chunks**: 10389
+- **selected_layer**: 1
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 8
+- **device**: cuda
+- **runtime_s**: 5.4000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0000 (n=71)
+- **val_channel_seen**: acc=0.9577 bal_acc=0.9595 f1=0.9577 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.081 brier=0.0361 (n=71)
+- **val_channel_unseen**: acc=0.9718 bal_acc=0.9718 f1=0.9706 AUC=0.9952 EER=2.82% FAR=0.029 FRR=0.027 brier=0.0199 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:03:50 - Robust Acoustic V2 - balanced
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original, train_channel
+- **n_train_chunks**: 10389
+- **selected_layer**: 1
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 18
+- **device**: cuda
+- **runtime_s**: 7.5000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0000 (n=71)
+- **val_channel_seen**: acc=0.9718 bal_acc=0.9730 f1=0.9714 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.054 brier=0.0262 (n=71)
+- **val_channel_unseen**: acc=0.9718 bal_acc=0.9718 f1=0.9706 AUC=0.9968 EER=2.82% FAR=0.029 FRR=0.027 brier=0.0257 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:05:28 - Robust Acoustic V2 - orig_only
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original
+- **n_train_chunks**: 3861
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.0000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0002 (n=71)
+- **val_channel_seen**: acc=0.9859 bal_acc=0.9853 f1=0.9851 AUC=1.0000 EER=0.00% FAR=0.029 FRR=0.000 brier=0.0203 (n=71)
+- **val_channel_unseen**: acc=0.9296 bal_acc=0.9265 f1=0.9206 AUC=1.0000 EER=0.00% FAR=0.147 FRR=0.000 brier=0.0757 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:05:28 - Robust Acoustic V2 - channel_only
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_channel
+- **n_train_chunks**: 6528
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 2.3000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0004 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0038 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0061 (n=71)
+- **notes**: DEPLOYED as Model B; channel_unseen never used for selection
+
+## 2026-09-12 08:05:28 - Robust Acoustic V2 - mixed
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original, train_channel
+- **n_train_chunks**: 10389
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.6000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0001 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0024 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0024 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:05:28 - Robust Acoustic V2 - balanced
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original, train_channel
+- **n_train_chunks**: 10389
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.7000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0000 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0016 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0030 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:06:45 - Robust Acoustic V2 - orig_only
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original
+- **n_train_chunks**: 3861
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.0000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0002 (n=71)
+- **val_channel_seen**: acc=0.9859 bal_acc=0.9853 f1=0.9851 AUC=1.0000 EER=0.00% FAR=0.029 FRR=0.000 brier=0.0203 (n=71)
+- **val_channel_unseen**: acc=0.9296 bal_acc=0.9265 f1=0.9206 AUC=1.0000 EER=0.00% FAR=0.147 FRR=0.000 brier=0.0757 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:06:45 - Robust Acoustic V2 - channel_only
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_channel
+- **n_train_chunks**: 6528
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 2.4000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0004 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0038 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0061 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:06:45 - Robust Acoustic V2 - mixed
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original, train_channel
+- **n_train_chunks**: 10389
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.6000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0001 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0024 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0024 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:06:45 - Robust Acoustic V2 - balanced
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original, train_channel
+- **n_train_chunks**: 10389
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.7000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0000 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0016 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0030 (n=71)
+- **notes**: DEPLOYED as Model B; channel_unseen never used for selection
+
+## 2026-09-12 08:07:33 - evaluation matrix - specialist vs robust v2
+
+- **models**: specialist, specialist_silero, robust_v2
+- **domains**: altur_val, channel_val_unseen
+- **runtime_s**: 22.5000
+- **worst_domain_accuracy**: {'specialist': np.float64(1.0), 'specialist_silero': np.float64(0.6667), 'robust_v2': np.float64(1.0)}
+- **best_model**: specialist
+- **notes**: channel_val_unseen never used for training or selection
+
+## 2026-09-12 08:08:58 - Robust Acoustic V2 - orig_only
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original
+- **n_train_chunks**: 3861
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.1000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0002 (n=71)
+- **val_channel_seen**: acc=0.9859 bal_acc=0.9853 f1=0.9851 AUC=1.0000 EER=0.00% FAR=0.029 FRR=0.000 brier=0.0203 (n=71)
+- **val_channel_unseen**: acc=0.9296 bal_acc=0.9265 f1=0.9206 AUC=1.0000 EER=0.00% FAR=0.147 FRR=0.000 brier=0.0757 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:08:58 - Robust Acoustic V2 - channel_only
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_channel
+- **n_train_chunks**: 6528
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 2.4000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0004 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0038 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0061 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:08:58 - Robust Acoustic V2 - mixed
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original, train_channel
+- **n_train_chunks**: 10389
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.9000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0001 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0024 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0024 (n=71)
+- **notes**: control; channel_unseen never used for selection
+
+## 2026-09-12 08:08:58 - Robust Acoustic V2 - balanced
+
+- **model**: facebook/wav2vec2-base-es-voxpopuli-v2 (frozen)
+- **training_domains**: train_original, train_channel
+- **n_train_chunks**: 10389
+- **selected_layer**: 5
+- **segmentation**: silero VAD + 4s chunks, RMS -26 dB
+- **classifier**: MLP 768-256-2
+- **hyperparameters**: lr=0.001, wd=0.0001, batch=64, dropout=0.3, seed=42, best epoch 1
+- **device**: cuda
+- **runtime_s**: 3.7000
+- **val_original**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0000 (n=71)
+- **val_channel_seen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0016 (n=71)
+- **val_channel_unseen**: acc=1.0000 bal_acc=1.0000 f1=1.0000 AUC=1.0000 EER=0.00% FAR=0.000 FRR=0.000 brier=0.0030 (n=71)
+- **notes**: DEPLOYED as Model B; channel_unseen never used for selection
+
+## 2026-09-12 08:36:12 - evaluation matrix - specialist vs robust v2
+
+- **models**: specialist, specialist_silero, orig_only, robust_v2
+- **domains**: altur_val, channel_val_seen, channel_val_unseen, external_ood, external_ood_channel, stress
+- **runtime_s**: 1606.4000
+- **worst_domain_accuracy**: {'specialist': np.float64(0.6204), 'specialist_silero': np.float64(0.6019), 'orig_only': np.float64(0.5556), 'robust_v2': np.float64(0.5463)}
+- **best_model**: specialist
+- **notes**: channel_val_unseen never used for training or selection
+
+## 2026-09-12 08:38:23 - evaluation matrix - specialist vs robust v2
+
+- **models**: specialist, specialist_silero, orig_only, robust_v2
+- **domains**: altur_val, channel_val_seen, channel_val_unseen, external_ood, external_ood_channel, stress
+- **runtime_s**: 1.0000
+- **worst_domain_accuracy**: {'specialist': 0.6204, 'specialist_silero': 0.6019, 'orig_only': 0.5556, 'robust_v2': 0.5463}
+- **worst_telephone_accuracy**: {'specialist': 0.6204, 'specialist_silero': 0.6481, 'orig_only': 0.7685, 'robust_v2': 0.8148}
+- **best_model**: robust_v2
+- **best_model_all_domains**: specialist
+- **notes**: channel_val_unseen never used for training or selection; external_ood is clean non-telephone audio and is excluded from the deployment criterion but reported in full
+
+## 2026-09-12 08:41:07 - evaluation matrix - specialist vs robust v2
+
+- **models**: specialist, specialist_silero, orig_only, robust_v2
+- **domains**: altur_val, channel_val_seen, channel_val_unseen, external_ood, external_ood_channel, stress
+- **runtime_s**: 1.0000
+- **worst_domain_accuracy**: {'specialist': 0.6204, 'specialist_silero': 0.6019, 'orig_only': 0.5556, 'robust_v2': 0.5463}
+- **worst_telephone_accuracy**: {'specialist': 0.6204, 'specialist_silero': 0.6481, 'orig_only': 0.7685, 'robust_v2': 0.8148}
+- **best_model**: robust_v2
+- **best_model_all_domains**: specialist
+- **notes**: channel_val_unseen never used for training or selection; external_ood is clean non-telephone audio and is excluded from the deployment criterion but reported in full
+
+## 2026-09-12 08:42:04 - evaluation matrix - specialist vs robust v2
+
+- **models**: specialist, specialist_silero, orig_only, robust_v2
+- **domains**: altur_val, channel_val_seen, channel_val_unseen, external_ood, external_ood_channel, stress
+- **runtime_s**: 0.8000
+- **worst_domain_accuracy**: {'specialist': 0.6204, 'specialist_silero': 0.6019, 'orig_only': 0.5556, 'robust_v2': 0.5463}
+- **worst_telephone_accuracy**: {'specialist': 0.6204, 'specialist_silero': 0.6481, 'orig_only': 0.7685, 'robust_v2': 0.8148}
+- **best_model**: robust_v2
+- **best_model_all_domains**: specialist
+- **notes**: channel_val_unseen never used for training or selection; external_ood is clean non-telephone audio and is excluded from the deployment criterion but reported in full
+

@@ -240,15 +240,17 @@ def slice_chunk(wave, sr, start_s, end_s):
     return wave[int(round(start_s * sr)):int(round(end_s * sr))]
 
 
-def caller_chunks(stereo, sr, regions=None, return_regions=False):
+def caller_chunks(stereo, sr, regions=None, return_regions=False, vad_method=None):
     """
     stereo (n, ch) at sr  ->  list of 16 kHz float32 chunks of the CALLER channel (+ their (start, end)).
     `regions` lets the caller override the VAD (e.g. to test the official turn files); default = our VAD.
+    `vad_method` overrides config.VAD_METHOD for this call only (None = the configured default, so the
+    deployed specialist keeps behaving exactly as it was trained and benchmarked).
     """
     caller = get_channel(stereo, config.CALLER_CHANNEL)
     if regions is None:
         agent = get_channel(stereo, config.AGENT_CHANNEL) if stereo.shape[1] > 1 else None
-        regions = detect_speech(caller, sr, other=agent)
+        regions = detect_speech(caller, sr, method=vad_method, other=agent)
     spans = chunk_regions(regions)
     chunks = [level_normalize(resample(slice_chunk(caller, sr, s, e), sr)) for s, e in spans]
     if return_regions:

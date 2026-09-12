@@ -1,0 +1,14 @@
+{
+  "n_calls": 40,
+  "floor_db_original_median": -72.24716186523438,
+  "floor_db_channel_median": -37.50596618652344,
+  "range_db_original_median": 52.095890045166016,
+  "range_db_channel_median": 15.947009086608887,
+  "energy_vad_dead_calls": 5,
+  "energy_vad_dead_fraction": 0.125,
+  "silero_dead_calls": 0,
+  "mean_regions_energy_original": 17.45,
+  "mean_regions_energy_channel": 13.775,
+  "mean_regions_silero_original": 12.625,
+  "mean_regions_silero_channel": 11.125
+}

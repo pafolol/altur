@@ -1,0 +1,11 @@
+{
+  "model": "robust_v2",
+  "dir": "robust_v2",
+  "label": "Robust Acoustic V2",
+  "criterion": "highest worst-case accuracy over the telephone domains (altur_val, channel_val_seen, channel_val_unseen, external_ood_channel, stress)",
+  "worst_telephone_accuracy": 0.8148148148148148,
+  "worst_all_domains_accuracy": 0.5462962962962963,
+  "runner_up_all_domains": "specialist",
+  "note": "external_ood (clean non-telephone audio) is excluded from the criterion and reported in full in the report; see section 8.",
+  "generated": "2026-09-12 08:42:04"
+}

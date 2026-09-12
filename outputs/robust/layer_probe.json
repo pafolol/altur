@@ -1,0 +1,145 @@
+[
+  {
+    "layer": 0,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 0.9992050874403816,
+    "val_channel_seen_acc": 0.971830985915493,
+    "val_channel_unseen_auc": 0.9992050874403816,
+    "val_channel_unseen_acc": 0.971830985915493,
+    "worst_auc": 0.9992050874403816,
+    "worst_acc": 0.971830985915493
+  },
+  {
+    "layer": 1,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 0.971830985915493,
+    "val_channel_unseen_auc": 0.9968203497615262,
+    "val_channel_unseen_acc": 0.9577464788732394,
+    "worst_auc": 1.0,
+    "worst_acc": 0.971830985915493
+  },
+  {
+    "layer": 2,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 0.971830985915493,
+    "val_channel_unseen_auc": 0.9968203497615263,
+    "val_channel_unseen_acc": 0.9436619718309859,
+    "worst_auc": 1.0,
+    "worst_acc": 0.971830985915493
+  },
+  {
+    "layer": 3,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 0.971830985915493,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 0.9859154929577465,
+    "worst_auc": 1.0,
+    "worst_acc": 0.971830985915493
+  },
+  {
+    "layer": 4,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 0.9859154929577465,
+    "val_channel_unseen_auc": 0.9976152623211446,
+    "val_channel_unseen_acc": 0.9859154929577465,
+    "worst_auc": 1.0,
+    "worst_acc": 0.9859154929577465
+  },
+  {
+    "layer": 5,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 1.0,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 0.9859154929577465,
+    "worst_auc": 1.0,
+    "worst_acc": 1.0
+  },
+  {
+    "layer": 6,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 1.0,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 1.0,
+    "worst_auc": 1.0,
+    "worst_acc": 1.0
+  },
+  {
+    "layer": 7,
+    "val_original_auc": 1.0,
+    "val_original_acc": 0.9859154929577465,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 1.0,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 1.0,
+    "worst_auc": 1.0,
+    "worst_acc": 0.9859154929577465
+  },
+  {
+    "layer": 8,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 1.0,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 1.0,
+    "worst_auc": 1.0,
+    "worst_acc": 1.0
+  },
+  {
+    "layer": 9,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 1.0,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 1.0,
+    "worst_auc": 1.0,
+    "worst_acc": 1.0
+  },
+  {
+    "layer": 10,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 1.0,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 1.0,
+    "worst_auc": 1.0,
+    "worst_acc": 1.0
+  },
+  {
+    "layer": 11,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 0.9577464788732394,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 0.9859154929577465,
+    "worst_auc": 1.0,
+    "worst_acc": 0.9577464788732394
+  },
+  {
+    "layer": 12,
+    "val_original_auc": 1.0,
+    "val_original_acc": 1.0,
+    "val_channel_seen_auc": 1.0,
+    "val_channel_seen_acc": 0.971830985915493,
+    "val_channel_unseen_auc": 1.0,
+    "val_channel_unseen_acc": 0.9577464788732394,
+    "worst_auc": 1.0,
+    "worst_acc": 0.971830985915493
+  }
+]

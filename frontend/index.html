@@ -106,6 +106,23 @@
   .meter .mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--paper-dim); }
   .scale { display: flex; justify-content: space-between; max-width: 420px; margin: 4px auto 0; font-size: 10px; color: var(--muted); letter-spacing: .1em; }
 
+  /* side-by-side comparison of the two models */
+  .ab { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px; }
+  .abcard { background: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 16px; text-align: center; position: relative; }
+  .abcard .who { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .abcard .sub { font-size: 11px; color: var(--paper-dim); margin-top: 2px; min-height: 30px; }
+  .abcard .big { font-family: var(--serif); font-weight: 800; font-size: 34px; line-height: 1.1; margin: 10px 0 2px; }
+  .abcard .big.human { color: var(--human); }
+  .abcard .big.synthetic { color: var(--synth); }
+  .abcard .pval { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .abcard .bar { height: 8px; margin: 10px 0 6px; background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 4px; position: relative; overflow: hidden; }
+  .abcard .bar i { position: absolute; inset: 0; width: 0; transition: width .7s cubic-bezier(.2,.9,.2,1); display: block; }
+  .abcard .bar i.human { background: var(--human); }
+  .abcard .bar i.synthetic { background: var(--synth); }
+  .abcard .foot { font-size: 10.5px; color: var(--paper-dim); margin-top: 8px; line-height: 1.5; }
+  .abtag { position: absolute; top: -9px; right: 10px; font-size: 9.5px; letter-spacing: .1em; padding: 2px 7px; border-radius: 3px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
+  .abnote { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+
   .explain { margin-top: 18px; display: none; }
   .explain.on { display: block; }
   .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
@@ -241,6 +258,15 @@
       </div>
     </section>
 
+    <section class="panel">
+      <div class="num">03 &middot; SIDE BY SIDE</div>
+      <h2>The specialist and the phone-hardened model, on the same audio</h2>
+      <p class="hint">The specialist was fitted on the Altur recordings, where the caller channel is digitally silent between turns and the synthetic callers happen to be louder. A real telephone line erases both of those cues. Robust V2 is the same frozen backbone with a classifier that also trained on those calls after a line. Stage some audio above, tick the line simulation, and ask them both.</p>
+      <button class="primary" id="abBtn" disabled>Ask both models</button>
+      <div class="ab" id="abCards"></div>
+      <div class="abnote" id="abNote"></div>
+    </section>
+
     <section class="panel deck">
       <div class="num">03 · TEST DECK</div>
       <h2>Listen to the held-out calls, then let it decide</h2>
@@ -365,7 +391,7 @@
     state.buffer = buf; state.sourceKind = kind; state.sourceName = meta;
     $("stageTitle").textContent = "On the line"; $("stageMeta").textContent = meta;
     await buildWav();
-    $("sendBtn").disabled = false;
+    $("sendBtn").disabled = false; if ($("abBtn")) $("abBtn").disabled = false;
     $("explain").classList.remove("on");
     $("verdict").innerHTML = `<div class="empty">Ready. Press <b>Ask the detector</b>.<br>The model will receive an 8 kHz stereo WAV and nothing else.</div>`;
   }
@@ -487,7 +513,7 @@
     });
     $("steps").innerHTML = [
       `the page sent a stereo 8 kHz WAV${state.simulated ? " with a simulated telephone line" : ""} — no filename, no label, no hint of the source`,
-      "server: channel 0 (caller) → energy voice-activity detection 15 dB above the noise floor → speech regions",
+      `server: channel 0 (caller) → ${d.vad === "silero" ? "Silero neural voice-activity detection (survives a high line noise floor)" : "energy voice-activity detection 15 dB above the noise floor"} → speech regions`,
       "each region cut into ≤ 4 s chunks, every chunk scaled to the same loudness (so volume cannot be a cue), resampled to 16 kHz",
       `frozen ${d.model_display || d.model} → one 768-number embedding per chunk → small MLP → chunk log-odds`,
       "mean of the chunk log-odds → calibrated probability → verdict at 0.5 → confidence = max(p, 1 − p)",
@@ -495,6 +521,75 @@
     $("caveat").innerHTML = `<b>Read it with care.</b> The model was trained on 8 kHz bank calls. On its own dataset it makes no mistakes; on new engines and speakers through a phone line it is right about 88% of the time (report, Part 8c). Clean, wide-band studio or laptop audio without the line simulation tends to look <i>synthetic</i> to it, because in its training data the synthetic callers were the clean ones. A borderline score means exactly that: borderline.`;
     $("explain").classList.add("on");
     $("truthMsg").textContent = ""; $("truthH").disabled = false; $("truthS").disabled = false;
+  }
+
+  // ------------------------------------------------------------------ side by side: specialist vs Robust V2
+  // Same bytes, same request shape, two models. The page never tells either of them where the audio came from.
+  let modelInfo = {};
+  (async () => {
+    try {
+      const r = await fetch(base() + "/models");
+      if (r.ok) (await r.json()).forEach(m => { modelInfo[m.key] = m; });
+    } catch (e) { /* the server may have only one model; the panel says so when asked */ }
+  })();
+
+  const AB_TITLES = { specialist: "Altur specialist", robust_v2: "Robust V2" };
+  const AB_SUBS = {
+    specialist: "frozen Wav2Vec2 Spanish + MLP, trained on the Altur recordings only",
+    robust_v2: "same frozen backbone, classifier also trained on those calls after a telephone line",
+  };
+
+  $("abBtn").addEventListener("click", async () => {
+    const btn = $("abBtn"); btn.disabled = true; btn.textContent = "Asking both\u2026";
+    $("abCards").innerHTML = ""; $("abNote").textContent = "";
+    try {
+      const b64 = await blobToBase64(await buildWav());
+      const t0 = performance.now();
+      const j = await (await fetch(base() + "/detect_all", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audio: b64 })
+      })).json();
+      renderAB(j, performance.now() - t0);
+    } catch (e) {
+      $("abNote").innerHTML = '<span style="color:var(--synth)">Could not reach /detect_all: ' + e.message +
+        '. Start the server with <code>python src/server.py --preload-all</code>.</span>';
+    }
+    btn.disabled = false; btn.textContent = "Ask both models";
+  });
+
+  function renderAB(j, rt) {
+    const models = j.models || {}, keys = Object.keys(models);
+    if (!keys.length) { $("abNote").textContent = "The server did not return any model."; return; }
+    $("abCards").innerHTML = keys.map(k => {
+      const m = models[k];
+      if (m.error) return '<div class="abcard"><div class="who">' + (AB_TITLES[k] || k) +
+        '</div><div class="foot" style="color:var(--synth)">' + m.error + "</div></div>";
+      const d = m.details || {}, syn = !!m.is_synthetic, cls = syn ? "synthetic" : "human";
+      const p = d.synthetic_probability !== undefined ? d.synthetic_probability : (syn ? m.confidence : 1 - m.confidence);
+      const info = modelInfo[k] || {};
+      return '<div class="abcard">' +
+        (k === j.primary ? '<span class="abtag">answers /detect</span>' : "") +
+        '<div class="who">' + (AB_TITLES[k] || k) + "</div>" +
+        '<div class="sub">' + (AB_SUBS[k] || "") + "</div>" +
+        '<div class="big ' + cls + '">' + (syn ? "SYNTHETIC" : "HUMAN") + "</div>" +
+        '<div class="pval">p(synthetic) = ' + p.toFixed(3) + " \u00b7 confidence " + (m.confidence * 100).toFixed(1) + "%</div>" +
+        '<div class="bar"><i class="' + cls + '" data-w="' + (p * 100).toFixed(1) + '"></i></div>' +
+        '<div class="foot">' + (d.n_chunks || 0) + " chunk" + (d.n_chunks === 1 ? "" : "s") +
+        " from " + (d.speech_s || 0).toFixed(1) + " s of caller speech \u00b7 " + (d.vad || info.vad || "?") +
+        " segmentation \u00b7 layer " + (info.layer !== undefined ? info.layer : "?") + "<br>raw score " +
+        ((d.raw_score || 0) >= 0 ? "+" : "") + (d.raw_score || 0).toFixed(2) + " \u00b7 " + (d.latency_ms || "?") + " ms</div></div>";
+    }).join("");
+    requestAnimationFrame(() => document.querySelectorAll(".abcard .bar i").forEach(el => { el.style.width = el.dataset.w + "%"; }));
+
+    const ok = keys.filter(k => !models[k].error);
+    const verdicts = ok.map(k => (AB_TITLES[k] || k) + " says <b>" + (models[k].is_synthetic ? "synthetic" : "human") + "</b>");
+    const disagree = new Set(ok.map(k => models[k].is_synthetic)).size > 1;
+    const blind = ok.filter(k => (models[k].details || {}).n_chunks === 0);
+    $("abNote").innerHTML = verdicts.join(" \u00b7 ") + " \u00b7 round trip " + rt.toFixed(0) + " ms." +
+      (disagree ? " <b>They disagree.</b> That is the point of this panel: whichever one is wrong here is the one the telephone line broke."
+                : " They agree on this clip.") +
+      (blind.length ? ' <span style="color:var(--synth)">' + blind.map(k => AB_TITLES[k] || k).join(", ") +
+        " found no caller speech at all and fell back to 0.5 \u2014 the segmenter gave up before the model was reached.</span>" : "") +
+      " Neither model was told the source, the filename or the label.";
   }
 
   // ------------------------------------------------------------------ scoreboard (local only; never sent to the model)

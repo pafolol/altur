@@ -27,12 +27,24 @@ import _bootstrap  # noqa: F401
 import audio
 import config
 
-BEST_MODEL_FILE = config.REPORTS_DIR / "best_model.json"
+BEST_MODEL_FILE = config.REPORTS_DIR / "best_model.json"        # winner of the three-backbone benchmark
+DEPLOYED_MODEL_FILE = config.REPORTS_DIR / "deployed_model.json"  # winner of the cross-domain evaluation
 
 
 def default_backbone():
-    if BEST_MODEL_FILE.exists():
-        return json.loads(BEST_MODEL_FILE.read_text())["backbone"]
+    """
+    Which model directory answers when nobody names one.
+
+    deployed_model.json wins if it exists: it is written by evaluate_models.py from the measured cross-domain
+    matrix, and it is what makes the fusion interface here and the HTTP endpoint in server.py agree. It falls
+    back to best_model.json, the winner of the original three-backbone benchmark, and then to whatever is on
+    disk. To pin a model by hand, delete or edit deployed_model.json - or just pass the name.
+    """
+    for f, key in ((DEPLOYED_MODEL_FILE, "dir"), (BEST_MODEL_FILE, "backbone")):
+        if f.exists():
+            name = json.loads(f.read_text()).get(key)
+            if name and (config.MODELS_DIR / name / "meta.json").exists():
+                return name
     for key in config.BACKBONE_ORDER:
         if (config.MODELS_DIR / key / "meta.json").exists():
             return key
@@ -42,13 +54,22 @@ def default_backbone():
 class AcousticDetector:
     """Loads one backbone + classifier + calibration once; scores calls."""
 
-    def __init__(self, backbone=None, classifier="mlp", device=None, verbose=True):
+    def __init__(self, backbone=None, classifier="mlp", device=None, verbose=True, vad=None):
         self.backbone = backbone or default_backbone()
         self.model_dir = config.MODELS_DIR / self.backbone
         self.meta = json.loads((self.model_dir / "meta.json").read_text())
         self.layer = int(self.meta["layer"])
         self.pooling = self.meta.get("pooling", "mean")
         self.aggregation = self.meta.get("aggregation", config.CHUNK_AGGREGATION)
+        # Segmentation is part of the model, not of the caller: a model trained with a different voice-activity
+        # detector records it in meta.json and gets it back here. Models trained before this field existed fall
+        # back to config.VAD_METHOD, so the deployed specialist is bit-identical to what was benchmarked.
+        self.vad = vad if vad is not None else self.meta.get("vad", config.VAD_METHOD)
+        # `backbone` is really the directory under models/. For the three benchmarked backbones it is also a
+        # key of config.BACKBONES; for a model like robust_v2 it is not, so the Hugging Face name and the
+        # display name come from its own meta.json.
+        self.hf_name = self.meta.get("hf_name") or config.BACKBONES[self.backbone]["hf_name"]
+        self.display = self.meta.get("display") or config.BACKBONES.get(self.backbone, {}).get("display", self.backbone)
         self.device = device or config.get_device(verbose=False)
         self.classifier_name = classifier
         t0 = time.perf_counter()
@@ -57,14 +78,14 @@ class AcousticDetector:
         self.calibration = self._load_calibration()
         self.load_s = time.perf_counter() - t0
         if verbose:
-            print(f"[detector] {config.BACKBONES[self.backbone]['display']} layer {self.layer} + {classifier}, "
+            print(f"[detector] {self.display} layer {self.layer} + {classifier}, "
                   f"calibration={self.calibration.get('method', 'none')}, device={self.device.type}, "
                   f"loaded in {self.load_s:.1f}s")
 
     # ------------------------------------------------------------------ loading
     def _load_backbone(self):
         from transformers import AutoFeatureExtractor, AutoModel
-        name = config.BACKBONES[self.backbone]["hf_name"]
+        name = self.hf_name
         self.do_normalize = bool(AutoFeatureExtractor.from_pretrained(name).do_normalize)
         model = AutoModel.from_pretrained(name)
         # Only the layers up to the selected one are needed: drop the rest (exact for hidden_states[layer];
@@ -122,9 +143,10 @@ class AcousticDetector:
         from metrics import aggregate_chunk_scores
         t = {}
         t0 = time.perf_counter()
-        chunks, spans, regions = audio.caller_chunks(stereo, sr, return_regions=True)
+        chunks, spans, regions = audio.caller_chunks(stereo, sr, return_regions=True, vad_method=self.vad)
         t["segmentation_s"] = time.perf_counter() - t0
-        result = {"backbone": self.backbone, "layer": self.layer, "classifier": self.classifier_name,
+        result = {"backbone": self.backbone, "display": self.display, "layer": self.layer,
+                  "classifier": self.classifier_name, "vad": self.vad,
                   "duration_s": len(stereo) / sr, "sample_rate": sr, "channels": int(stereo.shape[1]),
                   "n_speech_regions": len(regions), "n_chunks": len(chunks),
                   "speech_s": float(sum(e - s for s, e in regions))}
@@ -190,7 +212,7 @@ def print_result(r, path):
     print(f"\nFile:         {path}")
     print(f"Audio:        {r['duration_s']:.1f} s, {r['channels']} ch @ {r['sample_rate']} Hz -> caller speech {r['speech_s']:.1f} s "
           f"in {r['n_speech_regions']} regions -> {r['n_chunks']} chunks")
-    print(f"Model:        {config.BACKBONES[r['backbone']]['display']} layer {r['layer']} + {r['classifier']}")
+    print(f"Model:        {r.get('display', r['backbone'])} layer {r['layer']} + {r['classifier']}")
     print(f"Verdict:      {'SYNTHETIC' if v['is_synthetic'] else 'HUMAN'}   synthetic probability {r['synthetic_probability']:.3f} "
           f"(raw score {r['score']:+.2f})")
     if r["chunk_scores"]:
