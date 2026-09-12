@@ -1,0 +1,28 @@
+{
+  "consistency_minus_reaction": {
+    "delta_auc": 0.0015898251192368873,
+    "ci95_call_bootstrap": [
+      -0.004839693154996108,
+      0.008957607433217038
+    ],
+    "repeats": 1000
+  },
+  "consistency_minus_shortcut": {
+    "delta_auc": 0.04531001589825134,
+    "ci95_call_bootstrap": [
+      -0.00084017515052003,
+      0.11349750384024582
+    ],
+    "repeats": 1000
+  },
+  "error_counts": {
+    "false_positive": 3,
+    "false_negative": 1
+  },
+  "error_event_medians": {
+    "interruption_count": 0.0,
+    "barge_in_count": 2.5,
+    "response_latency_count": 6.5,
+    "duration_s": 141.49
+  }
+}

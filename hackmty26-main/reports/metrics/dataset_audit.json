@@ -1,0 +1,40 @@
+{
+  "split_counts": [
+    {
+      "split": "train",
+      "human": 113,
+      "synthetic": 169
+    },
+    {
+      "split": "val",
+      "human": 37,
+      "synthetic": 34
+    }
+  ],
+  "audio_hours": 14.508027777777778,
+  "duration_s": {
+    "count": 353.0,
+    "mean": 147.957223796034,
+    "std": 29.587266767493002,
+    "min": 61.0,
+    "25%": 129.44,
+    "50%": 145.94,
+    "75%": 162.94,
+    "max": 273.9
+  },
+  "duration_discrepancy_s": {
+    "count": 353.0,
+    "mean": 0.03654390934844162,
+    "std": 0.42228875693210693,
+    "min": -0.960000000000008,
+    "25%": -0.2599999999999909,
+    "50%": 0.01999999999999602,
+    "75%": 0.36000000000001364,
+    "max": 0.9399999999999977
+  },
+  "turn_endpoints_exceeding_wav": 0,
+  "max_endpoint_excess_s": 0.0,
+  "exact_duplicate_audio_files": 0,
+  "speaker_group_ids_available": false,
+  "format": "all stereo PCM16 8kHz"
+}

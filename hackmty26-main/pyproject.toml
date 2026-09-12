@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools==75.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "altur-conversational-behavior"
+version = "1.0.0"
+description = "Offline temporal conversational evidence for the Altur challenge"
+requires-python = ">=3.11,<3.13"
+
+[tool.setuptools.packages.find]
+include = ["behavior*", "scripts*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["integration: requires local trained and VAD artifacts"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

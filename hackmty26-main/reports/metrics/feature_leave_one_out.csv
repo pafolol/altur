@@ -1,0 +1,25 @@
+feature,train_observed,oof_auc_without,oof_auc_full_minus_without,decision
+caller_turn_mean,282,0.9788448447400115,0.002146934073414708,Diagnostic only; correlated features need joint interpretation
+caller_turn_median,282,0.9811488715505053,-0.00015709273707908977,Diagnostic only; correlated features need joint interpretation
+caller_turn_std,282,0.9790543017227836,0.0019374770906426253,Diagnostic only; correlated features need joint interpretation
+caller_turn_iqr,282,0.9807823218306541,0.0002094569827721937,Diagnostic only; correlated features need joint interpretation
+caller_pause_median,282,0.9817248782531287,-0.000733099439702456,Diagnostic only; correlated features need joint interpretation
+response_latency_mean,282,0.9786877520029323,0.002304026810493909,Diagnostic only; correlated features need joint interpretation
+response_latency_median,282,0.9775357385976854,0.003456040215740863,Diagnostic only; correlated features need joint interpretation
+interruption_rate,282,0.9801015866366445,0.0008901921767817678,Diagnostic only; correlated features need joint interpretation
+interruption_stop_latency_mean,157,0.9808870503220402,0.00010472849138609686,Diagnostic only; correlated features need joint interpretation
+interruption_stop_latency_median,157,0.9808346860763472,0.00015709273707908977,Diagnostic only; correlated features need joint interpretation
+interruption_yield_fraction,157,0.979420851442635,0.0015709273707912308,Diagnostic only; correlated features need joint interpretation
+interruption_immediate_yield_fraction,157,0.9805205006021889,0.00047127821123738034,Diagnostic only; correlated features need joint interpretation
+barge_in_rate,282,0.9793684871969419,0.0016232916164843347,Diagnostic only; correlated features need joint interpretation
+barge_overlap_mean,221,0.9809394145677331,5.236424569310394e-05,Diagnostic only; correlated features need joint interpretation
+barge_continues_fraction,221,0.9812536000418914,-0.00026182122846518663,Diagnostic only; correlated features need joint interpretation
+extended_gap_caller_fraction,280,0.9667487039849191,0.014243074828507174,Diagnostic only; correlated features need joint interpretation
+response_latency_std,276,0.9798921296538723,0.0010996491595539615,Diagnostic only; correlated features need joint interpretation
+response_latency_iqr,276,0.9804681363564958,0.0005236424569304843,Diagnostic only; correlated features need joint interpretation
+response_latency_cv,276,0.9810441430591192,-5.236424569299292e-05,Diagnostic only; correlated features need joint interpretation
+barge_overlap_std,85,0.9809394145677331,5.236424569310394e-05,Diagnostic only; correlated features need joint interpretation
+barge_overlap_iqr,85,0.9811488715505053,-0.00015709273707908977,Diagnostic only; correlated features need joint interpretation
+barge_overlap_cv,85,0.9812012357961983,-0.0002094569827720827,Diagnostic only; correlated features need joint interpretation
+short_context_response_std,67,0.9789495732313975,0.002042205582028722,Diagnostic only; correlated features need joint interpretation
+long_context_response_std,256,0.9708331151489763,0.010158663664449952,Diagnostic only; correlated features need joint interpretation

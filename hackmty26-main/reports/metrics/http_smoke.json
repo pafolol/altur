@@ -1,0 +1,44 @@
+{
+  "health": "ready",
+  "startup_to_ready_s": 1.2740149870223831,
+  "real_wav_endpoints_passed": [
+    "behavior",
+    "detect"
+  ],
+  "single_call_http_s": {
+    "behavior": 1.5304834159906022,
+    "detect": 1.4981746659905184
+  },
+  "invalid_input_rejected_without_echo": true,
+  "scope": "Actual HTTP on 127.0.0.1 only; not cloud or load testing",
+  "runs": [
+    {
+      "health": "ready",
+      "startup_to_ready_s": 16.636117473011836,
+      "real_wav_endpoints_passed": [
+        "behavior",
+        "detect"
+      ],
+      "single_call_http_s": {
+        "behavior": 1.2359543520142324,
+        "detect": 1.2643252190027852
+      },
+      "invalid_input_rejected_without_echo": true,
+      "scope": "Actual HTTP on 127.0.0.1 only; not cloud or load testing"
+    },
+    {
+      "health": "ready",
+      "startup_to_ready_s": 1.2740149870223831,
+      "real_wav_endpoints_passed": [
+        "behavior",
+        "detect"
+      ],
+      "single_call_http_s": {
+        "behavior": 1.5304834159906022,
+        "detect": 1.4981746659905184
+      },
+      "invalid_input_rejected_without_echo": true,
+      "scope": "Actual HTTP on 127.0.0.1 only; not cloud or load testing"
+    }
+  ]
+}

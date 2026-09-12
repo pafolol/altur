@@ -1,0 +1,14 @@
+{
+  "required_files": 28,
+  "primary_features_documented": 24,
+  "valid_nonblank_figures": 14,
+  "official_calls_preserved": 353,
+  "documentation_links_valid": true,
+  "confidential_paths_git_ignored": true,
+  "vad_checksum_valid": true,
+  "literal_secret_scan_passed": true,
+  "saved_model_matches_reported_metrics": true,
+  "actual_wav_predictions_match_feature_pipeline": true,
+  "container_execution": "not tested: Docker unavailable",
+  "cloud_resources": "none"
+}

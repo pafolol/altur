@@ -1,0 +1,8 @@
+# Confidential Altur input lives alongside the module repository.
+audio/
+*.wav
+*.zip
+.DS_Store
+HackMTY-Sponsor-Guide.pdf
+LEARNING_SUMMARY.pdf
+hackmty26-altur-challenge.pdf

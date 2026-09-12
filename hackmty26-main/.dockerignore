@@ -1,0 +1,12 @@
+# Allowlist only: confidential source data/derived per-call records cannot enter context.
+**
+!Dockerfile
+!requirements-runtime.lock
+!THIRD_PARTY_NOTICES.md
+!behavior/
+!behavior/*.py
+!artifacts/
+!artifacts/models/
+!artifacts/models/behavior.json
+!artifacts/vad/
+!artifacts/vad/silero_vad.onnx

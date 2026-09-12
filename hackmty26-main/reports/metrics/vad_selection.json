@@ -1,0 +1,47 @@
+{
+  "selection": "max mean channel IoU on 24 train calls; no class labels used",
+  "sample_seed": 2026,
+  "candidates": [
+    {
+      "config": {
+        "threshold": 0.35,
+        "hysteresis": 0.15,
+        "min_speech_s": 0.1,
+        "min_silence_s": 0.1,
+        "pad_s": 0.0,
+        "merge_gap_s": 0.15
+      },
+      "mean_channel_iou": 0.8567022701575965
+    },
+    {
+      "config": {
+        "threshold": 0.5,
+        "hysteresis": 0.15,
+        "min_speech_s": 0.16,
+        "min_silence_s": 0.16,
+        "pad_s": 0.032,
+        "merge_gap_s": 0.15
+      },
+      "mean_channel_iou": 0.8628430777818831
+    },
+    {
+      "config": {
+        "threshold": 0.65,
+        "hysteresis": 0.15,
+        "min_speech_s": 0.24,
+        "min_silence_s": 0.24,
+        "pad_s": 0.032,
+        "merge_gap_s": 0.15
+      },
+      "mean_channel_iou": 0.8651405386963185
+    }
+  ],
+  "chosen": {
+    "threshold": 0.65,
+    "hysteresis": 0.15,
+    "min_speech_s": 0.24,
+    "min_silence_s": 0.24,
+    "pad_s": 0.032,
+    "merge_gap_s": 0.15
+  }
+}

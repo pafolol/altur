@@ -1,0 +1,20 @@
+{
+  "valid_wav_inference": "passed",
+  "training_data_access_denied": true,
+  "network_egress_denied": true,
+  "native_process_sandbox": true,
+  "no_sklearn_pandas_torch": true,
+  "insufficient_evidence_fixtures": {
+    "silence": "passed: abstention and non-flag Boolean",
+    "sparse_100ms_burst": "passed: abstention and non-flag Boolean",
+    "caller_only": "passed: abstention and non-flag Boolean",
+    "agent_only": "passed: abstention and non-flag Boolean"
+  },
+  "state_isolation_after_different_calls": "passed",
+  "import_and_model_load_s": 0.9464697469957173,
+  "single_valid_wav_inference_s": 2.100122371019097,
+  "python": "3.11.13",
+  "artifact_sha256": "631dc6d7504f44c2d1f3533438738b2327258d4494143bd638c255e43fa6bacc",
+  "package_contents": "runtime .py files + Behaviour JSON + Silero ONNX only; audio bytes supplied on stdin",
+  "docker_status": "NOT VERIFIED LOCALLY"
+}

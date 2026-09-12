@@ -1,0 +1,385 @@
+{
+  "policy": "1.1-low-evidence-abstention",
+  "prefixes": {
+    "15": {
+      "probability_metrics_unchanged": {
+        "n": 71,
+        "threshold": 0.5,
+        "accuracy": 0.49295774647887325,
+        "balanced_accuracy": 0.5123211446740858,
+        "precision": 0.4852941176470588,
+        "recall": 0.9705882352941176,
+        "f1": 0.6470588235294118,
+        "roc_auc": 0.6983306836248013,
+        "pr_auc_ap": 0.7192387818739002,
+        "eer": 0.3529411764705882,
+        "fpr": 0.9459459459459459,
+        "fnr": 0.029411764705882353,
+        "brier": 0.2592876924380814,
+        "log_loss": 0.9481194152048495,
+        "ece_8_bins": 0.213040620287481,
+        "reliability": [
+          {
+            "bin": 1,
+            "n": 1,
+            "mean_probability": 0.1983582704940939,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 3,
+            "n": 2,
+            "mean_probability": 0.4165190294140333,
+            "synthetic_frequency": 0.5
+          },
+          {
+            "bin": 4,
+            "n": 34,
+            "mean_probability": 0.5014893137582839,
+            "synthetic_frequency": 0.3235294117647059
+          },
+          {
+            "bin": 5,
+            "n": 6,
+            "mean_probability": 0.7001441300419491,
+            "synthetic_frequency": 0.6666666666666666
+          },
+          {
+            "bin": 6,
+            "n": 6,
+            "mean_probability": 0.7877400266564916,
+            "synthetic_frequency": 0.16666666666666666
+          },
+          {
+            "bin": 7,
+            "n": 22,
+            "mean_probability": 0.9901191918533104,
+            "synthetic_frequency": 0.7727272727272727
+          }
+        ],
+        "confusion_matrix": [
+          [
+            2,
+            35
+          ],
+          [
+            1,
+            33
+          ]
+        ]
+      },
+      "corrected_adapter_decision_metrics": {
+        "n": 71,
+        "accuracy": 0.6338028169014085,
+        "balanced_accuracy": 0.6343402225755167,
+        "precision": 0.6111111111111112,
+        "recall": 0.6470588235294118,
+        "f1": 0.6285714285714286,
+        "fpr": 0.3783783783783784,
+        "fnr": 0.35294117647058826,
+        "confusion_matrix": [
+          [
+            23,
+            14
+          ],
+          [
+            12,
+            22
+          ]
+        ]
+      },
+      "available_evidence_calls": 39,
+      "fallback_calls": 32,
+      "fallback_human": 21,
+      "fallback_synthetic": 11,
+      "method": "Remap cached frozen probabilities/quality/events; no new VAD, training or threshold selection"
+    },
+    "30": {
+      "probability_metrics_unchanged": {
+        "n": 71,
+        "threshold": 0.5,
+        "accuracy": 0.6056338028169014,
+        "balanced_accuracy": 0.6216216216216216,
+        "precision": 0.5483870967741935,
+        "recall": 1.0,
+        "f1": 0.7083333333333334,
+        "roc_auc": 0.775039745627981,
+        "pr_auc_ap": 0.7677839624337953,
+        "eer": 0.2702702702702703,
+        "fpr": 0.7567567567567568,
+        "fnr": 0.0,
+        "brier": 0.3086952615139028,
+        "log_loss": 1.5325619764013338,
+        "ece_8_bins": 0.3145569298267803,
+        "reliability": [
+          {
+            "bin": 2,
+            "n": 4,
+            "mean_probability": 0.3353153047793213,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 3,
+            "n": 5,
+            "mean_probability": 0.4396758041362652,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 4,
+            "n": 15,
+            "mean_probability": 0.520747778609432,
+            "synthetic_frequency": 0.4
+          },
+          {
+            "bin": 5,
+            "n": 3,
+            "mean_probability": 0.6533601377267021,
+            "synthetic_frequency": 0.3333333333333333
+          },
+          {
+            "bin": 6,
+            "n": 3,
+            "mean_probability": 0.8262278205412468,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 7,
+            "n": 41,
+            "mean_probability": 0.9888761274135967,
+            "synthetic_frequency": 0.6585365853658537
+          }
+        ],
+        "confusion_matrix": [
+          [
+            9,
+            28
+          ],
+          [
+            0,
+            34
+          ]
+        ]
+      },
+      "corrected_adapter_decision_metrics": {
+        "n": 71,
+        "accuracy": 0.5774647887323944,
+        "balanced_accuracy": 0.5874403815580286,
+        "precision": 0.5384615384615384,
+        "recall": 0.8235294117647058,
+        "f1": 0.6511627906976745,
+        "fpr": 0.6486486486486487,
+        "fnr": 0.17647058823529413,
+        "confusion_matrix": [
+          [
+            13,
+            24
+          ],
+          [
+            6,
+            28
+          ]
+        ]
+      },
+      "available_evidence_calls": 61,
+      "fallback_calls": 10,
+      "fallback_human": 4,
+      "fallback_synthetic": 6,
+      "method": "Remap cached frozen probabilities/quality/events; no new VAD, training or threshold selection"
+    },
+    "60": {
+      "probability_metrics_unchanged": {
+        "n": 71,
+        "threshold": 0.5,
+        "accuracy": 0.8169014084507042,
+        "balanced_accuracy": 0.8231319554848966,
+        "precision": 0.7333333333333333,
+        "recall": 0.9705882352941176,
+        "f1": 0.8354430379746836,
+        "roc_auc": 0.9403815580286169,
+        "pr_auc_ap": 0.9345180421193163,
+        "eer": 0.13513513513513514,
+        "fpr": 0.32432432432432434,
+        "fnr": 0.029411764705882353,
+        "brier": 0.1341014426716418,
+        "log_loss": 0.6509548731004327,
+        "ece_8_bins": 0.15574996715191514,
+        "reliability": [
+          {
+            "bin": 0,
+            "n": 19,
+            "mean_probability": 0.03378230162979238,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 1,
+            "n": 4,
+            "mean_probability": 0.17516304792934925,
+            "synthetic_frequency": 0.25
+          },
+          {
+            "bin": 2,
+            "n": 1,
+            "mean_probability": 0.3652528791542312,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 3,
+            "n": 2,
+            "mean_probability": 0.3803323194945273,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 4,
+            "n": 3,
+            "mean_probability": 0.5779871070249037,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 5,
+            "n": 4,
+            "mean_probability": 0.6745601876224205,
+            "synthetic_frequency": 0.25
+          },
+          {
+            "bin": 7,
+            "n": 38,
+            "mean_probability": 0.9883925404955167,
+            "synthetic_frequency": 0.8421052631578947
+          }
+        ],
+        "confusion_matrix": [
+          [
+            25,
+            12
+          ],
+          [
+            1,
+            33
+          ]
+        ]
+      },
+      "corrected_adapter_decision_metrics": {
+        "n": 71,
+        "accuracy": 0.8169014084507042,
+        "balanced_accuracy": 0.8231319554848966,
+        "precision": 0.7333333333333333,
+        "recall": 0.9705882352941176,
+        "f1": 0.8354430379746836,
+        "fpr": 0.32432432432432434,
+        "fnr": 0.029411764705882353,
+        "confusion_matrix": [
+          [
+            25,
+            12
+          ],
+          [
+            1,
+            33
+          ]
+        ]
+      },
+      "available_evidence_calls": 71,
+      "fallback_calls": 0,
+      "fallback_human": 0,
+      "fallback_synthetic": 0,
+      "method": "Remap cached frozen probabilities/quality/events; no new VAD, training or threshold selection"
+    },
+    "full": {
+      "probability_metrics_unchanged": {
+        "n": 71,
+        "threshold": 0.5,
+        "accuracy": 0.971830985915493,
+        "balanced_accuracy": 0.9717806041335453,
+        "precision": 0.9705882352941176,
+        "recall": 0.9705882352941176,
+        "f1": 0.9705882352941176,
+        "roc_auc": 0.9912559618441972,
+        "pr_auc_ap": 0.9894762538750742,
+        "eer": 0.02941176470588236,
+        "fpr": 0.02702702702702703,
+        "fnr": 0.029411764705882353,
+        "brier": 0.040635217306442845,
+        "log_loss": 0.15826528434067974,
+        "ece_8_bins": 0.08004832489346722,
+        "reliability": [
+          {
+            "bin": 0,
+            "n": 25,
+            "mean_probability": 0.03504665864505048,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 1,
+            "n": 3,
+            "mean_probability": 0.1819708763095431,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 2,
+            "n": 5,
+            "mean_probability": 0.2837262705036788,
+            "synthetic_frequency": 0.0
+          },
+          {
+            "bin": 3,
+            "n": 4,
+            "mean_probability": 0.4435205646875458,
+            "synthetic_frequency": 0.25
+          },
+          {
+            "bin": 5,
+            "n": 4,
+            "mean_probability": 0.6730174541850177,
+            "synthetic_frequency": 1.0
+          },
+          {
+            "bin": 6,
+            "n": 1,
+            "mean_probability": 0.8440735132239049,
+            "synthetic_frequency": 1.0
+          },
+          {
+            "bin": 7,
+            "n": 29,
+            "mean_probability": 0.98637178245092,
+            "synthetic_frequency": 0.9655172413793104
+          }
+        ],
+        "confusion_matrix": [
+          [
+            36,
+            1
+          ],
+          [
+            1,
+            33
+          ]
+        ]
+      },
+      "corrected_adapter_decision_metrics": {
+        "n": 71,
+        "accuracy": 0.971830985915493,
+        "balanced_accuracy": 0.9717806041335453,
+        "precision": 0.9705882352941176,
+        "recall": 0.9705882352941176,
+        "f1": 0.9705882352941176,
+        "fpr": 0.02702702702702703,
+        "fnr": 0.029411764705882353,
+        "confusion_matrix": [
+          [
+            36,
+            1
+          ],
+          [
+            1,
+            33
+          ]
+        ]
+      },
+      "available_evidence_calls": 71,
+      "fallback_calls": 0,
+      "fallback_human": 0,
+      "fallback_synthetic": 0,
+      "method": "Remap cached frozen probabilities/quality/events; no new VAD, training or threshold selection"
+    }
+  }
+}

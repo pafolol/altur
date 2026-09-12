@@ -1,0 +1,6 @@
+# Inference does not require sklearn/pandas/PyTorch.
+numpy==1.26.4
+onnxruntime==1.20.1
+fastapi==0.115.6
+pydantic==2.10.4
+uvicorn==0.34.0

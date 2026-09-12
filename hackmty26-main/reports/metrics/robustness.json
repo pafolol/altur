@@ -1,0 +1,842 @@
+{
+  "gain_minus3db": {
+    "metrics": {
+      "n": 24,
+      "threshold": 0.5,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc_ap": 1.0,
+      "eer": 0.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "brier": 0.02874344999151271,
+      "log_loss": 0.11247778800205761,
+      "ece_8_bins": 0.0922735447109897,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 8,
+          "mean_probability": 0.03915875740450546,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 1,
+          "mean_probability": 0.22777035628270684,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 1,
+          "mean_probability": 0.3715709365310943,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 2,
+          "mean_probability": 0.4684174635496459,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 6,
+          "n": 1,
+          "mean_probability": 0.831142438948942,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 11,
+          "mean_probability": 0.9821580697396766,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          12,
+          0
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "original_same_subset": {
+      "n": 24,
+      "threshold": 0.5,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc_ap": 1.0,
+      "eer": 0.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "brier": 0.031222275389690718,
+      "log_loss": 0.12452521704373341,
+      "ece_8_bins": 0.10307696774080982,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 7,
+          "mean_probability": 0.05373053085427139,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 2,
+          "mean_probability": 0.1725689741656623,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 1,
+          "mean_probability": 0.360363307389806,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 2,
+          "mean_probability": 0.4523938800829883,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 5,
+          "n": 1,
+          "mean_probability": 0.6671682381767265,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 11,
+          "mean_probability": 0.9859442970828041,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          12,
+          0
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "mean_absolute_probability_change": 0.019637002939899912,
+    "max_absolute_probability_change": 0.16397420077221547,
+    "decision_flips": 0
+  },
+  "gain_plus3db": {
+    "metrics": {
+      "n": 24,
+      "threshold": 0.5,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc_ap": 1.0,
+      "eer": 0.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "brier": 0.026714656530530696,
+      "log_loss": 0.11343621062412952,
+      "ece_8_bins": 0.09558811668108232,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 8,
+          "mean_probability": 0.05644331783064429,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 1,
+          "mean_probability": 0.21798903643777348,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 1,
+          "mean_probability": 0.2729107415255754,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 2,
+          "mean_probability": 0.4247803096445173,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 5,
+          "n": 1,
+          "mean_probability": 0.663232882682184,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 11,
+          "mean_probability": 0.9849690233517616,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          12,
+          0
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "original_same_subset": {
+      "n": 24,
+      "threshold": 0.5,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc_ap": 1.0,
+      "eer": 0.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "brier": 0.031222275389690718,
+      "log_loss": 0.12452521704373341,
+      "ece_8_bins": 0.10307696774080982,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 7,
+          "mean_probability": 0.05373053085427139,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 2,
+          "mean_probability": 0.1725689741656623,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 1,
+          "mean_probability": 0.360363307389806,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 2,
+          "mean_probability": 0.4523938800829883,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 5,
+          "n": 1,
+          "mean_probability": 0.6671682381767265,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 11,
+          "mean_probability": 0.9859442970828041,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          12,
+          0
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "mean_absolute_probability_change": 0.010381755305876783,
+    "max_absolute_probability_change": 0.08745256586423061,
+    "decision_flips": 0
+  },
+  "telephony_noise_25db": {
+    "metrics": {
+      "n": 24,
+      "threshold": 0.5,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc_ap": 1.0,
+      "eer": 0.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "brier": 0.019610181424368666,
+      "log_loss": 0.09926050087890598,
+      "ece_8_bins": 0.0869166971784318,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 6,
+          "mean_probability": 0.03342360535068572,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 4,
+          "mean_probability": 0.16530225198029722,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 1,
+          "mean_probability": 0.31032334771482767,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 1,
+          "mean_probability": 0.4015132923354509,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 5,
+          "n": 1,
+          "mean_probability": 0.72780739406245,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 11,
+          "mean_probability": 0.9781617412482517,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          12,
+          0
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "original_same_subset": {
+      "n": 24,
+      "threshold": 0.5,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc_ap": 1.0,
+      "eer": 0.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "brier": 0.031222275389690718,
+      "log_loss": 0.12452521704373341,
+      "ece_8_bins": 0.10307696774080982,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 7,
+          "mean_probability": 0.05373053085427139,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 2,
+          "mean_probability": 0.1725689741656623,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 1,
+          "mean_probability": 0.360363307389806,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 2,
+          "mean_probability": 0.4523938800829883,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 5,
+          "n": 1,
+          "mean_probability": 0.6671682381767265,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 11,
+          "mean_probability": 0.9859442970828041,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          12,
+          0
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    },
+    "mean_absolute_probability_change": 0.03485599690797101,
+    "max_absolute_probability_change": 0.16205227407380565,
+    "decision_flips": 0
+  },
+  "threshold_0.55": {
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.9859154929577465,
+      "balanced_accuracy": 0.9864864864864865,
+      "precision": 0.9714285714285714,
+      "recall": 1.0,
+      "f1": 0.9855072463768116,
+      "roc_auc": 0.994435612082671,
+      "pr_auc_ap": 0.9935408711749856,
+      "eer": 0.02702702702702703,
+      "fpr": 0.02702702702702703,
+      "fnr": 0.0,
+      "brier": 0.032622588274549474,
+      "log_loss": 0.13249571298881813,
+      "ece_8_bins": 0.0814492604289271,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 25,
+          "mean_probability": 0.033604740701472416,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 5,
+          "mean_probability": 0.18707423680361623,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 3,
+          "mean_probability": 0.270392251136101,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 3,
+          "mean_probability": 0.44293477287445987,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 5,
+          "n": 4,
+          "mean_probability": 0.7200880870730931,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 6,
+          "n": 1,
+          "mean_probability": 0.7629085112391251,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 30,
+          "mean_probability": 0.9836895858799583,
+          "synthetic_frequency": 0.9666666666666667
+        }
+      ],
+      "confusion_matrix": [
+        [
+          36,
+          1
+        ],
+        [
+          0,
+          34
+        ]
+      ]
+    },
+    "original_same_subset": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.971830985915493,
+      "balanced_accuracy": 0.9717806041335453,
+      "precision": 0.9705882352941176,
+      "recall": 0.9705882352941176,
+      "f1": 0.9705882352941176,
+      "roc_auc": 0.9912559618441972,
+      "pr_auc_ap": 0.9894762538750742,
+      "eer": 0.02941176470588236,
+      "fpr": 0.02702702702702703,
+      "fnr": 0.029411764705882353,
+      "brier": 0.040635217306442845,
+      "log_loss": 0.1582652843406797,
+      "ece_8_bins": 0.08004832489346721,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 25,
+          "mean_probability": 0.03504665864505045,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 3,
+          "mean_probability": 0.1819708763095431,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 5,
+          "mean_probability": 0.2837262705036787,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 4,
+          "mean_probability": 0.4435205646875458,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 5,
+          "n": 4,
+          "mean_probability": 0.6730174541850176,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 6,
+          "n": 1,
+          "mean_probability": 0.8440735132239047,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 29,
+          "mean_probability": 0.98637178245092,
+          "synthetic_frequency": 0.9655172413793104
+        }
+      ],
+      "confusion_matrix": [
+        [
+          36,
+          1
+        ],
+        [
+          1,
+          33
+        ]
+      ]
+    },
+    "mean_absolute_probability_change": 0.021206005534816986,
+    "max_absolute_probability_change": 0.3112793383988471,
+    "decision_flips": 1
+  },
+  "threshold_0.75": {
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.9577464788732394,
+      "balanced_accuracy": 0.9570747217806042,
+      "precision": 0.9696969696969697,
+      "recall": 0.9411764705882353,
+      "f1": 0.9552238805970149,
+      "roc_auc": 0.9896661367249603,
+      "pr_auc_ap": 0.9880142655709806,
+      "eer": 0.02941176470588236,
+      "fpr": 0.02702702702702703,
+      "fnr": 0.058823529411764705,
+      "brier": 0.045790303028642135,
+      "log_loss": 0.17396628524962698,
+      "ece_8_bins": 0.06616728780472492,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 26,
+          "mean_probability": 0.03681825289456796,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 4,
+          "mean_probability": 0.19343298106031337,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 4,
+          "mean_probability": 0.28245581924523155,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 3,
+          "n": 4,
+          "mean_probability": 0.43647494906255857,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 4,
+          "n": 1,
+          "mean_probability": 0.5454055893880471,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 5,
+          "n": 3,
+          "mean_probability": 0.6661476481269871,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 29,
+          "mean_probability": 0.9874136687990792,
+          "synthetic_frequency": 0.9655172413793104
+        }
+      ],
+      "confusion_matrix": [
+        [
+          36,
+          1
+        ],
+        [
+          2,
+          32
+        ]
+      ]
+    },
+    "original_same_subset": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.971830985915493,
+      "balanced_accuracy": 0.9717806041335453,
+      "precision": 0.9705882352941176,
+      "recall": 0.9705882352941176,
+      "f1": 0.9705882352941176,
+      "roc_auc": 0.9912559618441972,
+      "pr_auc_ap": 0.9894762538750742,
+      "eer": 0.02941176470588236,
+      "fpr": 0.02702702702702703,
+      "fnr": 0.029411764705882353,
+      "brier": 0.040635217306442845,
+      "log_loss": 0.1582652843406797,
+      "ece_8_bins": 0.08004832489346721,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 25,
+          "mean_probability": 0.03504665864505045,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 3,
+          "mean_probability": 0.1819708763095431,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 5,
+          "mean_probability": 0.2837262705036787,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 4,
+          "mean_probability": 0.4435205646875458,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 5,
+          "n": 4,
+          "mean_probability": 0.6730174541850176,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 6,
+          "n": 1,
+          "mean_probability": 0.8440735132239047,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 29,
+          "mean_probability": 0.98637178245092,
+          "synthetic_frequency": 0.9655172413793104
+        }
+      ],
+      "confusion_matrix": [
+        [
+          36,
+          1
+        ],
+        [
+          1,
+          33
+        ]
+      ]
+    },
+    "mean_absolute_probability_change": 0.03477584025307745,
+    "max_absolute_probability_change": 0.4015154213361122,
+    "decision_flips": 3
+  },
+  "timing_jitter_32ms": {
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.9577464788732394,
+      "balanced_accuracy": 0.9570747217806042,
+      "precision": 0.9696969696969697,
+      "recall": 0.9411764705882353,
+      "f1": 0.9552238805970149,
+      "roc_auc": 0.9904610492845787,
+      "pr_auc_ap": 0.9887255031243235,
+      "eer": 0.02941176470588236,
+      "fpr": 0.02702702702702703,
+      "fnr": 0.058823529411764705,
+      "brier": 0.04304034906689547,
+      "log_loss": 0.16194541710854551,
+      "ece_8_bins": 0.0649637898600134,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 27,
+          "mean_probability": 0.04038555959794823,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 3,
+          "mean_probability": 0.2250165352310635,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 2,
+          "mean_probability": 0.31745177521527224,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 6,
+          "mean_probability": 0.4429314466135362,
+          "synthetic_frequency": 0.3333333333333333
+        },
+        {
+          "bin": 5,
+          "n": 3,
+          "mean_probability": 0.6769595728649325,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 30,
+          "mean_probability": 0.9861785284568731,
+          "synthetic_frequency": 0.9666666666666667
+        }
+      ],
+      "confusion_matrix": [
+        [
+          36,
+          1
+        ],
+        [
+          2,
+          32
+        ]
+      ]
+    },
+    "original_same_subset": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.971830985915493,
+      "balanced_accuracy": 0.9717806041335453,
+      "precision": 0.9705882352941176,
+      "recall": 0.9705882352941176,
+      "f1": 0.9705882352941176,
+      "roc_auc": 0.9912559618441972,
+      "pr_auc_ap": 0.9894762538750742,
+      "eer": 0.02941176470588236,
+      "fpr": 0.02702702702702703,
+      "fnr": 0.029411764705882353,
+      "brier": 0.040635217306442845,
+      "log_loss": 0.1582652843406797,
+      "ece_8_bins": 0.08004832489346721,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 25,
+          "mean_probability": 0.03504665864505045,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 3,
+          "mean_probability": 0.1819708763095431,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 5,
+          "mean_probability": 0.2837262705036787,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 4,
+          "mean_probability": 0.4435205646875458,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 5,
+          "n": 4,
+          "mean_probability": 0.6730174541850176,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 6,
+          "n": 1,
+          "mean_probability": 0.8440735132239047,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 29,
+          "mean_probability": 0.98637178245092,
+          "synthetic_frequency": 0.9655172413793104
+        }
+      ],
+      "confusion_matrix": [
+        [
+          36,
+          1
+        ],
+        [
+          1,
+          33
+        ]
+      ]
+    },
+    "mean_absolute_probability_change": 0.0120299652362162,
+    "max_absolute_probability_change": 0.1902196453885434,
+    "decision_flips": 1
+  }
+}
