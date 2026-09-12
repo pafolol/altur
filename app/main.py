@@ -16,6 +16,7 @@ from .feature_extractor import extract_features
 from .feature_validation import validate_finite_features
 from .fusion import Fusion, FusionError
 from .schemas import DetectRequest, DetectResponse
+from .twilio_routes import router as twilio_router
 
 logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ def create_app(config: Settings = settings) -> FastAPI:
             pass
 
     application = FastAPI(title="Altur Voice Deepfake Detector", lifespan=lifespan)
+    application.include_router(twilio_router)
 
     @application.middleware("http")
     async def request_size_limit(request: Request, call_next):

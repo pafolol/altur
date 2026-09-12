@@ -65,3 +65,7 @@ python benchmark.py carpeta_con_wavs
 ```
 
 El WAV debe ser estéreo; si el sample rate no es 8000 Hz se remuestrea en memoria.
+
+## Demo Twilio Voice
+
+Configura el webhook de voz entrante como `POST https://TU_HOST_PUBLICO/twilio/voice`. La demo responde con TwiML, graba hasta que se presiona `#` y envía la grabación a `/twilio/playback`, que la reproduce y finaliza la llamada. No guarda ni analiza la grabación. La URL pública debe ser la de tu túnel o deployment, no está hardcodeada en el backend. La validación de firma de Twilio debe agregarse antes de producción.
