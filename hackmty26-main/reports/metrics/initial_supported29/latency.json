@@ -1,0 +1,58 @@
+{
+  "calls": 20,
+  "cpu": "i386",
+  "platform": "macOS-26.6.2-x86_64-i386-64bit",
+  "python": "3.11.13",
+  "ort_threads": 1,
+  "startup_fresh_processes": [
+    {
+      "import_s": 0.14875006399233826,
+      "model_load_s": 0.18045380400144495,
+      "total_startup_s": 0.3292038679937832,
+      "process_wall_s": 0.42828902701148763
+    },
+    {
+      "import_s": 0.1557878530002199,
+      "model_load_s": 0.17900504200952128,
+      "total_startup_s": 0.3347928950097412,
+      "process_wall_s": 0.432163846999174
+    },
+    {
+      "import_s": 0.14675649697892368,
+      "model_load_s": 0.20526220701867715,
+      "total_startup_s": 0.3520187039976008,
+      "process_wall_s": 0.45546963199740276
+    }
+  ],
+  "peak_process_rss_mib": 126.6015625,
+  "components_ms": {
+    "decode": {
+      "mean": 4.727494950930122,
+      "p50": 3.7644810072379187,
+      "p95": 9.545842242368964
+    },
+    "vad": {
+      "mean": 996.5081682501477,
+      "p50": 955.0189504952868,
+      "p95": 1281.3618299915108
+    },
+    "features": {
+      "mean": 2.131779948831536,
+      "p50": 2.0506584987742826,
+      "p95": 2.8885723455459815
+    },
+    "classifier": {
+      "mean": 0.14255579881137237,
+      "p50": 0.1284414902329445,
+      "p95": 0.2453973356750794
+    },
+    "total": {
+      "mean": 1003.5099989487207,
+      "p50": 965.0925164896762,
+      "p95": 1293.1121907764466
+    }
+  },
+  "scope": "Local offline warmed filesystem; model-only JSON plus CPU ONNX; excludes HTTP/network transfer and base64 parsing",
+  "docker_tested": false,
+  "docker_reason": "Docker executable/runtime not installed on local machine"
+}

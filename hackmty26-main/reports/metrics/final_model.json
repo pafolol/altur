@@ -1,0 +1,431 @@
+{
+  "selected_feature_names": [
+    "caller_turn_mean",
+    "caller_turn_median",
+    "caller_turn_std",
+    "caller_turn_iqr",
+    "caller_pause_median",
+    "response_latency_mean",
+    "response_latency_median",
+    "interruption_rate",
+    "interruption_stop_latency_mean",
+    "interruption_stop_latency_median",
+    "interruption_yield_fraction",
+    "interruption_immediate_yield_fraction",
+    "barge_in_rate",
+    "barge_overlap_mean",
+    "barge_continues_fraction",
+    "extended_gap_caller_fraction",
+    "response_latency_std",
+    "response_latency_iqr",
+    "response_latency_cv",
+    "barge_overlap_std",
+    "barge_overlap_iqr",
+    "barge_overlap_cv",
+    "short_context_response_std",
+    "long_context_response_std"
+  ],
+  "feature_count": 24,
+  "parameters": 40,
+  "training_s": 0.01953238801797852,
+  "calibration_training_s": 0.04840359897934832,
+  "inference_ms_per_call_batched": 0.00895750684283254,
+  "train": {
+    "n": 282,
+    "threshold": 0.5,
+    "accuracy": 0.9609929078014184,
+    "balanced_accuracy": 0.9586584280253443,
+    "precision": 0.9647058823529412,
+    "recall": 0.9704142011834319,
+    "f1": 0.967551622418879,
+    "roc_auc": 0.9933497407969838,
+    "pr_auc_ap": 0.9957311699466446,
+    "eer": 0.04424778761061947,
+    "fpr": 0.05309734513274336,
+    "fnr": 0.029585798816568046,
+    "brier": 0.03149508515871785,
+    "log_loss": 0.1125471107414486,
+    "ece_8_bins": 0.03143099062496412,
+    "reliability": [
+      {
+        "bin": 0,
+        "n": 85,
+        "mean_probability": 0.029175236967263936,
+        "synthetic_frequency": 0.011764705882352941
+      },
+      {
+        "bin": 1,
+        "n": 15,
+        "mean_probability": 0.16788420075152113,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 2,
+        "n": 8,
+        "mean_probability": 0.3157516445814308,
+        "synthetic_frequency": 0.25
+      },
+      {
+        "bin": 3,
+        "n": 4,
+        "mean_probability": 0.43199816990411194,
+        "synthetic_frequency": 0.5
+      },
+      {
+        "bin": 4,
+        "n": 4,
+        "mean_probability": 0.5686500191298038,
+        "synthetic_frequency": 0.75
+      },
+      {
+        "bin": 5,
+        "n": 6,
+        "mean_probability": 0.6748938957070777,
+        "synthetic_frequency": 0.8333333333333334
+      },
+      {
+        "bin": 6,
+        "n": 12,
+        "mean_probability": 0.8225795722215136,
+        "synthetic_frequency": 0.75
+      },
+      {
+        "bin": 7,
+        "n": 148,
+        "mean_probability": 0.9829704776363638,
+        "synthetic_frequency": 0.9932432432432432
+      }
+    ],
+    "confusion_matrix": [
+      [
+        107,
+        6
+      ],
+      [
+        5,
+        164
+      ]
+    ]
+  },
+  "val": {
+    "n": 71,
+    "threshold": 0.5,
+    "accuracy": 0.971830985915493,
+    "balanced_accuracy": 0.9717806041335453,
+    "precision": 0.9705882352941176,
+    "recall": 0.9705882352941176,
+    "f1": 0.9705882352941176,
+    "roc_auc": 0.9912559618441972,
+    "pr_auc_ap": 0.9894762538750742,
+    "eer": 0.02941176470588236,
+    "fpr": 0.02702702702702703,
+    "fnr": 0.029411764705882353,
+    "brier": 0.040635217306442845,
+    "log_loss": 0.15826528434067974,
+    "ece_8_bins": 0.0800483248934672,
+    "reliability": [
+      {
+        "bin": 0,
+        "n": 25,
+        "mean_probability": 0.0350466586450505,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 1,
+        "n": 3,
+        "mean_probability": 0.1819708763095432,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 2,
+        "n": 5,
+        "mean_probability": 0.2837262705036788,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 3,
+        "n": 4,
+        "mean_probability": 0.4435205646875458,
+        "synthetic_frequency": 0.25
+      },
+      {
+        "bin": 5,
+        "n": 4,
+        "mean_probability": 0.6730174541850176,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 6,
+        "n": 1,
+        "mean_probability": 0.8440735132239047,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 7,
+        "n": 29,
+        "mean_probability": 0.9863717824509199,
+        "synthetic_frequency": 0.9655172413793104
+      }
+    ],
+    "confusion_matrix": [
+      [
+        36,
+        1
+      ],
+      [
+        1,
+        33
+      ]
+    ]
+  },
+  "raw_val": {
+    "n": 71,
+    "threshold": 0.5,
+    "accuracy": 0.971830985915493,
+    "balanced_accuracy": 0.9717806041335453,
+    "precision": 0.9705882352941176,
+    "recall": 0.9705882352941176,
+    "f1": 0.9705882352941176,
+    "roc_auc": 0.9912559618441972,
+    "pr_auc_ap": 0.9894762538750742,
+    "eer": 0.02941176470588236,
+    "fpr": 0.02702702702702703,
+    "fnr": 0.029411764705882353,
+    "brier": 0.054214825053599994,
+    "log_loss": 0.20912672310620756,
+    "ece_8_bins": 0.12914095770662912,
+    "reliability": [
+      {
+        "bin": 0,
+        "n": 15,
+        "mean_probability": 0.06568809683625244,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 1,
+        "n": 11,
+        "mean_probability": 0.17665630326067225,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 2,
+        "n": 6,
+        "mean_probability": 0.3298219115566455,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 3,
+        "n": 5,
+        "mean_probability": 0.44370474965914,
+        "synthetic_frequency": 0.2
+      },
+      {
+        "bin": 4,
+        "n": 4,
+        "mean_probability": 0.5907439827416537,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 5,
+        "n": 1,
+        "mean_probability": 0.7167323482399642,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 6,
+        "n": 5,
+        "mean_probability": 0.8394679052313073,
+        "synthetic_frequency": 0.8
+      },
+      {
+        "bin": 7,
+        "n": 24,
+        "mean_probability": 0.961442468992752,
+        "synthetic_frequency": 1.0
+      }
+    ],
+    "confusion_matrix": [
+      [
+        36,
+        1
+      ],
+      [
+        1,
+        33
+      ]
+    ]
+  },
+  "calibrated_val": {
+    "n": 71,
+    "threshold": 0.5,
+    "accuracy": 0.971830985915493,
+    "balanced_accuracy": 0.9717806041335453,
+    "precision": 0.9705882352941176,
+    "recall": 0.9705882352941176,
+    "f1": 0.9705882352941176,
+    "roc_auc": 0.9912559618441972,
+    "pr_auc_ap": 0.9894762538750742,
+    "eer": 0.02941176470588236,
+    "fpr": 0.02702702702702703,
+    "fnr": 0.029411764705882353,
+    "brier": 0.040635217306442845,
+    "log_loss": 0.15826528434067974,
+    "ece_8_bins": 0.0800483248934672,
+    "reliability": [
+      {
+        "bin": 0,
+        "n": 25,
+        "mean_probability": 0.0350466586450505,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 1,
+        "n": 3,
+        "mean_probability": 0.1819708763095432,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 2,
+        "n": 5,
+        "mean_probability": 0.2837262705036788,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 3,
+        "n": 4,
+        "mean_probability": 0.4435205646875458,
+        "synthetic_frequency": 0.25
+      },
+      {
+        "bin": 5,
+        "n": 4,
+        "mean_probability": 0.6730174541850176,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 6,
+        "n": 1,
+        "mean_probability": 0.8440735132239047,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 7,
+        "n": 29,
+        "mean_probability": 0.9863717824509199,
+        "synthetic_frequency": 0.9655172413793104
+      }
+    ],
+    "confusion_matrix": [
+      [
+        36,
+        1
+      ],
+      [
+        1,
+        33
+      ]
+    ]
+  },
+  "calibration_selected": true,
+  "calibrator": {
+    "method": "train_5fold_oof_sigmoid",
+    "slope": 1.7190038055255925,
+    "intercept": 0.09308606398592335,
+    "fold_seed": 2026,
+    "warning": "No speaker groups available; internal folds may share callers"
+  },
+  "raw_oof_train": {
+    "n": 282,
+    "threshold": 0.5,
+    "accuracy": 0.9361702127659575,
+    "balanced_accuracy": 0.9379483688537467,
+    "precision": 0.9631901840490797,
+    "recall": 0.9289940828402367,
+    "f1": 0.9457831325301205,
+    "roc_auc": 0.9809917788134263,
+    "pr_auc_ap": 0.9884681412102295,
+    "eer": 0.061946902654867256,
+    "fpr": 0.05309734513274336,
+    "fnr": 0.07100591715976332,
+    "brier": 0.05761473367737359,
+    "log_loss": 0.21258805710061573,
+    "ece_8_bins": 0.07188443984784211,
+    "reliability": [
+      {
+        "bin": 0,
+        "n": 54,
+        "mean_probability": 0.06547694555306069,
+        "synthetic_frequency": 0.018518518518518517
+      },
+      {
+        "bin": 1,
+        "n": 31,
+        "mean_probability": 0.1750173838254275,
+        "synthetic_frequency": 0.06451612903225806
+      },
+      {
+        "bin": 2,
+        "n": 19,
+        "mean_probability": 0.3008160044359109,
+        "synthetic_frequency": 0.21052631578947367
+      },
+      {
+        "bin": 3,
+        "n": 15,
+        "mean_probability": 0.4334610894573789,
+        "synthetic_frequency": 0.3333333333333333
+      },
+      {
+        "bin": 4,
+        "n": 6,
+        "mean_probability": 0.5852491339989578,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 5,
+        "n": 13,
+        "mean_probability": 0.7146246208205859,
+        "synthetic_frequency": 0.7692307692307693
+      },
+      {
+        "bin": 6,
+        "n": 31,
+        "mean_probability": 0.8131846017012431,
+        "synthetic_frequency": 0.9032258064516129
+      },
+      {
+        "bin": 7,
+        "n": 113,
+        "mean_probability": 0.9548403966380986,
+        "synthetic_frequency": 1.0
+      }
+    ],
+    "confusion_matrix": [
+      [
+        107,
+        6
+      ],
+      [
+        12,
+        157
+      ]
+    ]
+  },
+  "limitation": "Call-stratified internal folds may share speakers; official val is the main generalization check",
+  "versus_shortcut": {
+    "delta_auc": 0.08267090620031792,
+    "ci95_call_bootstrap": [
+      0.027411701908730813,
+      0.1553487531269543
+    ],
+    "repeats": 1000
+  },
+  "consistency_minus_reaction": {
+    "delta_auc": 0.007154213036566048,
+    "ci95_call_bootstrap": [
+      0.0,
+      0.020036300505050435
+    ],
+    "repeats": 1000
+  }
+}

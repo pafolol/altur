@@ -1,0 +1,10 @@
+{
+  "calls": 3,
+  "audio_s": 365.62,
+  "processing_s": 2.774322780984221,
+  "realtime_factor": 0.007587995134249278,
+  "model_load_s": 0.21167051402153447,
+  "estimated_full_dataset_minutes": 6.606108563877421,
+  "cpu_threads": 1,
+  "channels_batched": 2
+}

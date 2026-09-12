@@ -1,0 +1,322 @@
+{
+  "15": {
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.4788732394366197,
+      "balanced_accuracy": 0.5,
+      "precision": 0.4788732394366197,
+      "recall": 1.0,
+      "f1": 0.6476190476190476,
+      "roc_auc": 0.6967408585055643,
+      "pr_auc_ap": 0.7243343160070566,
+      "eer": 0.32352941176470584,
+      "fpr": 1.0,
+      "fnr": 0.0,
+      "brier": 0.28267931278980735,
+      "log_loss": 1.0530464102418586,
+      "ece_8_bins": 0.24605013130775183,
+      "reliability": [
+        {
+          "bin": 4,
+          "n": 34,
+          "mean_probability": 0.5019618371722016,
+          "synthetic_frequency": 0.3235294117647059
+        },
+        {
+          "bin": 5,
+          "n": 3,
+          "mean_probability": 0.7101823690250133,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 6,
+          "n": 8,
+          "mean_probability": 0.8388594154863485,
+          "synthetic_frequency": 0.75
+        },
+        {
+          "bin": 7,
+          "n": 26,
+          "mean_probability": 0.9831320933857577,
+          "synthetic_frequency": 0.6538461538461539
+        }
+      ],
+      "confusion_matrix": [
+        [
+          0,
+          37
+        ],
+        [
+          0,
+          34
+        ]
+      ]
+    },
+    "mean_event_count": 1.7887323943661972,
+    "mean_quality": 0.019743413493767157,
+    "mean_behavior_confidence": 0.01653306790905981,
+    "insufficient_evidence_calls": 32,
+    "latency_mean_ms": 120.37277111536037,
+    "latency_p50_ms": 118.44791899784468,
+    "latency_p95_ms": 147.22504050587304,
+    "mean_component_ms": {
+      "decode_ms": 0.3269709020354588,
+      "vad_ms": 119.32359353481779,
+      "features_ms": 0.6114479021536527,
+      "classifier_ms": 0.11075877635346228
+    }
+  },
+  "30": {
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.5070422535211268,
+      "balanced_accuracy": 0.527027027027027,
+      "precision": 0.4927536231884058,
+      "recall": 1.0,
+      "f1": 0.6601941747572816,
+      "roc_auc": 0.746422893481717,
+      "pr_auc_ap": 0.7810984650091182,
+      "eer": 0.2647058823529411,
+      "fpr": 0.9459459459459459,
+      "fnr": 0.0,
+      "brier": 0.3558830842624407,
+      "log_loss": 1.7104166407537518,
+      "ece_8_bins": 0.3543809935797805,
+      "reliability": [
+        {
+          "bin": 3,
+          "n": 2,
+          "mean_probability": 0.44772596236539003,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 4,
+          "n": 17,
+          "mean_probability": 0.5302439341595192,
+          "synthetic_frequency": 0.4117647058823529
+        },
+        {
+          "bin": 5,
+          "n": 6,
+          "mean_probability": 0.6991410953313778,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 6,
+          "n": 3,
+          "mean_probability": 0.8076772712197591,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 7,
+          "n": 43,
+          "mean_probability": 0.9914784500714945,
+          "synthetic_frequency": 0.627906976744186
+        }
+      ],
+      "confusion_matrix": [
+        [
+          2,
+          35
+        ],
+        [
+          0,
+          34
+        ]
+      ]
+    },
+    "mean_event_count": 2.619718309859155,
+    "mean_quality": 0.12280830377707572,
+    "mean_behavior_confidence": 0.09798154962950172,
+    "insufficient_evidence_calls": 10,
+    "latency_mean_ms": 231.7531492088062,
+    "latency_p50_ms": 226.2448520050384,
+    "latency_p95_ms": 282.1074050007155,
+    "mean_component_ms": {
+      "decode_ms": 0.526452409579012,
+      "vad_ms": 230.06657211062446,
+      "features_ms": 1.0258742394155338,
+      "classifier_ms": 0.1342504491872141
+    }
+  },
+  "60": {
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.8309859154929577,
+      "balanced_accuracy": 0.8378378378378378,
+      "precision": 0.7391304347826086,
+      "recall": 1.0,
+      "f1": 0.85,
+      "roc_auc": 0.9570747217806042,
+      "pr_auc_ap": 0.9487701695790619,
+      "eer": 0.11764705882352944,
+      "fpr": 0.32432432432432434,
+      "fnr": 0.0,
+      "brier": 0.1422415628110931,
+      "log_loss": 0.6445232527710828,
+      "ece_8_bins": 0.17860374555257413,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 17,
+          "mean_probability": 0.04606224056119541,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 2,
+          "mean_probability": 0.172599560546887,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 3,
+          "mean_probability": 0.28217960000062875,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 3,
+          "mean_probability": 0.43869871290916446,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 4,
+          "n": 3,
+          "mean_probability": 0.5193726353216751,
+          "synthetic_frequency": 0.3333333333333333
+        },
+        {
+          "bin": 6,
+          "n": 4,
+          "mean_probability": 0.81361080129716,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 7,
+          "n": 39,
+          "mean_probability": 0.9891644275311697,
+          "synthetic_frequency": 0.8205128205128205
+        }
+      ],
+      "confusion_matrix": [
+        [
+          25,
+          12
+        ],
+        [
+          0,
+          34
+        ]
+      ]
+    },
+    "mean_event_count": 4.76056338028169,
+    "mean_quality": 0.27388764340770155,
+    "mean_behavior_confidence": 0.22782815986957983,
+    "insufficient_evidence_calls": 0,
+    "latency_mean_ms": 466.22541984444825,
+    "latency_p50_ms": 447.4742260063067,
+    "latency_p95_ms": 614.6689144952688,
+    "mean_component_ms": {
+      "decode_ms": 0.9857750568263443,
+      "vad_ms": 463.28245243549503,
+      "features_ms": 1.8084764092813024,
+      "classifier_ms": 0.14871594284556178
+    }
+  },
+  "full": {
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.9577464788732394,
+      "balanced_accuracy": 0.9582670906200318,
+      "precision": 0.9428571428571428,
+      "recall": 0.9705882352941176,
+      "f1": 0.9565217391304348,
+      "roc_auc": 0.9880763116057234,
+      "pr_auc_ap": 0.9870421759544046,
+      "eer": 0.05405405405405406,
+      "fpr": 0.05405405405405406,
+      "fnr": 0.029411764705882353,
+      "brier": 0.0454273592542208,
+      "log_loss": 0.1583585589978082,
+      "ece_8_bins": 0.07076815194697222,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 30,
+          "mean_probability": 0.02688137184202868,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 3,
+          "mean_probability": 0.1969731116966097,
+          "synthetic_frequency": 0.3333333333333333
+        },
+        {
+          "bin": 2,
+          "n": 2,
+          "mean_probability": 0.29866271730611227,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 1,
+          "mean_probability": 0.4557793822761692,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 4,
+          "n": 2,
+          "mean_probability": 0.5238052863388262,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 5,
+          "n": 1,
+          "mean_probability": 0.6861071891605323,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 6,
+          "n": 1,
+          "mean_probability": 0.8035438768620055,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 7,
+          "n": 31,
+          "mean_probability": 0.9898737431016704,
+          "synthetic_frequency": 0.967741935483871
+        }
+      ],
+      "confusion_matrix": [
+        [
+          35,
+          2
+        ],
+        [
+          1,
+          33
+        ]
+      ]
+    },
+    "mean_event_count": 10.450704225352112,
+    "mean_quality": 0.5596310682893875,
+    "mean_behavior_confidence": 0.4986157219362534,
+    "insufficient_evidence_calls": 0,
+    "latency_mean_ms": 1159.1581256898664,
+    "latency_p50_ms": 1094.1610439913347,
+    "latency_p95_ms": 1732.3110524885124,
+    "mean_component_ms": {
+      "decode_ms": 6.280262620044007,
+      "vad_ms": 1150.353940000879,
+      "features_ms": 2.368031028235121,
+      "classifier_ms": 0.15589204070840398
+    }
+  }
+}

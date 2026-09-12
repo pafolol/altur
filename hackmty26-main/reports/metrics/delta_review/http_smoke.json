@@ -1,0 +1,32 @@
+{
+  "health": "ready",
+  "startup_to_ready_s": 0.9681507839995902,
+  "real_wav_endpoints_passed": [
+    "behavior",
+    "detect"
+  ],
+  "single_call_http_s": {
+    "behavior": 1.8050958339881618,
+    "detect": 1.5640401970013045
+  },
+  "invalid_input_rejected_without_echo": true,
+  "silence_nonflag_fallback_and_evidence_header": true,
+  "scope": "Actual HTTP on 127.0.0.1 only; not cloud or load testing",
+  "runs": [
+    {
+      "health": "ready",
+      "startup_to_ready_s": 0.9681507839995902,
+      "real_wav_endpoints_passed": [
+        "behavior",
+        "detect"
+      ],
+      "single_call_http_s": {
+        "behavior": 1.8050958339881618,
+        "detect": 1.5640401970013045
+      },
+      "invalid_input_rejected_without_echo": true,
+      "silence_nonflag_fallback_and_evidence_header": true,
+      "scope": "Actual HTTP on 127.0.0.1 only; not cloud or load testing"
+    }
+  ]
+}

@@ -1,0 +1,1244 @@
+{
+  "without_consistency": {
+    "removed": [
+      "response_latency_std",
+      "response_latency_iqr",
+      "response_latency_cv",
+      "barge_overlap_std",
+      "barge_overlap_iqr",
+      "barge_overlap_cv",
+      "short_context_response_std",
+      "long_context_response_std"
+    ],
+    "remaining": 16,
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.9295774647887324,
+      "balanced_accuracy": 0.9312400635930047,
+      "precision": 0.8918918918918919,
+      "recall": 0.9705882352941176,
+      "f1": 0.9295774647887324,
+      "roc_auc": 0.9785373608903021,
+      "pr_auc_ap": 0.9743392604409321,
+      "eer": 0.08823529411764708,
+      "fpr": 0.10810810810810811,
+      "fnr": 0.029411764705882353,
+      "brier": 0.05683678183254291,
+      "log_loss": 0.20963876445919558,
+      "ece_8_bins": 0.06605357561683561,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 21,
+          "mean_probability": 0.027293095196393908,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 8,
+          "mean_probability": 0.1911806199987291,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 3,
+          "mean_probability": 0.30123229740999313,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 2,
+          "mean_probability": 0.44051357136219216,
+          "synthetic_frequency": 0.5
+        },
+        {
+          "bin": 4,
+          "n": 8,
+          "mean_probability": 0.5456195935100544,
+          "synthetic_frequency": 0.625
+        },
+        {
+          "bin": 6,
+          "n": 2,
+          "mean_probability": 0.7989627969057945,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 27,
+          "mean_probability": 0.9824969074839871,
+          "synthetic_frequency": 0.9629629629629629
+        }
+      ],
+      "confusion_matrix": [
+        [
+          33,
+          4
+        ],
+        [
+          1,
+          33
+        ]
+      ]
+    },
+    "train": {
+      "n": 282,
+      "threshold": 0.5,
+      "accuracy": 0.950354609929078,
+      "balanced_accuracy": 0.9468502906215637,
+      "precision": 0.9532163742690059,
+      "recall": 0.9644970414201184,
+      "f1": 0.9588235294117647,
+      "roc_auc": 0.9843430905377807,
+      "pr_auc_ap": 0.9908524808822665,
+      "eer": 0.059171597633136064,
+      "fpr": 0.07079646017699115,
+      "fnr": 0.03550295857988166,
+      "brier": 0.04454942756301487,
+      "log_loss": 0.1608982443365244,
+      "ece_8_bins": 0.04295568040670898,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 78,
+          "mean_probability": 0.030010456645179213,
+          "synthetic_frequency": 0.02564102564102564
+        },
+        {
+          "bin": 1,
+          "n": 17,
+          "mean_probability": 0.17562175777855205,
+          "synthetic_frequency": 0.058823529411764705
+        },
+        {
+          "bin": 2,
+          "n": 7,
+          "mean_probability": 0.3076425748001957,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 9,
+          "mean_probability": 0.43511792651849307,
+          "synthetic_frequency": 0.3333333333333333
+        },
+        {
+          "bin": 4,
+          "n": 7,
+          "mean_probability": 0.5728081235862064,
+          "synthetic_frequency": 0.7142857142857143
+        },
+        {
+          "bin": 5,
+          "n": 6,
+          "mean_probability": 0.6774703816214213,
+          "synthetic_frequency": 0.8333333333333334
+        },
+        {
+          "bin": 6,
+          "n": 19,
+          "mean_probability": 0.822830545247296,
+          "synthetic_frequency": 0.7368421052631579
+        },
+        {
+          "bin": 7,
+          "n": 139,
+          "mean_probability": 0.9772787352014525,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          105,
+          8
+        ],
+        [
+          6,
+          163
+        ]
+      ]
+    },
+    "features": [
+      "caller_turn_mean",
+      "caller_turn_median",
+      "caller_turn_std",
+      "caller_turn_iqr",
+      "caller_pause_median",
+      "response_latency_mean",
+      "response_latency_median",
+      "interruption_rate",
+      "interruption_stop_latency_mean",
+      "interruption_stop_latency_median",
+      "interruption_yield_fraction",
+      "interruption_immediate_yield_fraction",
+      "barge_in_rate",
+      "barge_overlap_mean",
+      "barge_continues_fraction",
+      "extended_gap_caller_fraction"
+    ],
+    "calibrator": {
+      "method": "train_5fold_oof_sigmoid",
+      "slope": 1.6580994257367847,
+      "intercept": -0.00048730321483482237,
+      "fold_seed": 2026,
+      "warning": "No speaker groups available; internal folds may share callers"
+    },
+    "hyperparameters": {
+      "C": 0.1,
+      "class_weight": null,
+      "dual": false,
+      "fit_intercept": true,
+      "intercept_scaling": 1,
+      "l1_ratio": null,
+      "max_iter": 3000,
+      "multi_class": "deprecated",
+      "n_jobs": null,
+      "penalty": "l2",
+      "random_state": 2026,
+      "solver": "lbfgs",
+      "tol": 0.0001,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "training_s_including_calibration": 0.06394062700564973,
+    "inference_ms_per_call_batched": 0.03018718324339306
+  },
+  "without_caller_turns": {
+    "removed": [
+      "caller_turn_mean",
+      "caller_turn_median",
+      "caller_turn_std",
+      "caller_turn_iqr",
+      "caller_pause_median"
+    ],
+    "remaining": 19,
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.9295774647887324,
+      "balanced_accuracy": 0.9312400635930047,
+      "precision": 0.8918918918918919,
+      "recall": 0.9705882352941176,
+      "f1": 0.9295774647887324,
+      "roc_auc": 0.9912559618441972,
+      "pr_auc_ap": 0.9909836413865184,
+      "eer": 0.02941176470588236,
+      "fpr": 0.10810810810810811,
+      "fnr": 0.029411764705882353,
+      "brier": 0.05199820223736049,
+      "log_loss": 0.17508556171032943,
+      "ece_8_bins": 0.09697046364181422,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 23,
+          "mean_probability": 0.04314722902513634,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 3,
+          "mean_probability": 0.14725242763078747,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 4,
+          "mean_probability": 0.3005334277909003,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 4,
+          "mean_probability": 0.4479579732891338,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 4,
+          "n": 4,
+          "mean_probability": 0.5967555545943551,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 5,
+          "n": 3,
+          "mean_probability": 0.6970437954491299,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 6,
+          "n": 2,
+          "mean_probability": 0.8021702984608277,
+          "synthetic_frequency": 0.5
+        },
+        {
+          "bin": 7,
+          "n": 28,
+          "mean_probability": 0.9801227737561968,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          33,
+          4
+        ],
+        [
+          1,
+          33
+        ]
+      ]
+    },
+    "train": {
+      "n": 282,
+      "threshold": 0.5,
+      "accuracy": 0.9397163120567376,
+      "balanced_accuracy": 0.9379745509765931,
+      "precision": 0.9523809523809523,
+      "recall": 0.9467455621301775,
+      "f1": 0.9495548961424333,
+      "roc_auc": 0.9863852961198094,
+      "pr_auc_ap": 0.9915334793372745,
+      "eer": 0.061946902654867256,
+      "fpr": 0.07079646017699115,
+      "fnr": 0.05325443786982249,
+      "brier": 0.042944402643853526,
+      "log_loss": 0.15114036166604203,
+      "ece_8_bins": 0.027737276671653356,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 83,
+          "mean_probability": 0.03496381051872017,
+          "synthetic_frequency": 0.024096385542168676
+        },
+        {
+          "bin": 1,
+          "n": 17,
+          "mean_probability": 0.18119202373410725,
+          "synthetic_frequency": 0.058823529411764705
+        },
+        {
+          "bin": 2,
+          "n": 7,
+          "mean_probability": 0.30943699352251874,
+          "synthetic_frequency": 0.2857142857142857
+        },
+        {
+          "bin": 3,
+          "n": 7,
+          "mean_probability": 0.4143821815158658,
+          "synthetic_frequency": 0.5714285714285714
+        },
+        {
+          "bin": 4,
+          "n": 4,
+          "mean_probability": 0.5584581322310004,
+          "synthetic_frequency": 0.5
+        },
+        {
+          "bin": 5,
+          "n": 7,
+          "mean_probability": 0.7007406133696756,
+          "synthetic_frequency": 0.5714285714285714
+        },
+        {
+          "bin": 6,
+          "n": 12,
+          "mean_probability": 0.8140487601282317,
+          "synthetic_frequency": 0.9166666666666666
+        },
+        {
+          "bin": 7,
+          "n": 145,
+          "mean_probability": 0.9779045795872198,
+          "synthetic_frequency": 0.9862068965517241
+        }
+      ],
+      "confusion_matrix": [
+        [
+          105,
+          8
+        ],
+        [
+          9,
+          160
+        ]
+      ]
+    },
+    "features": [
+      "response_latency_mean",
+      "response_latency_median",
+      "interruption_rate",
+      "interruption_stop_latency_mean",
+      "interruption_stop_latency_median",
+      "interruption_yield_fraction",
+      "interruption_immediate_yield_fraction",
+      "barge_in_rate",
+      "barge_overlap_mean",
+      "barge_continues_fraction",
+      "extended_gap_caller_fraction",
+      "response_latency_std",
+      "response_latency_iqr",
+      "response_latency_cv",
+      "barge_overlap_std",
+      "barge_overlap_iqr",
+      "barge_overlap_cv",
+      "short_context_response_std",
+      "long_context_response_std"
+    ],
+    "calibrator": {
+      "method": "train_5fold_oof_sigmoid",
+      "slope": 1.7408239078131182,
+      "intercept": -0.023472769328934696,
+      "fold_seed": 2026,
+      "warning": "No speaker groups available; internal folds may share callers"
+    },
+    "hyperparameters": {
+      "C": 0.1,
+      "class_weight": null,
+      "dual": false,
+      "fit_intercept": true,
+      "intercept_scaling": 1,
+      "l1_ratio": null,
+      "max_iter": 3000,
+      "multi_class": "deprecated",
+      "n_jobs": null,
+      "penalty": "l2",
+      "random_state": 2026,
+      "solver": "lbfgs",
+      "tol": 0.0001,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "training_s_including_calibration": 0.06402451000758447,
+    "inference_ms_per_call_batched": 0.041808084499510664
+  },
+  "without_responses": {
+    "removed": [
+      "response_latency_mean",
+      "response_latency_median",
+      "response_latency_std",
+      "response_latency_iqr",
+      "response_latency_cv",
+      "short_context_response_std",
+      "long_context_response_std"
+    ],
+    "remaining": 17,
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.8591549295774648,
+      "balanced_accuracy": 0.8612877583465819,
+      "precision": 0.8157894736842105,
+      "recall": 0.9117647058823529,
+      "f1": 0.8611111111111112,
+      "roc_auc": 0.9427662957074722,
+      "pr_auc_ap": 0.9441047072894518,
+      "eer": 0.1470588235294118,
+      "fpr": 0.1891891891891892,
+      "fnr": 0.08823529411764706,
+      "brier": 0.10178628595298961,
+      "log_loss": 0.3106652171271066,
+      "ece_8_bins": 0.0878027802708529,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 19,
+          "mean_probability": 0.03956105781431836,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 4,
+          "mean_probability": 0.19283764629929562,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 5,
+          "mean_probability": 0.33247875583256337,
+          "synthetic_frequency": 0.6
+        },
+        {
+          "bin": 3,
+          "n": 5,
+          "mean_probability": 0.442241306120046,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 4,
+          "n": 8,
+          "mean_probability": 0.5410001497595931,
+          "synthetic_frequency": 0.5
+        },
+        {
+          "bin": 5,
+          "n": 3,
+          "mean_probability": 0.7298720007562123,
+          "synthetic_frequency": 0.6666666666666666
+        },
+        {
+          "bin": 6,
+          "n": 4,
+          "mean_probability": 0.7991890346985295,
+          "synthetic_frequency": 0.75
+        },
+        {
+          "bin": 7,
+          "n": 23,
+          "mean_probability": 0.9759913315210614,
+          "synthetic_frequency": 0.9565217391304348
+        }
+      ],
+      "confusion_matrix": [
+        [
+          30,
+          7
+        ],
+        [
+          3,
+          31
+        ]
+      ]
+    },
+    "train": {
+      "n": 282,
+      "threshold": 0.5,
+      "accuracy": 0.9219858156028369,
+      "balanced_accuracy": 0.9129182594124732,
+      "precision": 0.9152542372881356,
+      "recall": 0.9585798816568047,
+      "f1": 0.9364161849710982,
+      "roc_auc": 0.9653348693512069,
+      "pr_auc_ap": 0.978192212765936,
+      "eer": 0.08849557522123894,
+      "fpr": 0.13274336283185842,
+      "fnr": 0.04142011834319527,
+      "brier": 0.06719046906311466,
+      "log_loss": 0.23721596941497475,
+      "ece_8_bins": 0.04640660085740187,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 68,
+          "mean_probability": 0.03501528182299804,
+          "synthetic_frequency": 0.058823529411764705
+        },
+        {
+          "bin": 1,
+          "n": 19,
+          "mean_probability": 0.18258184557361115,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 10,
+          "mean_probability": 0.30157282388878326,
+          "synthetic_frequency": 0.2
+        },
+        {
+          "bin": 3,
+          "n": 8,
+          "mean_probability": 0.4368099702338589,
+          "synthetic_frequency": 0.125
+        },
+        {
+          "bin": 4,
+          "n": 11,
+          "mean_probability": 0.5722414186723914,
+          "synthetic_frequency": 0.5454545454545454
+        },
+        {
+          "bin": 5,
+          "n": 15,
+          "mean_probability": 0.6896209261727694,
+          "synthetic_frequency": 0.7333333333333333
+        },
+        {
+          "bin": 6,
+          "n": 34,
+          "mean_probability": 0.8184486727268654,
+          "synthetic_frequency": 0.8823529411764706
+        },
+        {
+          "bin": 7,
+          "n": 117,
+          "mean_probability": 0.971236318811944,
+          "synthetic_frequency": 0.9829059829059829
+        }
+      ],
+      "confusion_matrix": [
+        [
+          98,
+          15
+        ],
+        [
+          7,
+          162
+        ]
+      ]
+    },
+    "features": [
+      "caller_turn_mean",
+      "caller_turn_median",
+      "caller_turn_std",
+      "caller_turn_iqr",
+      "caller_pause_median",
+      "interruption_rate",
+      "interruption_stop_latency_mean",
+      "interruption_stop_latency_median",
+      "interruption_yield_fraction",
+      "interruption_immediate_yield_fraction",
+      "barge_in_rate",
+      "barge_overlap_mean",
+      "barge_continues_fraction",
+      "extended_gap_caller_fraction",
+      "barge_overlap_std",
+      "barge_overlap_iqr",
+      "barge_overlap_cv"
+    ],
+    "calibrator": {
+      "method": "train_5fold_oof_sigmoid",
+      "slope": 1.5681168210221759,
+      "intercept": -0.08590598774527042,
+      "fold_seed": 2026,
+      "warning": "No speaker groups available; internal folds may share callers"
+    },
+    "hyperparameters": {
+      "C": 0.1,
+      "class_weight": null,
+      "dual": false,
+      "fit_intercept": true,
+      "intercept_scaling": 1,
+      "l1_ratio": null,
+      "max_iter": 3000,
+      "multi_class": "deprecated",
+      "n_jobs": null,
+      "penalty": "l2",
+      "random_state": 2026,
+      "solver": "lbfgs",
+      "tol": 0.0001,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "training_s_including_calibration": 0.0640624089865014,
+    "inference_ms_per_call_batched": 0.03973757733367908
+  },
+  "without_interruptions": {
+    "removed": [
+      "interruption_rate",
+      "interruption_stop_latency_mean",
+      "interruption_stop_latency_median",
+      "interruption_yield_fraction",
+      "interruption_immediate_yield_fraction"
+    ],
+    "remaining": 19,
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.971830985915493,
+      "balanced_accuracy": 0.972972972972973,
+      "precision": 0.9444444444444444,
+      "recall": 1.0,
+      "f1": 0.9714285714285714,
+      "roc_auc": 0.9896661367249603,
+      "pr_auc_ap": 0.9865891715058946,
+      "eer": 0.02702702702702703,
+      "fpr": 0.05405405405405406,
+      "fnr": 0.0,
+      "brier": 0.03375791084783818,
+      "log_loss": 0.14617484533581382,
+      "ece_8_bins": 0.0691339439958157,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 28,
+          "mean_probability": 0.04117560362631821,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 3,
+          "mean_probability": 0.1605954142335883,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 3,
+          "mean_probability": 0.27550677381828625,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 1,
+          "mean_probability": 0.48291151597518983,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 4,
+          "n": 2,
+          "mean_probability": 0.615313220766381,
+          "synthetic_frequency": 0.5
+        },
+        {
+          "bin": 5,
+          "n": 2,
+          "mean_probability": 0.7003747638735918,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 6,
+          "n": 3,
+          "mean_probability": 0.8228362006280471,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 29,
+          "mean_probability": 0.986310576901164,
+          "synthetic_frequency": 0.9655172413793104
+        }
+      ],
+      "confusion_matrix": [
+        [
+          35,
+          2
+        ],
+        [
+          0,
+          34
+        ]
+      ]
+    },
+    "train": {
+      "n": 282,
+      "threshold": 0.5,
+      "accuracy": 0.9645390070921985,
+      "balanced_accuracy": 0.9616170079070011,
+      "precision": 0.9649122807017544,
+      "recall": 0.9763313609467456,
+      "f1": 0.9705882352941176,
+      "roc_auc": 0.9915693564434205,
+      "pr_auc_ap": 0.9948461109356721,
+      "eer": 0.035502958579881616,
+      "fpr": 0.05309734513274336,
+      "fnr": 0.023668639053254437,
+      "brier": 0.033606234167183155,
+      "log_loss": 0.12102989331786544,
+      "ece_8_bins": 0.030387374776464072,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 88,
+          "mean_probability": 0.029283851645412196,
+          "synthetic_frequency": 0.011363636363636364
+        },
+        {
+          "bin": 1,
+          "n": 11,
+          "mean_probability": 0.1698392224650015,
+          "synthetic_frequency": 0.18181818181818182
+        },
+        {
+          "bin": 2,
+          "n": 8,
+          "mean_probability": 0.29533737553612077,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 4,
+          "mean_probability": 0.45493452280824176,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 4,
+          "n": 3,
+          "mean_probability": 0.5498204308878019,
+          "synthetic_frequency": 0.6666666666666666
+        },
+        {
+          "bin": 5,
+          "n": 9,
+          "mean_probability": 0.6873015691005675,
+          "synthetic_frequency": 0.7777777777777778
+        },
+        {
+          "bin": 6,
+          "n": 16,
+          "mean_probability": 0.827413832149275,
+          "synthetic_frequency": 0.8125
+        },
+        {
+          "bin": 7,
+          "n": 143,
+          "mean_probability": 0.984093642000421,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          107,
+          6
+        ],
+        [
+          4,
+          165
+        ]
+      ]
+    },
+    "features": [
+      "caller_turn_mean",
+      "caller_turn_median",
+      "caller_turn_std",
+      "caller_turn_iqr",
+      "caller_pause_median",
+      "response_latency_mean",
+      "response_latency_median",
+      "barge_in_rate",
+      "barge_overlap_mean",
+      "barge_continues_fraction",
+      "extended_gap_caller_fraction",
+      "response_latency_std",
+      "response_latency_iqr",
+      "response_latency_cv",
+      "barge_overlap_std",
+      "barge_overlap_iqr",
+      "barge_overlap_cv",
+      "short_context_response_std",
+      "long_context_response_std"
+    ],
+    "calibrator": {
+      "method": "train_5fold_oof_sigmoid",
+      "slope": 1.7580536645350215,
+      "intercept": 0.027633125770173725,
+      "fold_seed": 2026,
+      "warning": "No speaker groups available; internal folds may share callers"
+    },
+    "hyperparameters": {
+      "C": 0.1,
+      "class_weight": null,
+      "dual": false,
+      "fit_intercept": true,
+      "intercept_scaling": 1,
+      "l1_ratio": null,
+      "max_iter": 3000,
+      "multi_class": "deprecated",
+      "n_jobs": null,
+      "penalty": "l2",
+      "random_state": 2026,
+      "solver": "lbfgs",
+      "tol": 0.0001,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "training_s_including_calibration": 0.0656352229998447,
+    "inference_ms_per_call_batched": 0.027923986174717124
+  },
+  "without_barge_ins": {
+    "removed": [
+      "barge_in_rate",
+      "barge_overlap_mean",
+      "barge_continues_fraction",
+      "barge_overlap_std",
+      "barge_overlap_iqr",
+      "barge_overlap_cv"
+    ],
+    "remaining": 18,
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.9577464788732394,
+      "balanced_accuracy": 0.9582670906200318,
+      "precision": 0.9428571428571428,
+      "recall": 0.9705882352941176,
+      "f1": 0.9565217391304348,
+      "roc_auc": 0.9896661367249602,
+      "pr_auc_ap": 0.9882022662689066,
+      "eer": 0.05405405405405406,
+      "fpr": 0.05405405405405406,
+      "fnr": 0.029411764705882353,
+      "brier": 0.04586848059019667,
+      "log_loss": 0.16409168254656986,
+      "ece_8_bins": 0.06192882348748123,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 26,
+          "mean_probability": 0.03420987060845013,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 2,
+          "mean_probability": 0.19876442027230612,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 4,
+          "mean_probability": 0.3012421690139214,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 3,
+          "n": 4,
+          "mean_probability": 0.40615493276400183,
+          "synthetic_frequency": 0.25
+        },
+        {
+          "bin": 4,
+          "n": 3,
+          "mean_probability": 0.5801980365598687,
+          "synthetic_frequency": 0.6666666666666666
+        },
+        {
+          "bin": 5,
+          "n": 2,
+          "mean_probability": 0.6837071596367932,
+          "synthetic_frequency": 1.0
+        },
+        {
+          "bin": 7,
+          "n": 30,
+          "mean_probability": 0.9796127004362783,
+          "synthetic_frequency": 0.9666666666666667
+        }
+      ],
+      "confusion_matrix": [
+        [
+          35,
+          2
+        ],
+        [
+          1,
+          33
+        ]
+      ]
+    },
+    "train": {
+      "n": 282,
+      "threshold": 0.5,
+      "accuracy": 0.950354609929078,
+      "balanced_accuracy": 0.9483164895009688,
+      "precision": 0.9585798816568047,
+      "recall": 0.9585798816568047,
+      "f1": 0.9585798816568047,
+      "roc_auc": 0.9919882704089648,
+      "pr_auc_ap": 0.9944803997361664,
+      "eer": 0.047337278106508895,
+      "fpr": 0.061946902654867256,
+      "fnr": 0.04142011834319527,
+      "brier": 0.03461347514494608,
+      "log_loss": 0.12119206731495286,
+      "ece_8_bins": 0.02886271345455035,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 83,
+          "mean_probability": 0.023893060365992473,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 18,
+          "mean_probability": 0.16741302073497322,
+          "synthetic_frequency": 0.05555555555555555
+        },
+        {
+          "bin": 2,
+          "n": 6,
+          "mean_probability": 0.3011735321764172,
+          "synthetic_frequency": 0.3333333333333333
+        },
+        {
+          "bin": 3,
+          "n": 6,
+          "mean_probability": 0.41792335759049043,
+          "synthetic_frequency": 0.6666666666666666
+        },
+        {
+          "bin": 4,
+          "n": 3,
+          "mean_probability": 0.5611009256909155,
+          "synthetic_frequency": 0.3333333333333333
+        },
+        {
+          "bin": 5,
+          "n": 7,
+          "mean_probability": 0.6949505363081602,
+          "synthetic_frequency": 0.8571428571428571
+        },
+        {
+          "bin": 6,
+          "n": 9,
+          "mean_probability": 0.8222904788396,
+          "synthetic_frequency": 0.8888888888888888
+        },
+        {
+          "bin": 7,
+          "n": 150,
+          "mean_probability": 0.9797381770945431,
+          "synthetic_frequency": 0.98
+        }
+      ],
+      "confusion_matrix": [
+        [
+          106,
+          7
+        ],
+        [
+          7,
+          162
+        ]
+      ]
+    },
+    "features": [
+      "caller_turn_mean",
+      "caller_turn_median",
+      "caller_turn_std",
+      "caller_turn_iqr",
+      "caller_pause_median",
+      "response_latency_mean",
+      "response_latency_median",
+      "interruption_rate",
+      "interruption_stop_latency_mean",
+      "interruption_stop_latency_median",
+      "interruption_yield_fraction",
+      "interruption_immediate_yield_fraction",
+      "extended_gap_caller_fraction",
+      "response_latency_std",
+      "response_latency_iqr",
+      "response_latency_cv",
+      "short_context_response_std",
+      "long_context_response_std"
+    ],
+    "calibrator": {
+      "method": "train_5fold_oof_sigmoid",
+      "slope": 1.7474781316654235,
+      "intercept": 0.03330764987363083,
+      "fold_seed": 2026,
+      "warning": "No speaker groups available; internal folds may share callers"
+    },
+    "hyperparameters": {
+      "C": 0.1,
+      "class_weight": null,
+      "dual": false,
+      "fit_intercept": true,
+      "intercept_scaling": 1,
+      "l1_ratio": null,
+      "max_iter": 3000,
+      "multi_class": "deprecated",
+      "n_jobs": null,
+      "penalty": "l2",
+      "random_state": 2026,
+      "solver": "lbfgs",
+      "tol": 0.0001,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "training_s_including_calibration": 0.06253773398930207,
+    "inference_ms_per_call_batched": 0.028391887637143825
+  },
+  "without_extended_gaps": {
+    "removed": [
+      "extended_gap_caller_fraction"
+    ],
+    "remaining": 23,
+    "metrics": {
+      "n": 71,
+      "threshold": 0.5,
+      "accuracy": 0.9154929577464789,
+      "balanced_accuracy": 0.915341812400636,
+      "precision": 0.9117647058823529,
+      "recall": 0.9117647058823529,
+      "f1": 0.9117647058823529,
+      "roc_auc": 0.9769475357710651,
+      "pr_auc_ap": 0.974904065568915,
+      "eer": 0.08823529411764708,
+      "fpr": 0.08108108108108109,
+      "fnr": 0.08823529411764706,
+      "brier": 0.06506542710699824,
+      "log_loss": 0.21934867834776914,
+      "ece_8_bins": 0.0608885818325363,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 23,
+          "mean_probability": 0.043658898825790854,
+          "synthetic_frequency": 0.0
+        },
+        {
+          "bin": 1,
+          "n": 10,
+          "mean_probability": 0.21277734447837374,
+          "synthetic_frequency": 0.1
+        },
+        {
+          "bin": 2,
+          "n": 4,
+          "mean_probability": 0.2963272050824747,
+          "synthetic_frequency": 0.5
+        },
+        {
+          "bin": 4,
+          "n": 3,
+          "mean_probability": 0.5671411894057253,
+          "synthetic_frequency": 0.6666666666666666
+        },
+        {
+          "bin": 6,
+          "n": 2,
+          "mean_probability": 0.8104154908798089,
+          "synthetic_frequency": 0.5
+        },
+        {
+          "bin": 7,
+          "n": 29,
+          "mean_probability": 0.9812780206593313,
+          "synthetic_frequency": 0.9655172413793104
+        }
+      ],
+      "confusion_matrix": [
+        [
+          34,
+          3
+        ],
+        [
+          3,
+          31
+        ]
+      ]
+    },
+    "train": {
+      "n": 282,
+      "threshold": 0.5,
+      "accuracy": 0.9397163120567376,
+      "balanced_accuracy": 0.9379745509765931,
+      "precision": 0.9523809523809523,
+      "recall": 0.9467455621301775,
+      "f1": 0.9495548961424333,
+      "roc_auc": 0.9883751374561449,
+      "pr_auc_ap": 0.9926777793504846,
+      "eer": 0.059171597633136064,
+      "fpr": 0.07079646017699115,
+      "fnr": 0.05325443786982249,
+      "brier": 0.04205713632987888,
+      "log_loss": 0.1486309337785653,
+      "ece_8_bins": 0.0488453448111262,
+      "reliability": [
+        {
+          "bin": 0,
+          "n": 78,
+          "mean_probability": 0.0420285326993258,
+          "synthetic_frequency": 0.01282051282051282
+        },
+        {
+          "bin": 1,
+          "n": 16,
+          "mean_probability": 0.16889421563080448,
+          "synthetic_frequency": 0.0625
+        },
+        {
+          "bin": 2,
+          "n": 13,
+          "mean_probability": 0.31734467857284465,
+          "synthetic_frequency": 0.15384615384615385
+        },
+        {
+          "bin": 3,
+          "n": 7,
+          "mean_probability": 0.45616249930921965,
+          "synthetic_frequency": 0.7142857142857143
+        },
+        {
+          "bin": 4,
+          "n": 3,
+          "mean_probability": 0.5510664090114576,
+          "synthetic_frequency": 0.3333333333333333
+        },
+        {
+          "bin": 5,
+          "n": 7,
+          "mean_probability": 0.6798570388062879,
+          "synthetic_frequency": 0.8571428571428571
+        },
+        {
+          "bin": 6,
+          "n": 21,
+          "mean_probability": 0.8161833744697878,
+          "synthetic_frequency": 0.7619047619047619
+        },
+        {
+          "bin": 7,
+          "n": 137,
+          "mean_probability": 0.9793616051784018,
+          "synthetic_frequency": 1.0
+        }
+      ],
+      "confusion_matrix": [
+        [
+          105,
+          8
+        ],
+        [
+          9,
+          160
+        ]
+      ]
+    },
+    "features": [
+      "caller_turn_mean",
+      "caller_turn_median",
+      "caller_turn_std",
+      "caller_turn_iqr",
+      "caller_pause_median",
+      "response_latency_mean",
+      "response_latency_median",
+      "interruption_rate",
+      "interruption_stop_latency_mean",
+      "interruption_stop_latency_median",
+      "interruption_yield_fraction",
+      "interruption_immediate_yield_fraction",
+      "barge_in_rate",
+      "barge_overlap_mean",
+      "barge_continues_fraction",
+      "response_latency_std",
+      "response_latency_iqr",
+      "response_latency_cv",
+      "barge_overlap_std",
+      "barge_overlap_iqr",
+      "barge_overlap_cv",
+      "short_context_response_std",
+      "long_context_response_std"
+    ],
+    "calibrator": {
+      "method": "train_5fold_oof_sigmoid",
+      "slope": 1.884852600833459,
+      "intercept": 0.10186433779014033,
+      "fold_seed": 2026,
+      "warning": "No speaker groups available; internal folds may share callers"
+    },
+    "hyperparameters": {
+      "C": 0.1,
+      "class_weight": null,
+      "dual": false,
+      "fit_intercept": true,
+      "intercept_scaling": 1,
+      "l1_ratio": null,
+      "max_iter": 3000,
+      "multi_class": "deprecated",
+      "n_jobs": null,
+      "penalty": "l2",
+      "random_state": 2026,
+      "solver": "lbfgs",
+      "tol": 0.0001,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "training_s_including_calibration": 0.06748234198312275,
+    "inference_ms_per_call_batched": 0.04106756335806469
+  }
+}

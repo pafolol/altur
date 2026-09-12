@@ -1,0 +1,24 @@
+audio/
+*.zip
+.DS_Store
+
+# Local environments and confidential source/derived data
+.bootstrap/
+.python/
+.venv/
+.venv-runtime/
+.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+manifest.csv
+turns/
+artifacts/
+reports/private/
+reports/reference_baseline/
+*.wav
+*.joblib

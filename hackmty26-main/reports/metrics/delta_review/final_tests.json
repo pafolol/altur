@@ -1,0 +1,12 @@
+{
+  "tests": 41,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "passed": 41,
+  "command": "OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest -q --junitxml=reports/metrics/delta_review/final_pytest.xml",
+  "junit_path": "reports/metrics/delta_review/final_pytest.xml",
+  "junit_sha256": "4ce8dda88fa01a6903754c0e3057f2e5deae7cfae7182307b76c964b28d3b4b9",
+  "complete_suite_runs_in_delta_review": 1,
+  "earlier_targeted_regression": "12 targeted tests; initially 11 pass /1 malformed-RIFF failure, then all 12 pass after minimal parser fix"
+}

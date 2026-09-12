@@ -1,0 +1,108 @@
+{
+  "timestamp_utc": "2026-09-12T13:46:38.629744+00:00",
+  "audit_path": "reports/ASTRA2_ADVERSARIAL_REVIEW.md",
+  "audit_sha256": "a642af8a79918d64318aa5607168426e83603c98135ca0050b3ad1d052fccdcd",
+  "reference_baseline": "reports/reference_baseline/20260912T133418.398155Z",
+  "artifact_path": "artifacts/models/behavior.json",
+  "artifact_sha256": "631dc6d7504f44c2d1f3533438738b2327258d4494143bd638c255e43fa6bacc",
+  "artifact_unchanged": true,
+  "feature_count": 24,
+  "calibration": {
+    "method": "train_5fold_oof_sigmoid",
+    "slope": 1.7190038055255925,
+    "intercept": 0.09308606398592335,
+    "fold_seed": 2026,
+    "warning": "No speaker groups available; internal folds may share callers"
+  },
+  "threshold": 0.5,
+  "validation": {
+    "n": 71,
+    "threshold": 0.5,
+    "accuracy": 0.971830985915493,
+    "balanced_accuracy": 0.9717806041335453,
+    "precision": 0.9705882352941176,
+    "recall": 0.9705882352941176,
+    "f1": 0.9705882352941176,
+    "roc_auc": 0.9912559618441972,
+    "pr_auc_ap": 0.9894762538750742,
+    "eer": 0.02941176470588236,
+    "fpr": 0.02702702702702703,
+    "fnr": 0.029411764705882353,
+    "brier": 0.040635217306442845,
+    "log_loss": 0.15826528434067974,
+    "ece_8_bins": 0.0800483248934672,
+    "reliability": [
+      {
+        "bin": 0,
+        "n": 25,
+        "mean_probability": 0.0350466586450505,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 1,
+        "n": 3,
+        "mean_probability": 0.1819708763095432,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 2,
+        "n": 5,
+        "mean_probability": 0.2837262705036788,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 3,
+        "n": 4,
+        "mean_probability": 0.4435205646875458,
+        "synthetic_frequency": 0.25
+      },
+      {
+        "bin": 5,
+        "n": 4,
+        "mean_probability": 0.6730174541850176,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 6,
+        "n": 1,
+        "mean_probability": 0.8440735132239047,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 7,
+        "n": 29,
+        "mean_probability": 0.9863717824509199,
+        "synthetic_frequency": 0.9655172413793104
+      }
+    ],
+    "confusion_matrix": [
+      [
+        36,
+        1
+      ],
+      [
+        1,
+        33
+      ]
+    ]
+  },
+  "cached_wav_full_predictions_match": true,
+  "full_validation_fallback_calls": 0,
+  "two_diagnostic_specifications_only": [
+    "missingness_only",
+    "agent_only"
+  ],
+  "train_only_counterfactual_selection": "NOT VERIFIABLE: existing raw OOF score and leave-one-feature-out diagnostics are not a complete nested train-only comparison of model families/calibration options; cannot reconstruct an unbiased winner",
+  "project_scoped_tracked_files": 0,
+  "tracked_audio_or_dotenv": 0,
+  "confidential_paths_ignored": {
+    "manifest.csv": true,
+    "turns/": true,
+    "artifacts/": true,
+    "reports/private/": true,
+    ".env": true,
+    "../audio/": true
+  },
+  "network_actions_during_delta_review": "none",
+  "privacy_history_scope": "No dataset uploads/API calls/credentials/pushes in this agent's recorded sessions; current tree checks cannot certify unrelated historical activity"
+}

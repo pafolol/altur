@@ -1,9 +1,24 @@
+# ----- acoustic branch
 .cache/
 .venv/
 outputs/embeddings/
 __pycache__/
 **/__pycache__/
 .pytest_cache/
+.ruff_cache/
 *.pyc
 *.log
 *.safetensors
+
+# ----- shared: the dataset never lives in the repository
+audio/
+*.zip
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# ----- behaviour branch (its own rules stay scoped in behaviour/.gitignore)
+.bootstrap/
+.python/
+.venv-runtime/

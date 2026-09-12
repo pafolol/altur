@@ -1,0 +1,35 @@
+# Third-party model notice
+
+Silero VAD v6.2.1, commit `7e30209a3e901f9842f81b225f3e93d8199902b1`.
+Model and documented ONNX state protocol: https://github.com/snakers4/silero-vad
+Verified official docs and tag on 2026-09-12. Wrapper supports native 8000 Hz,
+256-sample chunks, 32 context samples, independent recurrent batch states.
+Upstream lists broad multilingual pretraining and `es` in its utilities, but these
+claims are NOT a measured guarantee on Mexican Spanish telephony. Our local
+organizer-reference comparison supplies task-specific evidence. No speech recognition
+or acoustic synthetic/human embeddings are used.
+
+## MIT License (Silero)
+
+Copyright (c) 2020-present Silero Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+The Altur dataset has separate HackMTY-only confidentiality terms. The MIT
+license above does not grant rights to redistribute Altur recordings or annotations.

@@ -1,0 +1,390 @@
+{
+  "freeze_timestamp_utc": "2026-09-12T14:07:53.269274+00:00",
+  "ready_for_integration": true,
+  "readiness_meaning": "engineering-ready for team integration under the documented development-validation evidence",
+  "not_claimed": "proven robustness on Altur hidden set or production banking traffic; verified Docker/cloud deployment",
+  "artifact_path": "artifacts/models/behavior.json",
+  "artifact_sha256": "631dc6d7504f44c2d1f3533438738b2327258d4494143bd638c255e43fa6bacc",
+  "artifact_changed_during_delta_review": false,
+  "artifact_created_utc": "2026-09-12T09:15:55.724311+00:00",
+  "baseline_record": "reports/reference_baseline/20260912T133418.398155Z/REFERENCE_BASELINE.json",
+  "baseline_record_sha256": "12f03627e96029e451e13472b1240daf22259677c4868474f3de2a6310f19908",
+  "audit_path": "reports/ASTRA2_ADVERSARIAL_REVIEW.md",
+  "audit_sha256": "a642af8a79918d64318aa5607168426e83603c98135ca0050b3ad1d052fccdcd",
+  "feature_count": 24,
+  "feature_names": [
+    "caller_turn_mean",
+    "caller_turn_median",
+    "caller_turn_std",
+    "caller_turn_iqr",
+    "caller_pause_median",
+    "response_latency_mean",
+    "response_latency_median",
+    "interruption_rate",
+    "interruption_stop_latency_mean",
+    "interruption_stop_latency_median",
+    "interruption_yield_fraction",
+    "interruption_immediate_yield_fraction",
+    "barge_in_rate",
+    "barge_overlap_mean",
+    "barge_continues_fraction",
+    "extended_gap_caller_fraction",
+    "response_latency_std",
+    "response_latency_iqr",
+    "response_latency_cv",
+    "barge_overlap_std",
+    "barge_overlap_iqr",
+    "barge_overlap_cv",
+    "short_context_response_std",
+    "long_context_response_std"
+  ],
+  "missingness_indicators": [
+    "interruption_stop_latency_mean",
+    "interruption_stop_latency_median",
+    "interruption_yield_fraction",
+    "interruption_immediate_yield_fraction",
+    "barge_overlap_mean",
+    "barge_continues_fraction",
+    "extended_gap_caller_fraction",
+    "response_latency_std",
+    "response_latency_iqr",
+    "response_latency_cv",
+    "barge_overlap_std",
+    "barge_overlap_iqr",
+    "barge_overlap_cv",
+    "short_context_response_std",
+    "long_context_response_std"
+  ],
+  "linear_parameters": 40,
+  "feature_configuration": {
+    "version": "1.0.0",
+    "events": {
+      "merge_gap_s": 0.15,
+      "onset_tolerance_s": 0.064,
+      "min_overlap_s": 0.096,
+      "immediate_yield_s": 0.5,
+      "immediate_retake_s": 0.5,
+      "long_gap_s": 2.0,
+      "short_agent_turn_s": 3.0,
+      "cv_min_mean_s": 0.1,
+      "min_variability_events": 3
+    }
+  },
+  "model_configuration": {
+    "C": 0.1,
+    "class_weight": null,
+    "dual": false,
+    "fit_intercept": true,
+    "intercept_scaling": 1,
+    "l1_ratio": null,
+    "max_iter": 3000,
+    "multi_class": "deprecated",
+    "n_jobs": null,
+    "penalty": "l2",
+    "random_state": 2026,
+    "solver": "lbfgs",
+    "tol": 0.0001,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "calibration": {
+    "method": "train_5fold_oof_sigmoid",
+    "slope": 1.7190038055255925,
+    "intercept": 0.09308606398592335,
+    "fold_seed": 2026,
+    "warning": "No speaker groups available; internal folds may share callers"
+  },
+  "calibration_selection": "Lower validation Brier among raw and train-OOF sigmoid; no validation fitting",
+  "threshold": 0.5,
+  "decision_policy_version": "1.1-low-evidence-abstention",
+  "decision_policy": {
+    "available": "p >= 0.5; confidence = probability of chosen class",
+    "insufficient": "quality <=0 or event_count <2 => internal abstention; /detect false with confidence 0.5, X-Behavior-Evidence=insufficient_evidence",
+    "fusion": "Consume /behavior quality; absent Behaviour is no positive synthetic vote, non-flag is not evidence of humanity"
+  },
+  "validation": {
+    "n": 71,
+    "threshold": 0.5,
+    "accuracy": 0.971830985915493,
+    "balanced_accuracy": 0.9717806041335453,
+    "precision": 0.9705882352941176,
+    "recall": 0.9705882352941176,
+    "f1": 0.9705882352941176,
+    "roc_auc": 0.9912559618441972,
+    "pr_auc_ap": 0.9894762538750742,
+    "eer": 0.02941176470588236,
+    "fpr": 0.02702702702702703,
+    "fnr": 0.029411764705882353,
+    "brier": 0.040635217306442845,
+    "log_loss": 0.15826528434067974,
+    "ece_8_bins": 0.0800483248934672,
+    "reliability": [
+      {
+        "bin": 0,
+        "n": 25,
+        "mean_probability": 0.0350466586450505,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 1,
+        "n": 3,
+        "mean_probability": 0.1819708763095432,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 2,
+        "n": 5,
+        "mean_probability": 0.2837262705036788,
+        "synthetic_frequency": 0.0
+      },
+      {
+        "bin": 3,
+        "n": 4,
+        "mean_probability": 0.4435205646875458,
+        "synthetic_frequency": 0.25
+      },
+      {
+        "bin": 5,
+        "n": 4,
+        "mean_probability": 0.6730174541850176,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 6,
+        "n": 1,
+        "mean_probability": 0.8440735132239047,
+        "synthetic_frequency": 1.0
+      },
+      {
+        "bin": 7,
+        "n": 29,
+        "mean_probability": 0.9863717824509199,
+        "synthetic_frequency": 0.9655172413793104
+      }
+    ],
+    "confusion_matrix": [
+      [
+        36,
+        1
+      ],
+      [
+        1,
+        33
+      ]
+    ]
+  },
+  "official_train_calls": 282,
+  "official_validation_calls": 71,
+  "full_call_fallback_cases": 0,
+  "historical_metric_files_unchanged": true,
+  "evidence_files_sha256": {
+    "reports/metrics/final_model.json": "56a71d13c4f2509b8c86e92ee6c149b42ccb4d5701e602b5d0e8c8278fd6634c",
+    "reports/metrics/frozen_evaluation.json": "19d3cd5c9858b01471f1da080426bff38f7961e66a9093a99ca6339e811e3888",
+    "reports/metrics/prefixes.json": "626f40d52efeb96f7e638958eaedd09fb5163e42abe08a84cc9307f6a513b422",
+    "reports/metrics/latency.json": "ebb224547f7ded3caa55428825dd194f1b9d4a28b5481ab11f5b057da51ff95e",
+    "reports/metrics/final_family_ablations.json": "5e0362455b5b8657ca120ed90e9f114a13bcddc821d69a6a74de6dd4b350d0d3",
+    "reports/metrics/organizer_to_vad_transfer.json": "8db236890721320228841f683a0a71cf2af0e85ef10404a6e97803418f751e40",
+    "reports/metrics/robustness.json": "fdb77b9b2f9379c497812a2fb73e85fd2b11a00b0afe6fb704386ad35b6807ee"
+  },
+  "runtime_revision_sha256": "85e87fb5919a2ec57cba9d8ce36da61e9d1d70c755010826dd034b100174e4bf",
+  "runtime_files_sha256": {
+    ".dockerignore": "80ca4df88d55672e0ba8152b1e675b5a66db60761aa6bbd10b441faadca5e1ef",
+    "Dockerfile": "35546ec582534f005963ed9cb19234ec1ef796de811e40197f01aded9c36b940",
+    "behavior/__init__.py": "4fa16263a19550577c46f2bc64675703a8629751f0d8107aa4736eec2dc2abfd",
+    "behavior/audio.py": "a4c18d05ce6498c185421b2bb6ca76d29853119d754952f0b0df45adf39648d1",
+    "behavior/calibrate.py": "b76f7c8e6952ab36fb142c0a2a45aee3df45232d3c0eeb6d125494ac79172158",
+    "behavior/config.py": "59b89c75b37d879bb574ccd4d72cb212b97267962559e13b77f8e44fe809f8a2",
+    "behavior/dataset.py": "d225e1ccb5a17c63105793028ebe7f408cff56679e60f5a3ce8536438148a7e6",
+    "behavior/decision.py": "66b51c5c2aea3458e992b3c679395be9b47638745de89e987246381e1c485f42",
+    "behavior/events.py": "e7c3808c06be6f797ee1093bd059a69790fee4a486db3fcdba014a963c5b232a",
+    "behavior/features.py": "c4a1e1cc7863a060b1a0d1180d704951606f10e01f648bcbba90611e491e7495",
+    "behavior/inference.py": "8b9586412e35b51a0281e2d1a09fa40cd05738c7e390cdd21d2fa5d5d2e7e506",
+    "behavior/metrics.py": "d78146f70f6b20365a088259bf8b66417d83097d0d74da64257e7bdccdc935bc",
+    "behavior/model.py": "659c4d269ba6b0da9c26e9d9f09c08ca6737659cd2d20b0d702bfc903ad47010",
+    "behavior/portable.py": "5e39b5c87966adadf4f9d21eb1038c7be770198acf9b3bbe1c4b17ce5819e68e",
+    "behavior/schemas.py": "8afc470b877eb81870dda12c4fa8e0d4b563aad2140741372101fad2c640dde6",
+    "behavior/service.py": "0ce6b5cddb12f346472b7f4ab12600e93b4eeb6757fe2a49ae2ac3c3256bdd69",
+    "behavior/turns.py": "158863b94a8c0777fb06afa34ef39b8a3241fdd538b27d02e5dec452d507646d",
+    "behavior/vad.py": "966d46591cd55562aae04580e0c9f68c38407a07c1048fdb7f6a3a836ed6e6b3",
+    "requirements-runtime.lock": "fb6ebd868d6d49444fcea7035aa9306465888ae89ab77e3f1ba444352b0a4834"
+  },
+  "source_revision_sha256": "33c7a1e17d3adb539b69757b6bad2081583aa7e43cce19747ef4a2a038afc2b4",
+  "source_files_sha256": {
+    ".dockerignore": "80ca4df88d55672e0ba8152b1e675b5a66db60761aa6bbd10b441faadca5e1ef",
+    "Dockerfile": "35546ec582534f005963ed9cb19234ec1ef796de811e40197f01aded9c36b940",
+    "behavior/__init__.py": "4fa16263a19550577c46f2bc64675703a8629751f0d8107aa4736eec2dc2abfd",
+    "behavior/audio.py": "a4c18d05ce6498c185421b2bb6ca76d29853119d754952f0b0df45adf39648d1",
+    "behavior/calibrate.py": "b76f7c8e6952ab36fb142c0a2a45aee3df45232d3c0eeb6d125494ac79172158",
+    "behavior/config.py": "59b89c75b37d879bb574ccd4d72cb212b97267962559e13b77f8e44fe809f8a2",
+    "behavior/dataset.py": "d225e1ccb5a17c63105793028ebe7f408cff56679e60f5a3ce8536438148a7e6",
+    "behavior/decision.py": "66b51c5c2aea3458e992b3c679395be9b47638745de89e987246381e1c485f42",
+    "behavior/events.py": "e7c3808c06be6f797ee1093bd059a69790fee4a486db3fcdba014a963c5b232a",
+    "behavior/features.py": "c4a1e1cc7863a060b1a0d1180d704951606f10e01f648bcbba90611e491e7495",
+    "behavior/inference.py": "8b9586412e35b51a0281e2d1a09fa40cd05738c7e390cdd21d2fa5d5d2e7e506",
+    "behavior/metrics.py": "d78146f70f6b20365a088259bf8b66417d83097d0d74da64257e7bdccdc935bc",
+    "behavior/model.py": "659c4d269ba6b0da9c26e9d9f09c08ca6737659cd2d20b0d702bfc903ad47010",
+    "behavior/portable.py": "5e39b5c87966adadf4f9d21eb1038c7be770198acf9b3bbe1c4b17ce5819e68e",
+    "behavior/schemas.py": "8afc470b877eb81870dda12c4fa8e0d4b563aad2140741372101fad2c640dde6",
+    "behavior/service.py": "0ce6b5cddb12f346472b7f4ab12600e93b4eeb6757fe2a49ae2ac3c3256bdd69",
+    "behavior/turns.py": "158863b94a8c0777fb06afa34ef39b8a3241fdd538b27d02e5dec452d507646d",
+    "behavior/vad.py": "966d46591cd55562aae04580e0c9f68c38407a07c1048fdb7f6a3a836ed6e6b3",
+    "requirements-runtime.lock": "fb6ebd868d6d49444fcea7035aa9306465888ae89ab77e3f1ba444352b0a4834",
+    "scripts/__init__.py": "2f5fa97716c9e8b431fd8059829b43b3ee5c5ef9ccf79bc87a1fc3c0d7f5895f",
+    "scripts/analyze_organizer.py": "132f91cf3ce3590157874ef282952c7692a310a8764c065b41a2508cfd49ef8e",
+    "scripts/benchmark_latency.py": "4f80fed78cb7f4c8910e9f21a9197df6ab4a10d2cdf672605c3aca2505a32dd4",
+    "scripts/common.py": "d929a65cdaf31ca1ddc0e75042fcf3b183e748d287eb25aa8861b16f1c6a7d1b",
+    "scripts/compare_turns.py": "c1f86de434f9b6bf1d6014a7ea15a0d0ba1365de822f004f78ef44c6fc0d1a80",
+    "scripts/delta_review_checks.py": "041fe01f66a5e9872f4c98fa7b9ff4587c09816c1aa516b461b7682bc3a1e8c0",
+    "scripts/delta_runtime_smoke.py": "07a36dfc34acb022e5dc8ede1d3f0709c2c5785f3126abacc4cae5f1034ae5ad",
+    "scripts/download_vad.py": "cad7c515bbfa98d2fa65e9bdac63050d80908a9d89ac5f9fbcd52b30ca3fc541",
+    "scripts/evaluate_behavior.py": "98200f70be97b39ae8d72047c6232b53282f6ad44100a1d5fbd7821168e6f1dc",
+    "scripts/evaluate_prefixes.py": "8089d4db2179f5743a3df84ae6744e07a91fccee86735ed35e2f89a88303b482",
+    "scripts/extract_features.py": "6e4e6e7152e90d0a7932d59a3aac65b28ac5769407412a58688e96abf4051c3a",
+    "scripts/finalize_delta_freeze.py": "fb906af27510622322f9f90a2f539514645c7ca708a89172666c6405072cc718",
+    "scripts/finalize_model.py": "36f994374dea58197c4934dcf006f1c6193177781feb3b4d92e7b106b25659df",
+    "scripts/inspect_data.py": "06996d37468ddd7e7eeaff017e9f14904b4d8d9bbe689af1b025093fb41df1ff",
+    "scripts/make_figures.py": "8140769ae2af0fbcec5d2f712cb448e13021cfa499b3a351567643004e793417",
+    "scripts/predict.py": "5431b25a9c3cb727ef62ca1d447fb348fecd366c9b2f538a26bd4a4c5eae7130",
+    "scripts/reproduce.py": "154abc73abd509047af0c9ac107a7ca9458d1a53899e31e74041c768e2f1d61e",
+    "scripts/robustness.py": "b2aebb47796399efcf6426e66efe744ae7c155597d7aba9b8b3216baa9750741",
+    "scripts/run_ablations.py": "7611a762c716ba52087741a899c81b788a934f5dfaa9c4375c11c67a95cf5d1e",
+    "scripts/smoke_service.py": "9ad64f0413e88f1da66f22bfdb81b44416298903b50eda8bbcebabddf10f1e5b",
+    "scripts/train_behavior.py": "a71c3c480305546e2bcdceaa101a5965acef7fd183f73e468b19545cc14c8c16",
+    "scripts/verify_deliverables.py": "46bdc8b4e65ec81f8af18fd4fcd97cc5a98ee66ebbdf4dc4f52847e2f7eef356",
+    "scripts/write_report.py": "2460f4ea7b2aec08ba15472f55d297c8e502775e0251516b90c244fc33f9c078",
+    "tests/test_delta_review.py": "c3682aec579017f9c11f3569dcfc2da3cab7119fa341a7327f4f8ef142f4691b",
+    "tests/test_events.py": "05e477500eb1f0f5fe4a708514681e2fe3464ff031274d39f6840cd1419d72e1",
+    "tests/test_features.py": "85fea63efafd9acdf66281a6c6d4b8a903a0dd6970af7d4356caf8f1ce491a6b",
+    "tests/test_inference.py": "bee881bfe934065d34a6f55b81940a7ff4b1871a984c0a87908593107c4ae73b",
+    "tests/test_pipeline_safeguards.py": "c1183781e47e50a51f391e10c05b8417f317d63cb91204a4137683bb6d66b715",
+    "tests/test_turn_logic.py": "f948439c2ac5ae8432b484b4c9815cc084ffb5156a3294631472d02d643eaad7",
+    "tests/test_vad.py": "fd78429b280d832beb8dc7f981149a78490e4b0dca4b166c573a3d2c4efc9336"
+  },
+  "changed_runtime_files_since_baseline": [
+    "behavior/audio.py",
+    "behavior/decision.py",
+    "behavior/inference.py",
+    "behavior/service.py"
+  ],
+  "git_commit": null,
+  "git_reason": "No project-level Git repository/commit; project is untracked in parent home repository; no commit/push performed",
+  "vad_path": "artifacts/vad/silero_vad.onnx",
+  "vad_sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+  "vad_configuration": {
+    "threshold": 0.65,
+    "hysteresis": 0.15,
+    "min_speech_s": 0.24,
+    "min_silence_s": 0.24,
+    "pad_s": 0.032,
+    "merge_gap_s": 0.15
+  },
+  "test_suite": {
+    "tests": 41,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 41,
+    "command": "OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest -q --junitxml=reports/metrics/delta_review/final_pytest.xml",
+    "junit_path": "reports/metrics/delta_review/final_pytest.xml",
+    "junit_sha256": "4ce8dda88fa01a6903754c0e3057f2e5deae7cfae7182307b76c964b28d3b4b9",
+    "complete_suite_runs_in_delta_review": 1,
+    "earlier_targeted_regression": "12 targeted tests; initially 11 pass /1 malformed-RIFF failure, then all 12 pass after minimal parser fix"
+  },
+  "runtime_smoke": {
+    "valid_wav_inference": "passed",
+    "training_data_access_denied": true,
+    "network_egress_denied": true,
+    "native_process_sandbox": true,
+    "no_sklearn_pandas_torch": true,
+    "insufficient_evidence_fixtures": {
+      "silence": "passed: abstention and non-flag Boolean",
+      "sparse_100ms_burst": "passed: abstention and non-flag Boolean",
+      "caller_only": "passed: abstention and non-flag Boolean",
+      "agent_only": "passed: abstention and non-flag Boolean"
+    },
+    "state_isolation_after_different_calls": "passed",
+    "import_and_model_load_s": 0.9464697469957173,
+    "single_valid_wav_inference_s": 2.100122371019097,
+    "python": "3.11.13",
+    "artifact_sha256": "631dc6d7504f44c2d1f3533438738b2327258d4494143bd638c255e43fa6bacc",
+    "package_contents": "runtime .py files + Behaviour JSON + Silero ONNX only; audio bytes supplied on stdin",
+    "docker_status": "NOT VERIFIED LOCALLY"
+  },
+  "http_smoke": {
+    "health": "ready",
+    "startup_to_ready_s": 0.9681507839995902,
+    "real_wav_endpoints_passed": [
+      "behavior",
+      "detect"
+    ],
+    "single_call_http_s": {
+      "behavior": 1.8050958339881618,
+      "detect": 1.5640401970013045
+    },
+    "invalid_input_rejected_without_echo": true,
+    "silence_nonflag_fallback_and_evidence_header": true,
+    "scope": "Actual HTTP on 127.0.0.1 only; not cloud or load testing",
+    "runs": [
+      {
+        "health": "ready",
+        "startup_to_ready_s": 0.9681507839995902,
+        "real_wav_endpoints_passed": [
+          "behavior",
+          "detect"
+        ],
+        "single_call_http_s": {
+          "behavior": 1.8050958339881618,
+          "detect": 1.5640401970013045
+        },
+        "invalid_input_rejected_without_echo": true,
+        "silence_nonflag_fallback_and_evidence_header": true,
+        "scope": "Actual HTTP on 127.0.0.1 only; not cloud or load testing"
+      }
+    ]
+  },
+  "runtime_python": "3.11.13",
+  "runtime_packages": {
+    "annotated-types": "0.8.0",
+    "anyio": "4.15.1",
+    "click": "8.5.0",
+    "coloredlogs": "15.0.1",
+    "fastapi": "0.115.6",
+    "flatbuffers": "25.12.19",
+    "h11": "0.16.0",
+    "humanfriendly": "10.0",
+    "idna": "3.19",
+    "mpmath": "1.3.0",
+    "numpy": "1.26.4",
+    "onnxruntime": "1.20.1",
+    "packaging": "26.3",
+    "protobuf": "7.36.1",
+    "pydantic": "2.10.4",
+    "pydantic-core": "2.27.2",
+    "starlette": "0.41.3",
+    "sympy": "1.14.0",
+    "typing-extensions": "4.16.0",
+    "uvicorn": "0.34.0"
+  },
+  "latency_existing_20_calls": {
+    "mean": 888.0405381001765,
+    "p50": 860.4462305083871,
+    "p95": 1193.1243378479849
+  },
+  "peak_rss_mib_existing_benchmark": 125.44140625,
+  "latency_scope": "Existing offline CPU benchmark; not rerun in delta review; excludes HTTP/network; post-fix smoke is not a new latency distribution",
+  "docker_status": "NOT VERIFIED LOCALLY",
+  "docker_review": "Static inspection only; Docker not installed",
+  "permissions": "No external transfers/cloud/API credentials/remote Git changes; no confidential original data modified",
+  "remaining_blockers": [],
+  "limitations": [
+    "71 development-validation calls with irreversible prior selection exposure",
+    "No verifiable source/session/engine grouping or pristine train-only selection winner",
+    "Rates, missingness and agent/protocol shortcuts remain",
+    "Selective non-overlap response population; automatic event boundaries, no causal/manual truth",
+    "Class-dependent VAD agreement introduces acoustic dependence",
+    "Weak short prefixes; fast computation is not early observation evidence",
+    "Train-OOF parameter calibration, validation-selected option; sparse bins and prior shift",
+    "Advanced autonomous agents may imitate timing; human-operated voice conversion not established",
+    "Limited robustness panel; no Docker/cloud/hidden-test/production proof"
+  ]
+}

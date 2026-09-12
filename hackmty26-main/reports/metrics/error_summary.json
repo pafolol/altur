@@ -1,0 +1,32 @@
+{
+  "counts": {
+    "FN": 1,
+    "FP": 1
+  },
+  "errors_median": {
+    "duration_s": 124.89,
+    "interruption_count": 0.0,
+    "barge_in_count": 2.0,
+    "response_latency_count": 7.0,
+    "response_latency_mean": 2.572666666666672,
+    "response_latency_std": 1.0311888474309177,
+    "barge_overlap_mean": 0.4800000000000002,
+    "caller_turn_mean": 2.3704935064935038,
+    "extended_gap_caller_fraction": 0.6333333333333333,
+    "quality": 0.5145963275260144
+  },
+  "correct_median": {
+    "duration_s": 145.9,
+    "interruption_count": 1.0,
+    "barge_in_count": 2.0,
+    "response_latency_count": 8.0,
+    "response_latency_mean": 1.84533333333334,
+    "response_latency_std": 0.4657503929911671,
+    "barge_overlap_mean": 0.6399999999999958,
+    "caller_turn_mean": 2.2897777777777795,
+    "extended_gap_caller_fraction": 0.5,
+    "quality": 0.5767949760006896
+  },
+  "manual_listening_performed": false,
+  "method": "All full-call validation errors; feature contributions and both local timelines; no transcripts or speaker identification"
+}

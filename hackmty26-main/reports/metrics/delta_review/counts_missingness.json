@@ -1,0 +1,99 @@
+{
+  "removed_raw_counts": [
+    "response_latency_count",
+    "interruption_count",
+    "recovery_latency_count",
+    "barge_in_count",
+    "extended_gap_count"
+  ],
+  "remaining_primary_features": [
+    "caller_turn_mean",
+    "caller_turn_median",
+    "caller_turn_std",
+    "caller_turn_iqr",
+    "caller_pause_median",
+    "response_latency_mean",
+    "response_latency_median",
+    "interruption_rate",
+    "interruption_stop_latency_mean",
+    "interruption_stop_latency_median",
+    "interruption_yield_fraction",
+    "interruption_immediate_yield_fraction",
+    "barge_in_rate",
+    "barge_overlap_mean",
+    "barge_continues_fraction",
+    "extended_gap_caller_fraction",
+    "response_latency_std",
+    "response_latency_iqr",
+    "response_latency_cv",
+    "barge_overlap_std",
+    "barge_overlap_iqr",
+    "barge_overlap_cv",
+    "short_context_response_std",
+    "long_context_response_std"
+  ],
+  "missing_indicator_count": 15,
+  "missing_indicator_features": [
+    "interruption_stop_latency_mean",
+    "interruption_stop_latency_median",
+    "interruption_yield_fraction",
+    "interruption_immediate_yield_fraction",
+    "barge_overlap_mean",
+    "barge_continues_fraction",
+    "extended_gap_caller_fraction",
+    "response_latency_std",
+    "response_latency_iqr",
+    "response_latency_cv",
+    "barge_overlap_std",
+    "barge_overlap_iqr",
+    "barge_overlap_cv",
+    "short_context_response_std",
+    "long_context_response_std"
+  ],
+  "linear_parameters_including_intercept": 40,
+  "calibration_parameters": 2,
+  "contributions": {
+    "train": {
+      "mean_missing_indicator_absolute_term_share": 0.1931425191755145,
+      "fraction_calls_indicator_signed_magnitude_exceeds_numeric": 0.11702127659574468,
+      "interpretation": "Descriptive standardized-logit arithmetic, not causal feature importance; correlated/redundant indicators share credit"
+    },
+    "val": {
+      "mean_missing_indicator_absolute_term_share": 0.19110219168823364,
+      "fraction_calls_indicator_signed_magnitude_exceeds_numeric": 0.11267605633802817,
+      "interpretation": "Descriptive standardized-logit arithmetic, not causal feature importance; correlated/redundant indicators share credit"
+    }
+  },
+  "remaining_proxies": [
+    "event count ratios (interruption_rate, barge_in_rate)",
+    "observed-outcome fractions",
+    "availability requires event-count minima",
+    "caller pauses contain agent speech; temporal context uses agent duration"
+  ],
+  "train_variability_support": {
+    "response_latency_std": {
+      "human": 113,
+      "synthetic": 163
+    },
+    "barge_overlap_std": {
+      "human": 31,
+      "synthetic": 54
+    },
+    "interruption_stop_latency_std": {
+      "human": 3,
+      "synthetic": 10
+    },
+    "recovery_latency_std": {
+      "human": 0,
+      "synthetic": 0
+    },
+    "short_context_response_std": {
+      "human": 22,
+      "synthetic": 45
+    },
+    "long_context_response_std": {
+      "human": 112,
+      "synthetic": 144
+    }
+  }
+}
