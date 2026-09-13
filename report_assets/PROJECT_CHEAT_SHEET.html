@@ -1,0 +1,416 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ISISI — team cheat sheet</title><style>
+@page { size: A4; margin: 17mm 16mm 19mm 16mm; }
+
+:root{
+  --ink:#15191f; --dim:#5a6472; --rule:#d4dae2; --faint:#eef1f5;
+  --accent:#1f4e79; --accent2:#7a3e12; --ok:#1d6b44; --bad:#a32b2b;
+}
+
+*{ box-sizing:border-box; }
+html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+body{
+  margin:0; color:var(--ink); background:#fff;
+  font-family:"Charter","Bitstream Charter","Georgia","Times New Roman",serif;
+  font-size:10.2pt; line-height:1.52;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+h1,h2,h3,h4,h5,.sans{ font-family:"Segoe UI","Inter","Helvetica Neue",Arial,sans-serif; }
+code,pre,kbd,.mono{ font-family:"Cascadia Mono","Consolas","DejaVu Sans Mono",monospace; }
+
+/* ---------------------------------------------------------------- headings */
+h1{
+  font-size:19pt; font-weight:650; letter-spacing:-.01em; line-height:1.15;
+  margin:0 0 14pt; padding:0 0 7pt; border-bottom:2.2pt solid var(--accent);
+  color:var(--accent); page-break-before:always; page-break-after:avoid;
+}
+h1:first-of-type{ page-break-before:avoid; }
+h1 .num{ display:block; font-size:8.5pt; letter-spacing:.18em; font-weight:600;
+         color:var(--dim); text-transform:uppercase; margin-bottom:5pt; }
+h2{ font-size:13.2pt; font-weight:640; margin:20pt 0 7pt; color:#12314d;
+    page-break-after:avoid; border-bottom:.6pt solid var(--rule); padding-bottom:3pt; }
+h3{ font-size:11pt; font-weight:640; margin:14pt 0 4pt; color:#1a2530; page-break-after:avoid; }
+h4{ font-size:9.6pt; font-weight:660; margin:11pt 0 3pt; color:var(--dim);
+    text-transform:uppercase; letter-spacing:.07em; page-break-after:avoid; }
+p{ margin:0 0 7pt; orphans:3; widows:3; }
+hr{ border:0; border-top:.6pt solid var(--rule); margin:16pt 0; }
+
+/* ---------------------------------------------------------------- lists */
+ul,ol{ margin:0 0 8pt; padding-left:16pt; }
+li{ margin:0 0 2.5pt; orphans:2; widows:2; }
+li>ul,li>ol{ margin-top:2.5pt; }
+dl{ margin:0 0 8pt; } dt{ font-weight:650; margin-top:5pt; } dd{ margin:0 0 0 14pt; }
+
+/* ---------------------------------------------------------------- code */
+code{ font-size:8.6pt; background:var(--faint); padding:.6pt 2.6pt;
+      border-radius:2pt; border:.4pt solid #e0e5ec; }
+pre{
+  margin:7pt 0 9pt; padding:7pt 9pt; background:#fafbfc; border:.6pt solid var(--rule);
+  border-left:2.4pt solid var(--accent); border-radius:2pt; overflow:hidden;
+  font-size:8.1pt; line-height:1.42; white-space:pre-wrap; word-wrap:break-word;
+  page-break-inside:avoid;
+}
+pre code{ background:none; border:0; padding:0; font-size:inherit; }
+pre.wide{ font-size:7.2pt; }
+.codehilite{ background:none; }
+.codehilite .k,.codehilite .kn,.codehilite .kd{ color:#8a2f8a; font-weight:600; }
+.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sd{ color:#1d6b44; }
+.codehilite .c,.codehilite .c1,.codehilite .cm{ color:#7b8694; font-style:italic; }
+.codehilite .nf{ color:var(--accent); font-weight:600; }
+.codehilite .mi,.codehilite .mf{ color:var(--accent2); }
+.codehilite .nb{ color:#0f5b8a; }
+
+/* ASCII diagrams: never wrap, never shrink below legibility */
+pre.diagram{ white-space:pre; font-size:7.6pt; line-height:1.32; background:#fff;
+             border-left-color:#9aa6b4; text-align:left; }
+
+/* ---------------------------------------------------------------- tables */
+table{
+  border-collapse:collapse; width:100%; margin:8pt 0 10pt; font-size:8.5pt;
+  font-family:"Segoe UI",Arial,sans-serif;
+}
+table.wide{ font-size:7.5pt; }
+/* Tables break ACROSS pages, but never mid-row, and the header repeats on every continuation.
+   Forbidding the whole table from breaking looks tidy until a 40-row glossary meets a page
+   boundary and pushes itself bodily onto the next page, stranding its heading above a blank. */
+tr{ page-break-inside:avoid; }
+thead{ display:table-header-group; }
+th{
+  text-align:left; font-weight:650; font-size:7.6pt; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--dim); padding:4pt 5pt;
+  border-bottom:1.1pt solid var(--ink); vertical-align:bottom;
+}
+td{ padding:3.4pt 5pt; border-bottom:.4pt solid var(--rule); vertical-align:top; }
+tbody tr:last-child td{ border-bottom:.8pt solid var(--ink); }
+td code{ font-size:7.8pt; }
+td:not(:first-child){ font-variant-numeric:tabular-nums; }
+
+/* ---------------------------------------------------------------- callouts */
+.admonition{
+  margin:9pt 0; padding:7pt 10pt; border-radius:2pt; page-break-inside:avoid;
+  border:.5pt solid var(--rule); border-left:3pt solid var(--dim); background:#fbfcfd;
+  font-size:9.5pt;
+}
+.admonition>:last-child{ margin-bottom:0; }
+.admonition-title{
+  font-family:"Segoe UI",Arial,sans-serif; font-weight:680; font-size:7.6pt;
+  text-transform:uppercase; letter-spacing:.09em; margin:0 0 4pt; color:var(--dim);
+}
+.admonition.fact{ border-left-color:var(--ok); background:#f4faf6; }
+.admonition.fact>.admonition-title{ color:var(--ok); }
+.admonition.fact>.admonition-title::before{ content:"◆ Fact observed in project — "; }
+.admonition.interp{ border-left-color:var(--accent); background:#f4f8fc; }
+.admonition.interp>.admonition-title{ color:var(--accent); }
+.admonition.interp>.admonition-title::before{ content:"▷ Interpretation — "; }
+.admonition.bg{ border-left-color:#6b5ea8; background:#f8f7fc; }
+.admonition.bg>.admonition-title{ color:#6b5ea8; }
+.admonition.bg>.admonition-title::before{ content:"▣ General ML background — "; }
+.admonition.gap{ border-left-color:#8a8f98; background:#f6f7f8; }
+.admonition.gap>.admonition-title{ color:#6a7078; }
+.admonition.gap>.admonition-title::before{ content:"○ Evidence gap — "; }
+.admonition.warn{ border-left-color:var(--bad); background:#fdf5f5; }
+.admonition.warn>.admonition-title{ color:var(--bad); }
+.admonition.warn>.admonition-title::before{ content:"▲ Caveat — "; }
+
+blockquote{
+  margin:8pt 0; padding:5pt 0 5pt 11pt; border-left:2.4pt solid var(--rule);
+  color:var(--dim); font-style:italic;
+}
+blockquote>:last-child{ margin-bottom:0; }
+
+/* ---------------------------------------------------------------- figures */
+img{ max-width:100%; height:auto; display:block; margin:0 auto; }
+p>img{ border:.5pt solid var(--rule); border-radius:2pt; padding:3pt; background:#fff; }
+.figure{ margin:10pt 0 12pt; page-break-inside:avoid; text-align:center; }
+.figure img{ border:.5pt solid var(--rule); border-radius:2pt; padding:3pt; }
+.caption,.figure em{
+  display:block; margin-top:4pt; font-family:"Segoe UI",Arial,sans-serif;
+  font-size:7.9pt; color:var(--dim); font-style:normal; text-align:left;
+}
+.caption b,.figure em b{ color:var(--ink); font-weight:650; }
+
+/* ---------------------------------------------------------------- title page */
+.titlepage{ page-break-after:always; padding-top:34mm; }
+.titlepage .kicker{
+  font-family:"Segoe UI",Arial,sans-serif; font-size:9pt; font-weight:640;
+  letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:10pt;
+}
+.titlepage h1{
+  border:0; padding:0; margin:0 0 8pt; font-size:31pt; line-height:1.06;
+  color:var(--ink); page-break-before:avoid; letter-spacing:-.02em; font-weight:680;
+}
+.titlepage .sub{ font-size:13pt; color:var(--dim); margin:0 0 26pt; line-height:1.35; }
+.titlepage .rule{ border-top:2.4pt solid var(--accent); width:62mm; margin:0 0 20pt; }
+.titlepage dl{ font-size:9.4pt; }
+.titlepage dt{ font-family:"Segoe UI",Arial,sans-serif; font-size:7.6pt;
+               text-transform:uppercase; letter-spacing:.09em; color:var(--dim); margin-top:9pt; }
+.titlepage dd{ margin:1pt 0 0; }
+
+/* table of contents */
+.toc{ page-break-after:always; }
+.toc ul{ list-style:none; padding-left:0; margin:0; }
+.toc li{ margin:0; }
+.toc>.toctitle{ display:none; }
+.toc ul ul{ padding-left:13pt; }
+.toc a{ color:var(--ink); text-decoration:none; }
+.toc>ul>li>a{ font-family:"Segoe UI",Arial,sans-serif; font-weight:640; font-size:9.6pt;
+              display:block; margin-top:7pt; border-bottom:.4pt solid var(--faint); padding-bottom:2pt; }
+.toc>ul>li>ul>li>a{ font-size:8.8pt; color:var(--dim); }
+.toc>ul>li>ul>li>ul{ display:none; }
+
+.nobreak{ page-break-inside:avoid; }
+.newpage{ page-break-before:always; }
+a{ color:var(--accent); text-decoration:none; }
+strong{ font-weight:680; }
+sup{ font-size:.7em; }
+</style></head><body><h1 id="isisi-team-cheat-sheet">ISISI — team cheat sheet</h1>
+<p>Altur HackMTY 2026 · synthetic-caller detection · everything on one page</p>
+<hr />
+<h2 id="the-essentials">The essentials</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CHALLENGE</strong></td>
+<td>&ldquo;Defend the Bank Against Voice Deepfakes.&rdquo; Given a stereo 8 kHz call (ch 0 = caller, ch 1 = Altur agent), decide whether the caller is human or synthetic. <code>POST /detect</code> → <code>{"is_synthetic": bool, "confidence": float}</code>. Judged on a <strong>hidden</strong> test set, on robustness, feasibility and latency.</td>
+</tr>
+<tr>
+<td><strong>DATASET</strong></td>
+<td><strong>353 calls</strong> — train 282 (113 human / 169 synthetic), val 71 (37 / 34). 8 kHz · stereo · PCM_16 · WAV, all 353, no exceptions. 14.5 h audio, of which only <strong>3.9 h is caller speech</strong>. No speaker ids, no TTS ids, no codec fields.</td>
+</tr>
+<tr>
+<td><strong>FINAL MODEL</strong></td>
+<td><strong>Robust Acoustic V2</strong> — <code>models/robust_v2/</code>. Frozen Wav2Vec2 Spanish, hidden layer 5, Silero VAD, trained on original + 29 h of simulated telephone-channel audio. <code>reports/deployed_model.json</code> is the single pointer both <code>predict.py</code> and <code>server.py</code> read.</td>
+</tr>
+<tr>
+<td><strong>PREPROCESSING</strong></td>
+<td>channel 0 → VAD → speech regions → 4 s chunks (drop &lt; 1 s, cap 60, never cross a region) → RMS-normalise to <strong>−26 dBFS</strong> → resample 8 k → 16 kHz (polyphase, exact 2×).</td>
+</tr>
+<tr>
+<td><strong>BACKBONE</strong></td>
+<td><code>facebook/wav2vec2-base-es-voxpopuli-v2</code> — 94.37 M params, 12 layers × 768, pretrained self-supervised on 21 400 h of Spanish. <strong>Frozen</strong>, and physically truncated after layer 5 (blocks 6–12 deleted at load: half the compute gone, identical output).</td>
+</tr>
+<tr>
+<td><strong>SELECTED LAYER</strong></td>
+<td><strong>5 of 12 (42 % depth).</strong> Chosen on <strong>stressed</strong> AUC — the clean split was useless for this, because <em>every</em> layer of <em>every</em> backbone scored AUC 1.000, including layer 0.</td>
+</tr>
+<tr>
+<td><strong>CLASSIFIER</strong></td>
+<td>standardise (buffers in the checkpoint) → <code>Linear(768→256)</code> → ReLU → Dropout 0.3 → <code>Linear(256→2)</code>. Score = <code>logit[1] − logit[0]</code>. <strong>197 378 trainable params vs 94 371 712 frozen = 0.21 %.</strong></td>
+</tr>
+<tr>
+<td><strong>AGGREGATION</strong></td>
+<td>arithmetic <strong>mean of the chunk log-odds</strong>, fixed in config before results were seen. Then Platt: <code>σ(0.9025·s + 0.8366)</code>.</td>
+</tr>
+<tr>
+<td><strong>TRAINING</strong></td>
+<td>seed 42 · AdamW · lr 1e-3 · weight decay 1e-4 · batch 64 · class-weighted cross-entropy · max 60 epochs, early stop patience 15 on val loss → <strong>stopped at 18, kept epoch 3</strong>. ~10 s on cached embeddings, RTX 4080 Laptop.</td>
+</tr>
+<tr>
+<td><strong>CALIBRATION</strong></td>
+<td>Platt, fitted on <strong>781 call-conditions</strong> (71 calls × 11 stress conditions), grouped 5-fold. Brier 0.0200 → 0.0196, ECE 0.0190 → 0.0150. Fitting on the clean split was degenerate and was thrown away.</td>
+</tr>
+<tr>
+<td><strong>LATENCY</strong></td>
+<td><strong>119 ms</strong> GPU inference (850 ms CPU). Confident verdict after a median <strong>2.33 s of caller speech</strong>, 12.3 s into the call, <strong>132.7 s of lead time</strong>. 100 % of calls confident before halfway; early verdict matched final <strong>100 %</strong> of the time.</td>
+</tr>
+<tr>
+<td><strong>API</strong></td>
+<td><code>POST /detect</code> (8 accepted field names, multipart, or raw base64; always HTTP 200). Plus <code>/detect_layers</code>, <code>/fusion/config</code>, <code>/fusion/recombine</code>, <code>/layers</code>, <code>/demo/*</code>, <code>/twilio/*</code>, <code>/api/{calls,stats,health}</code>, and three pages. <strong>One backend: <code>python src/server.py</code>.</strong></td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-numbers-to-quote">The numbers to quote</h2>
+<table>
+<thead>
+<tr>
+<th>Held-out split (71 calls)</th>
+<th style="text-align: right;">accuracy</th>
+<th style="text-align: right;">AUC</th>
+<th style="text-align: right;">Brier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Acoustic V1 alone</td>
+<td style="text-align: right;">100 %</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.0003</td>
+</tr>
+<tr>
+<td>Behaviour alone</td>
+<td style="text-align: right;">97.2 %</td>
+<td style="text-align: right;">0.991</td>
+<td style="text-align: right;">0.0406</td>
+</tr>
+<tr>
+<td>Semantic alone</td>
+<td style="text-align: right;">91.5 %</td>
+<td style="text-align: right;">0.975</td>
+<td style="text-align: right;">0.0698</td>
+</tr>
+<tr>
+<td><strong>Fused (50/50 + gated verifier)</strong></td>
+<td style="text-align: right;"><strong>100 %</strong></td>
+<td style="text-align: right;"><strong>1.000</strong></td>
+<td style="text-align: right;"><strong>0.0096</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Robustness, accuracy at the deployed threshold</th>
+<th style="text-align: right;">Specialist V1</th>
+<th style="text-align: right;"><strong>Robust V2</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Altur validation, clean</td>
+<td style="text-align: right;">100.0 %</td>
+<td style="text-align: right;"><strong>100.0 %</strong></td>
+</tr>
+<tr>
+<td>Through a line, <strong>SEEN</strong> codecs</td>
+<td style="text-align: right;">77.5 %</td>
+<td style="text-align: right;"><strong>100.0 %</strong></td>
+</tr>
+<tr>
+<td>Through a line, <strong>UNSEEN</strong> codecs (GSM, AMR, iLBC, Speex, Opus, G.722)</td>
+<td style="text-align: right;">81.7 %</td>
+<td style="text-align: right;"><strong>100.0 %</strong></td>
+</tr>
+<tr>
+<td>11 channel perturbations</td>
+<td style="text-align: right;">97.4 %</td>
+<td style="text-align: right;">98.5 %</td>
+</tr>
+<tr>
+<td>Off-pipeline TTS <strong>down a line</strong></td>
+<td style="text-align: right;">62.0 %</td>
+<td style="text-align: right;"><strong>81.5 %</strong></td>
+</tr>
+<tr>
+<td>Off-pipeline TTS, clean <em>(the one V2 loses)</em></td>
+<td style="text-align: right;"><strong>68.5 %</strong></td>
+<td style="text-align: right;">54.6 %</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The honest number: 88.0 % accuracy / AUC 0.945</strong> on 108 out-of-dataset clips band-passed through a
+simulated line. Quote this, not the 100 %.</p>
+<hr />
+<h2 id="the-three-things-that-will-be-asked">The three things that will be asked</h2>
+<blockquote>
+<h3 id="biggest-shortcut-discovered">BIGGEST SHORTCUT DISCOVERED</h3>
+<p>A logistic regression on <strong>24 call statistics with no voice content at all</strong> reaches validation
+<strong>AUC 1.000, accuracy 98.6 %</strong>. The strongest single feature is <strong>leading silence before the caller&rsquo;s
+first word</strong>: median 1.16 s for humans, <strong>10.38 s</strong> for synthetic, AUC 0.948. Then the high-band energy
+ratio, loudness (~6 dB), and response latency.
+<strong>You can saturate this split without hearing a phoneme</strong>, so a perfect score on it is not evidence of
+voice modelling. RMS normalisation puts loudness and timing out of the acoustic model&rsquo;s reach; the band
+edge it cannot escape, which is what a codec then destroys.</p>
+<h3 id="biggest-limitation">BIGGEST LIMITATION</h3>
+<p><strong>71 calls cannot establish banking error rates</strong> — the exact one-sided 95 % lower bound on 71/71 is
+<strong>95.9 %</strong> (94.9 % two-sided) — and <strong>no audio in this project has been through a real carrier</strong> — every telephone result comes from our own
+simulator. Also: not adversarially tested, not streaming, and the semantic layer sends audio to a third
+party.</p>
+<h3 id="why-our-solution-is-different">WHY OUR SOLUTION IS DIFFERENT</h3>
+<p>Most teams would have stopped at 100 %. We treated it as a defect: eight sanity checks, a label
+permutation test that came back at chance, a trivial-statistics model that matched our neural one, a
+telephone channel built specifically to break our own detector, and an entire codec family held out of
+training to prove the fix generalised. Then we shipped the model that is <strong>worse on one benchmark</strong> because
+it is better where a bank actually operates — and we printed both criteria rather than the flattering one.</p>
+</blockquote>
+<hr />
+<h2 id="the-30-second-version">The 30-second version</h2>
+<blockquote>
+<p>A bank&rsquo;s phone line needs to know if it is talking to a machine. We built three independent detectors —
+the voice, the conversation timing, and the words — and fused them. The voice model hit 100 % on
+validation immediately, which we treated as a warning rather than a win: we proved you can score 100 % on
+this dataset using call statistics alone, without hearing a voice. So we built a telephone-channel
+simulator, broke our own model with it (100 % down to 70 %), and retrained through 29 hours of simulated
+phone lines. The deployed model now holds 100 % through codec families it was never trained on, and
+commits to a verdict after about <strong>two and a half seconds of caller speech</strong>, more than two minutes before
+the call ends.</p>
+</blockquote>
+<h2 id="the-2-minute-version">The 2-minute version</h2>
+<blockquote>
+<p><strong>The problem.</strong> Voice cloning is cheap now, and a contact centre is a bank&rsquo;s front door. We get a stereo
+8 kHz call: channel 0 is the caller we must classify, channel 1 is the Altur agent.</p>
+<p><strong>The first model.</strong> Frozen Wav2Vec2 Spanish, hidden layer 5, mean-pooled over 4-second chunks of caller
+speech, a 197 000-parameter MLP on top, Platt-calibrated. It scored 100 % on the validation split. So did
+every other backbone we tried, and every layer, including the raw convolutional front end.</p>
+<p><strong>Why we did not celebrate.</strong> A benchmark that gives every candidate the same answer cannot rank
+candidates. We ran eight sanity checks. Label permutation came back at chance, so it was not leakage. Ten
+training calls already reached 98.5 %, so it was not a hard task. Then a logistic regression on 24 call
+statistics — silence lengths, loudness, bandwidth, turn timing, <strong>no voice content whatsoever</strong> — reached
+AUC 1.000. That located the problem precisely: the two classes in this dataset differ by more than their
+voices.</p>
+<p><strong>The thing that made it concrete.</strong> The caller channel is <em>digitally silent</em> between turns — exactly
+−72.247 dB, the 16-bit floor, in three quarters of the calls. A real telephone line never delivers digital
+zero. We built a channel simulator with bit-exact G.711 verified against the reference implementation over
+all 65 536 sample values, eleven more codecs through ffmpeg, bursty packet loss, clock drift, comfort
+noise and AGC. Ten calls through it took our model from 100 % to 70 % — and the failure was asymmetric:
+humans held, <strong>synthetic callers started looking human</strong>, which is the direction that costs a bank money.</p>
+<p><strong>The fix.</strong> 29 hours of channel-transformed audio, with the channel drawn <em>without ever consulting the
+label</em>, and eight codec families — the parametric ones, GSM, AMR, Opus — deliberately held out of training
+so we could measure whether robustness generalised or just memorised. Robust V2 holds <strong>100 % on codec
+families it has never heard</strong>. It is worse than the old model on clean studio audio, because it has
+stopped keying on loudness and band edge, and we selected it anyway: a bank&rsquo;s phone line cannot produce
+clean studio audio.</p>
+<p><strong>The product.</strong> Three layers behind one endpoint. Acoustic and behaviour vote 50/50 and settle 66 of 71
+calls on their own; a paid semantic verifier is consulted only for the 5 that are genuinely uncertain —
+on one of them the behaviour layer was confidently wrong at 0.96 and the verifier carried the verdict.
+One process, 219 tests, no audio stored, and a live &ldquo;try being the caller&rdquo; button that phones you and
+scores your own voice down a real line.</p>
+</blockquote>
+<hr />
+<h2 id="numbers-you-must-not-get-wrong">Numbers you must not get wrong</h2>
+<table>
+<thead>
+<tr>
+<th>Do <strong>not</strong> say</th>
+<th>Say</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&ldquo;100 % accurate&rdquo;</td>
+<td>&ldquo;71 of 71 on the held-out split; 95.9 % lower bound; <strong>88.0 % off-pipeline</strong>, which is the number we stand behind&rdquo;</td>
+</tr>
+<tr>
+<td>&ldquo;we detect deepfakes&rdquo;</td>
+<td>&ldquo;we produce a synthetic-voice <strong>risk signal</strong>; it is not identity verification&rdquo;</td>
+</tr>
+<tr>
+<td>&ldquo;real-time streaming&rdquo;</td>
+<td>&ldquo;prefix evaluation of a non-streaming model — <code>/api/health</code> returns <code>streaming: false</code>&ldquo;</td>
+</tr>
+<tr>
+<td>&ldquo;we tested on real phone calls&rdquo;</td>
+<td>&ldquo;we tested through a <strong>simulator</strong>; the live Twilio demo is the only real line, and it was not used for training&rdquo;</td>
+</tr>
+<tr>
+<td>&ldquo;we tuned the fusion weights&rdquo;</td>
+<td>&ldquo;they are stated design choices exposed as knobs; no weighting can be justified from a split where one layer is already perfect&rdquo;</td>
+</tr>
+<tr>
+<td>&ldquo;the model learned voice artefacts&rdquo;</td>
+<td>&ldquo;it learned <em>something</em> that survives a codec; we never ran the band-edge ablation that would prove what&rdquo;</td>
+</tr>
+</tbody>
+</table>
+<h2 id="run-it">Run it</h2>
+<div class="codehilite"><pre><span></span><code>python src/server.py --port 8000                          # THE backend: all 3 layers, one process
+cd web &amp;&amp; npm run dev                                     # landing + /admin/ + /demo/
+</code></pre></div>
+
+<p>Use <code>127.0.0.1</code>, never <code>localhost</code> — uvicorn binds IPv4 only. Start the server from
+<code>.venv\Scripts\python.exe</code>: the bare system Python has an incompatible torch, and the acoustic layer then
+abstains on every call while still returning HTTP 200.</p></body></html>
