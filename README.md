@@ -66,6 +66,19 @@ py -3.11 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+**Where each `.env` goes.** Three services, three files, each read by the service that needs it - and
+all three are git-ignored:
+
+| file | read by | holds |
+| --- | --- | --- |
+| `.env` (repository root) | `python src/server.py`, via `config.load_env()` | `SEMANTIC_URL`, the `TWILIO_*` credentials |
+| `semantic/.env` | the semantic service, via its own `config.py` | `ELEVENLABS_API_KEY`, `GEMINI_API_KEY` |
+| `backend/.env` | nothing automatically - pass it: `uvicorn app.main:app --env-file .env` | `DETECTOR_MODE`, the limits, `SEMANTIC_URL` |
+
+Each has a `.env.example` beside it listing every variable that does anything, and a real environment
+variable always overrides the file. All of it is optional: with no `.env` at all the server still runs,
+the semantic verifier reports itself unavailable, and the live-call panel names what is missing.
+
 The dataset stays where the challenge put it: `D:\altur\hackmty26` (manifest + turns) and
 `D:\altur\altur-challenge-audio\audio` (unzipped WAVs); paths are in `config.py`. The telephone-channel
 dataset is generated into `D:\altur\channel_dataset` and the official one is never written to.
@@ -320,6 +333,7 @@ and the report cannot drift apart.
 
 ```
 config.py                       every setting (paths, segmentation, backbones, classifier, endpoint contract)
+.env / .env.example             SEMANTIC_URL and the TWILIO_* credentials; read by config.load_env()
 src/audio.py                    decode, caller channel, VAD, chunking, resampling, loudness normalisation
 src/dataset.py                  manifest, splits, turn files
 src/inspect_dataset.py          stage 1: dataset analysis + shortcut checks
