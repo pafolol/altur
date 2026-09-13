@@ -5,22 +5,28 @@
  * &nbsp;, <i>, <code> — exactly as in the prototype.
  * The <title> and <meta name="description"> live in /index.html.
  *
+ * POSITIONING: this page sells a bank-security product. The differentiator is that the
+ * telephony integration already exists (outbound Twilio calling, scored end to end) and that
+ * the acoustic model was trained across codec families rather than one, so a carrier change
+ * is a configuration change and not a retraining project.
+ *
  * Every number here is read from the repository's own reports: README.md (Results),
- * reports/ACOUSTIC_LEARNING_SUMMARY.md, behaviour/reports/, semantic/AUDIT.md.
- * The long version, with sources, is reports/ISISI_PRESENTER_GUIDE.pdf.
+ * reports/TELEPHONE_ROBUSTNESS_REPORT.md (the codec matrix), reports/ACOUSTIC_LEARNING_SUMMARY.md,
+ * behaviour/reports/, semantic/AUDIT.md. Nothing on this page is aspirational: where a claim has
+ * a limit, the limit is printed next to it.
  */
 
 export const nav = {
   brand: 'ISISI',
   /** Accessible name of the logo link, which goes back to the top. */
   brandLabel: 'Volver al inicio',
-  sub: 'Altur · HackMTY26 · Defender al banco de las voces sintéticas',
+  sub: 'Detección de voz sintética para la línea telefónica de un banco',
   link: { label: 'El endpoint', href: '#api' },
 }
 
 export const hero = {
   title: 'La voz dejó de ser una contraseña.',
-  sub: 'Bastan unos segundos de audio público para clonar a cualquiera lo bastante bien como para pasar — ante una persona y ante una máquina.',
+  sub: 'Bastan unos segundos de audio público para clonar a un cliente lo bastante bien como para pasar el filtro de un ejecutivo. El centro de contacto es la puerta de entrada del banco, y hoy es la más barata de forzar.',
   tapHint: 'Toca el candado',
   /** Accessible name of the tap zone. */
   tapLabel: 'Romper el candado',
@@ -38,7 +44,7 @@ export type Diagram = 'spec' | 'overlap' | 'sem'
 
 export const signals = {
   heading: 'Tres formas en que una máquina se delata en una llamada telefónica.',
-  lede: 'Tres detectores independientes leen la misma llamada y fallan en lugares distintos. Las capas acústica y de conversación deciden cada llamada, mitad y mitad. La capa semántica es la cara, así que solo se le pregunta cuando las dos primeras no resuelven.',
+  lede: 'Un solo detector se rompe cuando cambia una cosa: el códec, el ruido, el motor de voz. Aquí tres detectores independientes leen la misma llamada y fallan en lugares distintos. Las capas acústica y de conversación deciden cada llamada, mitad y mitad, sin salir de tu infraestructura. La capa semántica cuesta dinero por llamada, así que solo se le pregunta cuando las dos primeras no resuelven: 5 de cada 71 llamadas.',
   /** Labels drawn inside the card diagrams. */
   diagramLabels: {
     overlap: { bargeIn: 'INTERRUPCIÓN' },
@@ -49,33 +55,33 @@ export const signals = {
       diagram: 'spec' as Diagram,
       what: 'SEÑAL 01 — ACÚSTICA',
       title: 'De qué está hecha la voz',
-      text: 'Solo el canal del llamante, solo donde un detector de actividad de voz escucha habla, cortado en fragmentos de 4&nbsp;s como máximo. Cada fragmento pasa por un modelo de voz en español congelado, Wav2Vec2 preentrenado con VoxPopuli, y un clasificador pequeño lee su quinta capa oculta. Nada del backbone se entrenó con estos datos.',
+      text: 'Solo el canal del llamante, solo donde hay habla, cortado en fragmentos de 4&nbsp;s. Cada fragmento pasa por un modelo de voz en español congelado y un clasificador lee su quinta capa oculta. Lo que lo distingue no es la arquitectura: es <b>con qué se entrenó</b>. El modelo desplegado vio 29 horas de las mismas llamadas después de pasar por líneas telefónicas simuladas, con códec, pérdida de paquetes, deriva de reloj, ruido de comfort y control automático de ganancia.',
       points: [
-        'Los puntajes de cada fragmento se promedian en log-odds, así que el veredicto en curso se puede leer en cualquier punto de la llamada',
-        'Elegido en una prueba de estrés, no en la partición limpia: 10 perturbaciones de canal, AUC media 0.9998',
-        'Un segundo modelo, endurecido con códecs telefónicos reales, está a una bandera de distancia',
+        'Entrenado con 5 familias de códec; otras 8 se dejaron <b>fuera del entrenamiento a propósito</b>',
+        'En esas 8 que nunca vio — GSM, AMR, iLBC, Speex, Opus, G.722 — acierta 100% de las llamadas retenidas',
+        'El modelo anterior, entrenado solo con audio limpio, caía a 81.7% en esas mismas líneas',
       ],
     },
     {
       diagram: 'overlap' as Diagram,
       what: 'SEÑAL 02 — CONVERSACIÓN',
       title: 'Cuándo el llamante habla, cede y responde',
-      text: 'Ambos canales pasan por un detector de actividad de voz; turnos, pausas y traslapes se vuelven 24 características de tiempo, evaluadas por una regresión logística de 40 parámetros. Nunca escucha una sola palabra. En estos datos las máquinas no fueron las estables: sus tiempos de respuesta variaron <i>más</i> que los de las personas.',
+      text: 'Ambos canales pasan por un detector de actividad de voz; turnos, pausas y traslapes se vuelven 24 características de tiempo, evaluadas por una regresión logística de 40 parámetros. Nunca escucha una sola palabra, así que no le afecta el códec ni el idioma. En estos datos las máquinas no fueron las estables: sus tiempos de respuesta variaron <i>más</i> que los de las personas.',
       points: [
         'La latencia de respuesta después de que el agente se calla, y su dispersión, no solo su media',
         'Qué pasa cuando el agente interrumpe: si el llamante se detiene, y qué tan rápido',
-        'Quién habla después de un silencio largo',
+        '97.2% de exactitud por sí sola, corriendo en CPU, sin enviar audio a ningún lado',
       ],
     },
     {
       diagram: 'sem' as Diagram,
       what: 'SEÑAL 03 — SEMÁNTICA',
       title: 'Cómo se dice la respuesta',
-      text: 'Las palabras del llamante, transcritas con una confianza por palabra, más una rúbrica que un LLM llena a partir de la transcripción. Las trampas que planta el agente resultaron ser evidencia débil. Lo que sostiene esta capa es cómo habla un llamante: una voz sintética limpia se transcribe con una certeza poco natural, y sus respuestas llegan completas, formales y sin una sola muletilla.',
+      text: 'Las palabras del llamante, transcritas con una confianza por palabra, más una rúbrica que un LLM llena a partir de la transcripción. Es la única capa que sale de la máquina y la única que cuesta por llamada, así que está detrás de una compuerta: si las dos primarias ya llegaron a 80% de confianza, nunca se le pregunta y nunca se gasta.',
       points: [
         'La confianza de transcripción por palabra: la familia de características más fuerte',
         'Muletillas, arranques en falso y coloquialismos que una persona produce y un pipeline no',
-        'El exceso de completitud y el registro formal, las dos dimensiones de la rúbrica que sobrevivieron a la validación',
+        'Se consultó en 5 de 71 llamadas retenidas: 7% del gasto de una votación plana',
       ],
     },
   ],
@@ -89,32 +95,32 @@ export const demo = {
 }
 
 export const pipeline = {
-  heading: 'Entre que llega el audio y sale el veredicto.',
-  lede: 'Dos etapas. Las capas acústica y de conversación evalúan cada llamada, mitad y mitad, en cerca de un segundo en CPU. Si juntas alcanzan 80% de confianza, ese es el veredicto. Si no, se consulta el servicio semántico y su voto se suma con 0.15.',
+  heading: 'Ya está conectado a una telefonía automatizada.',
+  lede: 'No es una demostración sobre archivos subidos a mano. El sistema marca un número por Twilio, graba lo que contesta quien responde, lo convierte al formato que espera el detector y lo evalúa de punta a punta. Y no necesita que tu carrier alcance nuestros servidores: el TwiML va en línea, sin <code>action</code>, y la grabación se recoge consultando la API de Twilio. Cero túneles, cero URL pública, cero puertos abiertos hacia adentro.',
   steps: [
     {
       label: 'PASO 1',
-      title: 'Separar y segmentar',
-      text: 'El canal&nbsp;0 es el llamante, el canal&nbsp;1 es el agente. Se marca la actividad de voz en ambos. La voz del llamante se corta en fragmentos de 4&nbsp;s como máximo, se normaliza de nivel y se remuestrea a 16&nbsp;kHz para el modelo de voz.',
+      title: 'Entra por la línea que ya tienes',
+      text: 'Llamada saliente por Twilio, o un WAV estéreo de 8&nbsp;kHz desde la grabadora del centro de contacto. El canal&nbsp;0 es el llamante, el canal&nbsp;1 es el agente. Si solo hay mono — como devuelve una grabación de Twilio — el sistema lo dice y la capa de conversación se abstiene en lugar de inventar.',
     },
     {
       label: 'PASO 2',
       title: 'Dos primarias, en paralelo',
-      text: 'Acústica: Wav2Vec2 español congelado, capa 5, un MLP pequeño. Conversación: 24 características de tiempo sacadas de los turnos, una regresión logística. Cada una devuelve una probabilidad calibrada, o se abstiene cuando no tiene nada en qué apoyarse.',
+      text: 'Acústica: el modelo endurecido para teléfono, capa 5, un MLP pequeño. Conversación: 24 características de tiempo sacadas de los turnos, una regresión logística. Ambas corren localmente. Cada una devuelve una probabilidad calibrada, o se abstiene cuando no tiene nada en qué apoyarse.',
     },
     {
       label: 'PASO 3',
       title: 'Umbral en 80%',
-      text: 'Las dos se promedian 50/50. Si la confianza en el resultado es de al menos 0.80, la respuesta sale ya. En el conjunto retenido eso son 66 llamadas de 71.',
+      text: 'Las dos se promedian 50/50. Si la confianza en el resultado es de al menos 0.80, la respuesta sale ya, sin que un solo byte de audio haya salido de tu infraestructura. En el conjunto retenido eso son 66 llamadas de 71.',
     },
     {
       label: 'PASO 4',
       title: 'Verificador, solo cuando hace falta',
-      text: 'El resto va al servicio semántico: transcripción con confianza por palabra, características de texto, una rúbrica de LLM. Su voto se suma con 0.15 y las tres se recombinan. En el conjunto retenido, 5 llamadas.',
+      text: 'El resto va al servicio semántico: transcripción con confianza por palabra, características de texto, una rúbrica de LLM. Su voto se suma con 0.15 y las tres se recombinan. En el conjunto retenido, 5 llamadas — y es la única ruta en la que el audio sale.',
     },
   ],
   timeline: {
-    heading: 'Una llamada resuelta con confianza responde en cerca de un segundo. Una escalada, en cerca de cuatro.',
+    heading: 'El veredicto llega con la llamada todavía abierta: mediana de 2.3 s de voz del llamante, 133 s antes de que la llamada termine.',
     /** Position of the verdict line, as a percent of the axis below (5 s wide). */
     verdictAt: 20,
     markers: [
@@ -122,12 +128,12 @@ export const pipeline = {
       { at: 78, label: 'con verificador · 3.9 s' },
     ],
     axis: ['0 s', '2.5 s', '5 s'],
-    note: 'La capa acústica evalúa una llamada en cerca de 120&nbsp;ms en GPU. La capa de conversación necesita cerca de 860&nbsp;ms en CPU, y casi todo se va en la detección de actividad de voz. La capa semántica es una transcripción de pago y una llamada de pago a un LLM, cerca de 2.6&nbsp;s de red, así que solo se gasta en las llamadas que las primarias no pudieron resolver. Nada va en streaming: el detector evalúa una llamada completa.',
+    note: 'Eso es lo que separa un control de una autopsia: da tiempo de escalar a verificación reforzada, avisar a un supervisor o limitar qué puede ejecutar el ejecutivo, con el cliente todavía en la línea. En las 71 llamadas retenidas el veredicto temprano coincidió con el final el 100% de las veces. La capa acústica evalúa una llamada en cerca de 120&nbsp;ms en GPU; la de conversación, cerca de 860&nbsp;ms en CPU. Nada va en streaming: el detector evalúa una llamada completa.',
   },
 }
 
 export const endpoint = {
-  heading: 'Un solo endpoint, exactamente como lo pide el reto.',
+  heading: 'Un solo endpoint. Un proceso. Sin dependencias hacia afuera para decidir.',
   method: 'POST',
   path: '/detect',
   contentType: 'application/json',
@@ -150,30 +156,30 @@ export const endpoint = {
   },
   specs: [
     {
-      label: 'OBLIGATORIO',
-      text: '<code>is_synthetic</code> y <code>confidence</code>, el contrato del reto. <code>confidence</code> es la probabilidad de que el veredicto sea correcto. Todo lo que va bajo <code>details</code> es extra: la probabilidad de cada capa, su peso y si siquiera se le preguntó.',
+      label: 'PORTABILIDAD DE CARRIER',
+      text: 'Entrenado con G.711 (μ-law y A-law) y G.726. Se dejaron fuera del entrenamiento <b>ocho familias completas</b> — GSM&nbsp;06.10, AMR-NB, iLBC, Speex, Opus y G.722 — justamente para medir si la robustez se generaliza o se memoriza. En esas ocho: <b>100% de exactitud, AUC 1.000</b>. Cambiar de carrier es cambiar una configuración, no reentrenar un modelo.',
     },
     {
-      label: 'ENTRADA',
-      text: 'WAV estéreo, 8&nbsp;kHz, base64. Se clasifica el canal&nbsp;0; el canal&nbsp;1 es el agente y le da contexto a los tiempos. Mono también funciona: la capa de conversación se abstiene y su peso pasa a las demás.',
+      label: 'INTEGRACIÓN',
+      text: 'Llamada saliente por Twilio ya implementada: marca, graba, convierte y evalúa. <b>Sin URL pública ni túnel</b> — el TwiML va en línea y la grabación se recoge por la API. Tu red no necesita aceptar una sola conexión entrante.',
     },
     {
-      label: 'LATENCIA',
-      text: 'Cerca de 1.0&nbsp;s cuando las primarias lo resuelven, que fue en 66 de las 71 llamadas retenidas. Cerca de 3.9&nbsp;s cuando se consulta al verificador semántico. Sin streaming: evalúa una llamada completa.',
+      label: 'DÓNDE VIVE EL AUDIO',
+      text: 'Las dos capas que deciden corren en tu infraestructura. El registro guarda puntajes, veredictos y tiempos — <b>nunca audio</b>. Solo la capa verificadora sale hacia terceros, y solo en las llamadas que las primarias no resolvieron: 5 de 71.',
     },
     {
       label: 'CALIBRACIÓN',
-      text: 'Cada capa devuelve una probabilidad calibrada: escalamiento de Platt para el puntaje acústico, ajustado bajo 11 condiciones de canal; una sigmoide sobre logits fuera de pliegue para conversación; Platt para semántica. Así que 0.75 significa cerca de 75%, no &ldquo;bastante seguro&rdquo;.',
+      text: 'Cada capa devuelve una probabilidad calibrada, no un puntaje: escalamiento de Platt para lo acústico, ajustado bajo 11 condiciones de canal. Así que 0.75 significa cerca de 75%, y el umbral de bloqueo se vuelve una decisión de negocio con un costo calculable, no un número arbitrario.',
     },
     {
       label: 'ABSTENCIÓN',
-      text: 'Una capa sin evidencia lo dice en vez de adivinar: no hay voz audible del llamante, hay menos de dos eventos de turno, hay menos de cinco palabras transcritas. Su peso pasa a las capas que sí respondieron. Si ninguna respondió, la respuesta es <code>false</code> con 0.5, marcada <code>decisive: false</code>, y eso no es un voto por Human.',
+      text: 'Una capa sin evidencia lo dice en vez de adivinar: no hay voz audible, hay menos de dos eventos de turno, hay menos de cinco palabras. Su peso pasa a las que sí respondieron. Si ninguna respondió, la respuesta es <code>false</code> con 0.5 y <code>decisive: false</code> — el sistema <b>no acusa a un cliente sobre el que no sabe nada</b>.',
     },
   ],
 }
 
 export const closing = {
-  heading: 'Quienes más tienen que perder son las personas que usan el banco por teléfono porque no pueden usarlo de otra forma.',
-  lede: 'No tienen la app. No las van a inscribir en una huella de voz. Si la línea deja de ser confiable no se cambian a otro canal: simplemente dejan de ser atendidas. Esa es la razón para construir esto, y la razón por la que tiene que funcionar en un teléfono viejo con una mala conexión.',
+  heading: 'Lo que puedes verificar, y lo que todavía no.',
+  lede: 'Sobre 71 llamadas retenidas el sistema no se equivoca ni una vez, pero 71 llamadas no fijan tasas de error bancarias: la cota inferior honesta de ese 100% es 95.9%. Contra motores de voz que nunca vio, pasados por una línea, la cifra que sostenemos es <b>88.0% de exactitud, AUC 0.945</b>. Y el canal telefónico del entrenamiento está <b>simulado, no capturado</b>: nuestro G.711 es idéntico bit a bit a la implementación de referencia en los 65,536 valores posibles, pero ninguna llamada de entrenamiento pasó por un carrier real. La integración con Twilio sí es real, y el siguiente paso es medir en tu línea antes de fijar un umbral. Preferimos decirlo aquí que en la junta posterior al incidente.',
   footer: ['ISISI — un sistema inteligente que identifica interacciones Synthetic', 'HackMTY26 · reto Altur'],
 }
