@@ -79,6 +79,10 @@ second interpreter and nothing to keep alive beside the server. `backend/` is a 
 came in with the `backend-esteban` merge and is kept for lineage - it is **not** what you run, and
 `backend/INTEGRATION.md` says so at the top.
 
+The one *optional* second process is the Tiger telemetry service, `tiger-telemetry/`: a small FastAPI app that
+keeps a copy of every verdict in Tiger Data (PostgreSQL / TimescaleDB). With `TELEMETRY_URL` set in `.env`,
+`store.record()` mirrors each decision to it off the hot path; unset, nothing is sent. See its README.
+
 `.env.example` lists every variable and what it does. A real environment variable beats the file, so a
 single run can still override one. `semantic/.env` is still read, but only for variables the root `.env`
 does not already set - keep the credentials in the root file unless you have a reason not to.

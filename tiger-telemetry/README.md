@@ -13,11 +13,17 @@ The application reads environment variables directly. If using a `.env` file loc
 
 ## Run
 
+From the repository root, so it reads the project `.env` (`TIGER_DATABASE_URL` lives there):
+
 ```text
-uvicorn app.main:app --reload
+tiger-telemetry/.venv/bin/uvicorn --app-dir tiger-telemetry --env-file .env app.main:app --port 8200
 ```
 
-The service is available at `http://127.0.0.1:8000`. API documentation is at `/docs`.
+The service is available at `http://127.0.0.1:8200` (8000 is the detector). API documentation is at `/docs`.
+
+The detector (`src/server.py`) mirrors every verdict here on its own: set `TELEMETRY_URL=http://127.0.0.1:8200`
+in the project `.env` and each call it scores arrives as one `POST /telemetry`, after its SQLite call log and
+off the hot path. A failed mirror is one printed line on the detector, never a failed detection.
 
 ## Test
 

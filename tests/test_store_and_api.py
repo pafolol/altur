@@ -25,6 +25,7 @@ def db(tmp_path, monkeypatch):
     """A fresh database per test - store keeps one module-level connection, so reset both."""
     monkeypatch.setattr(store, "DB_PATH", tmp_path / "calls.db")
     monkeypatch.setattr(store, "_conn", None)
+    monkeypatch.delenv("TELEMETRY_URL", raising=False)   # the project .env may set it; tests opt in below
     yield store
     if store._conn is not None:
         store._conn.close()
@@ -87,6 +88,38 @@ def test_recording_never_raises_on_a_malformed_verdict(db):
     assert db.record({}) is not None or True       # returns None on failure, but must not raise
     assert db.record({"details": {"layers": "not a list"}}) is None or True
     assert db.record(None) is None
+
+
+def test_a_verdict_is_mirrored_to_the_telemetry_service_when_configured(db, monkeypatch):
+    import http.server
+    import threading
+    got, arrived = [], threading.Event()
+
+    class Sink(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            got.append((self.path, json.loads(self.rfile.read(int(self.headers["Content-Length"])))))
+            self.send_response(201)
+            self.end_headers()
+            arrived.set()
+
+        def log_message(self, *_):
+            pass
+
+    sink = http.server.HTTPServer(("127.0.0.1", 0), Sink)
+    threading.Thread(target=sink.serve_forever, daemon=True).start()
+    monkeypatch.setenv("TELEMETRY_URL", f"http://127.0.0.1:{sink.server_port}/")
+    try:
+        cid = db.record(verdict(p=0.9), duration_s=42.0, channels=2)
+        assert arrived.wait(3), "the telemetry POST never arrived"
+        assert got[0] == ("/telemetry", {
+            "call_id": cid, "is_synthetic": True, "confidence": 0.9,
+            "acoustic_score": 0.9, "behavioral_score": 0.9, "semantic_score": None,   # never asked -> null
+            "final_score": 0.9, "latency_ms": 120})
+        arrived.clear()
+        db.record({"is_synthetic": False, "confidence": 0.5, "decisive": False, "details": {"latency_ms": 5}}, ok=False)
+        assert not arrived.wait(0.5), "a failed request is uptime, not a detection: it must not be mirrored"
+    finally:
+        sink.shutdown()
 
 
 def test_latency_series_is_the_shape_the_sparkline_wants(db):

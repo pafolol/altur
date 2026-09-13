@@ -6,7 +6,8 @@ last 24 hours of calls, a latency series and an uptime figure, and none of those
 process that remembers nothing. This is that memory, and it is deliberately the smallest thing that
 answers those three questions honestly.
 
-    record(verdict)        append one decision, with every layer's own score
+    record(verdict)        append one decision, with every layer's own score, and mirror it to the Tiger
+                           telemetry service (tiger-telemetry/) when TELEMETRY_URL is set
     recent(hours)          the calls the panel lists
     latency_series(...)    p50 per bucket, oldest first
     health_stats(hours)    uptime and volume over a window
@@ -20,9 +21,11 @@ NO AUDIO IS STORED. Only the scores, the verdict and the timings. The audio arri
 gone - the dataset terms say not to redistribute the recordings, and a database of them is exactly that.
 """
 import json
+import os
 import sqlite3
 import threading
 import time
+import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -115,6 +118,44 @@ def _merge_layer_views(results, contributions):
     return out
 
 
+def _layer_score(layers, key):
+    """One layer's P(synthetic), or None when it abstained or was never asked."""
+    l = next((l for l in layers if l.get("key") == key), None)
+    if not l or l.get("abstained") or l.get("scored") is False or l.get("probability") is None:
+        return None
+    return round(float(l["probability"]), 4)
+
+
+def mirror_to_telemetry(call_id, verdict, probability, layers, latency_ms):
+    """
+    Send the same decision to the Tiger telemetry service (tiger-telemetry/: a separate process with its own
+    PostgreSQL) when TELEMETRY_URL is set. Off the hot path: a daemon thread, a 3 s timeout, and a failure
+    is one printed line. The SQLite log is the source of truth; this is the copy that leaves the machine.
+    """
+    url = os.environ.get("TELEMETRY_URL", "").rstrip("/")
+    if not url:
+        return
+    body = json.dumps({
+        "call_id": call_id,
+        "is_synthetic": bool(verdict.get("is_synthetic")),
+        "confidence": min(max(float(verdict.get("confidence", 0.5)), 0.0), 1.0),
+        "acoustic_score": _layer_score(layers, "acoustic"),
+        "behavioral_score": _layer_score(layers, "behaviour"),
+        "semantic_score": _layer_score(layers, "semantic"),
+        "final_score": min(max(float(probability), 0.0), 1.0),
+        "latency_ms": max(float(latency_ms), 0.0),
+    }).encode()
+
+    def post():
+        req = urllib.request.Request(url + "/telemetry", body, {"Content-Type": "application/json"})
+        try:
+            urllib.request.urlopen(req, timeout=3).close()
+        except Exception as exc:                      # noqa: BLE001 - a copy is not worth a stack trace
+            print(f"[store] telemetry not mirrored: {type(exc).__name__}: {exc}")
+
+    threading.Thread(target=post, daemon=True).start()
+
+
 def record(verdict, duration_s=None, channels=None, queue="api", trap="none", ok=True, call_id=None):
     """
     Append one decision. Never raises: a log row is not worth failing a detection over.
@@ -129,15 +170,17 @@ def record(verdict, duration_s=None, channels=None, queue="api", trap="none", ok
         layers = _merge_layer_views(details.get("layers") or [], verdict.get("layers") or [])
         p = float(details.get("synthetic_probability", verdict.get("synthetic_probability", 0.5)))
         decisive = verdict.get("decisive", True)
+        call_id = call_id or uuid.uuid4().hex[:12]
+        latency_ms = float(details.get("latency_ms", 0))
         row = (
-            call_id or uuid.uuid4().hex[:12],
+            call_id,
             _now().isoformat(),
             duration_s if duration_s is not None else details.get("duration_s"),
             channels,
             "abstained" if not decisive else ("synthetic" if verdict.get("is_synthetic") else "human"),
             float(verdict.get("confidence", 0.5)),
             p,
-            float(details.get("latency_ms", 0)),
+            latency_ms,
             decided_at(layers),
             queue, trap,
             json.dumps([{k: l.get(k) for k in
@@ -146,6 +189,8 @@ def record(verdict, duration_s=None, channels=None, queue="api", trap="none", ok
                         for l in layers]),
             1 if ok else 0,
         )
+        if ok:                                        # a failed request is uptime, not a detection
+            mirror_to_telemetry(call_id, verdict, p, layers, latency_ms)
         with _lock:
             c = connect()
             c.execute("INSERT INTO calls (id, at, duration_s, channels, verdict, confidence, probability,"
