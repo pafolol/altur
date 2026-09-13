@@ -21,6 +21,8 @@ export const nav = {
   brandLabel: 'Volver al inicio',
   sub: 'Seguridad de voz para la línea telefónica de un banco',
   link: { label: 'El endpoint', href: '#api' },
+  /** Always visible, lock broken or not: the demo is the point of the page. */
+  demo: { label: 'Ver la demo', href: '/demo/' },
 }
 
 export const hero = {
@@ -32,6 +34,8 @@ export const hero = {
   scrollHint: 'DESLIZA',
   /** Shown under the lock skeleton while the turntable frames decode. */
   loading: 'Cargando el candado',
+  /** The primary call to action, under the sub, above the lock. */
+  cta: { label: 'Pruébalo con tu voz', href: '/demo/' },
 }
 
 /** The name act, after the lock breaks. Each letter is a button that jumps to its word. */

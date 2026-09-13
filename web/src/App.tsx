@@ -22,7 +22,10 @@ export default function App() {
       <nav className="nav">
         <a href="#hero" className="brand" aria-label={nav.brandLabel}><b>{nav.brand}</b></a>
         <span className="sub">{nav.sub}</span>
-        <a href={nav.link.href} style={{ visibility: broken ? 'visible' : 'hidden' }}>{nav.link.label}</a>
+        <span className="nav-links">
+          <a href={nav.link.href} style={{ visibility: broken ? 'visible' : 'hidden' }}>{nav.link.label}</a>
+          <a className="nav-cta" href={nav.demo.href}>{nav.demo.label}</a>
+        </span>
       </nav>
 
       <ActLock reduced={reduced} onBroken={() => setBroken(true)} />

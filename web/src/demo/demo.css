@@ -65,6 +65,15 @@ button { color: inherit; }
   transition: opacity .2s;
 }
 .nav-link:hover { opacity: 1; }
+/* The route out of the demo, so it reads as an action rather than as chrome. */
+.nav-link.accent {
+  color: var(--color-glint);
+  opacity: 1;
+  border-bottom: 1px solid rgba(127, 196, 255, .4);
+  padding-bottom: 1px;
+  transition: border-color .25s;
+}
+.nav-link.accent:hover { border-bottom-color: var(--color-glint); }
 .error {
   max-width: 1160px;
   margin: 8px auto 0;

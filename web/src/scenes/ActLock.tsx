@@ -122,6 +122,7 @@ export function ActLock({ reduced, onBroken }: Props) {
           <button className="tapzone" type="button" aria-label={hero.tapLabel} disabled={broken} onClick={breakLock} />
         </div>
 
+        <a className="hero-cta" href={hero.cta.href}>{hero.cta.label}</a>
         <div className="taphint" ref={taphintRef}><span>{hero.tapHint}</span></div>
         <div className="hint" ref={hintRef}>{hero.scrollHint}<i /></div>
         <div className="flash" ref={flashRef} />

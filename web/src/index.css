@@ -319,3 +319,23 @@ html.reduced-motion .hint,html.reduced-motion .taphint{display:none}
   .chart-row{grid-template-columns:1fr;gap:9px}
   .chart-label b{font-size:.92rem}
 }
+
+/* ---------------------------------------------------------------- go to the demo
+   The hero CTA sits inside .hero-copy, so it fades out with the rest of the copy as the lock
+   takes over. The nav one does not fade: once the copy is gone the route still has to be
+   reachable from anywhere on the page. */
+.nav-links{display:flex;align-items:center;gap:20px}
+.nav-cta{opacity:1 !important;color:var(--color-glint);font-weight:500;
+  border-bottom:1px solid rgba(127,196,255,.4);padding-bottom:1px;transition:border-color .25s}
+.nav-cta:hover{border-bottom-color:var(--color-glint)}
+
+.hero-cta{position:absolute;left:50%;transform:translateX(-50%);bottom:20vh;z-index:6;
+  display:inline-block;padding:13px 26px;border-radius:999px;
+  font-family:var(--font-sans);font-size:14px;font-weight:600;letter-spacing:.01em;
+  color:var(--color-abyss);background:var(--color-foam);text-decoration:none;
+  box-shadow:0 10px 34px rgba(3,8,14,.55);transition:transform .25s cubic-bezier(.05,.7,.2,1),box-shadow .25s}
+.hero-cta:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 16px 44px rgba(127,196,255,.22)}
+
+@media(max-width:620px){.nav-links{gap:13px}}
+@media(prefers-reduced-motion:reduce){.hero-cta:hover{transform:translateX(-50%)}}
+@media(max-height:740px){.hero-cta{bottom:16vh;padding:11px 22px;font-size:13px}}

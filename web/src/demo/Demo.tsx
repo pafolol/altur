@@ -165,6 +165,7 @@ export function Demo() {
         <a className="brand" href="/" aria-label="Inicio ISISI"><b>ISISI</b></a>
         <span className="product-name">DETECCIÓN DE VOZ</span>
         <div className="controls">
+          <a className="nav-link accent" href="/admin/">Panel de control</a>
           <a className="nav-link" href="/">Volver</a>
         </div>
       </header>
