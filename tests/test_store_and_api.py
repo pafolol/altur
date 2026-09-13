@@ -64,11 +64,11 @@ def test_the_log_keeps_the_role_and_whether_a_verifier_was_consulted(db):
     layers = verdict()["layers"] + [
         {"key": "semantic", "display": "S", "probability": 0.5, "quality": 0.0, "abstained": False,
          "scored": False, "role": "verifier", "consulted": False, "share": 0.0,
-         "reason": "not consulted: the primary layers settled this call on their own"}]
+         "reason": "no consultada: las capas primarias resolvieron esta llamada por su cuenta"}]
     db.record(verdict(layers=layers))
     sem = next(l for l in db.recent(24)[0]["layers"] if l["key"] == "semantic")
     assert sem["role"] == "verifier" and sem["consulted"] is False and sem["scored"] is False
-    assert "not consulted" in sem["reason"]
+    assert "no consultada" in sem["reason"]
 
 
 def test_an_undecided_call_is_logged_as_abstained(db):

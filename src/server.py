@@ -438,7 +438,7 @@ def api_health():
     return {
         "endpoint": "up" if up and not degraded else "degraded" if up else "down",
         "model": " + ".join(f"{l['key']} {det.config.weight_of_key(l['key']):.2f}" for l in layers
-                            if l["available"]) or "no layer available",
+                            if l["available"]) or "ninguna capa disponible",
         "calibrated_on": calibrated,
         "streaming": False,
         "uptime_24h": h["uptime_24h"],
@@ -840,7 +840,7 @@ def health():
     return {"status": "ok", "mode": "fusion",
             "layers": [{"key": l.key, "display": l.display, "loaded": l._loaded} for l in det.layers],
             "weights": det.config.weight_map(), "acoustic_model": app.state.acoustic_model,
-            "model": f"fusion of {len(det.layers)} layers",
+            "model": f"fusión de {len(det.layers)} capas",
             "primary": getattr(app.state, "primary", None) or default_model(),
             "available": available_models(),
             "device": config.get_device(verbose=False).type}

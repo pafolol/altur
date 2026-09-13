@@ -65,7 +65,7 @@ def test_the_silent_agent_channel_is_what_makes_the_behaviour_layer_abstain():
     if not layer.available():
         pytest.skip("behaviour artifacts not installed")
     r = layer.score(wav)
-    assert r.abstained is True and "evidence" in r.reason.lower()
+    assert r.abstained is True and "evidencia" in r.reason.lower()
 
 
 def test_non_16_bit_audio_is_rejected_rather_than_misread():

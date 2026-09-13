@@ -144,7 +144,7 @@ def test_everything_abstaining_sits_on_the_fence_and_says_so():
     r = combine([L("a", 0.9, abstained=True), L("b", 0.1, abstained=True)], cfg(weights={"a": 1, "b": 1}))
     assert r["synthetic_probability"] == 0.5
     assert r["is_synthetic"] is False and r["confidence"] == 0.5
-    assert r["decisive"] is False and r["note"] == "every layer abstained"
+    assert r["decisive"] is False and r["note"] == "todas las capas se abstuvieron"
 
 
 def test_all_weights_zero_is_also_a_fence_sit_not_a_crash():
@@ -154,7 +154,7 @@ def test_all_weights_zero_is_also_a_fence_sit_not_a_crash():
 
 def test_no_layers_at_all():
     r = combine([], cfg(weights={}))
-    assert r["synthetic_probability"] == 0.5 and r["note"] == "no layer is loaded"
+    assert r["synthetic_probability"] == 0.5 and r["note"] == "ninguna capa está cargada"
 
 
 # --------------------------------------------------------------------------- modes and options
@@ -460,7 +460,7 @@ def test_confident_primaries_settle_it_and_the_verifier_is_not_consulted(a, b):
     assert r["synthetic_probability"] == pytest.approx(r["primary_probability"])
     sem = next(c for c in r["layers"] if c["key"] == "semantic")
     assert sem["consulted"] is False and sem["share"] == 0.0
-    assert "not consulted" in r["note"]
+    assert "no consultada" in r["note"]
 
 
 def test_the_verifier_cannot_overturn_a_settled_call():
@@ -476,7 +476,7 @@ def test_unsure_primaries_escalate_to_the_verifier(a, b, why):
     assert r["settled_by_primaries"] is False and r["verifiers_consulted"] is True, why
     sem = next(c for c in r["layers"] if c["key"] == "semantic")
     assert sem["consulted"] is True and sem["share"] == pytest.approx(0.15 / 1.15)
-    assert "consulted to break the tie" in r["note"]
+    assert "consultada para desempatar" in r["note"]
 
 
 def test_the_verifier_breaks_a_deadlock():
@@ -505,7 +505,7 @@ def test_use_verifiers_false_makes_it_a_plain_three_way_vote():
 def test_a_verifier_that_was_never_asked_cannot_vote_even_if_the_gate_reopens():
     """Re-tuning the gate after the fact must not turn an unscored layer into a number."""
     rows = [L("acoustic", 0.6), L("behaviour", 0.62),
-            LayerResult("semantic", "S", 0.5, 0.0, False, "not consulted", scored=False)]
+            LayerResult("semantic", "S", 0.5, 0.0, False, "no consultada", scored=False)]
     r = combine(rows, gated())
     sem = next(c for c in r["layers"] if c["key"] == "semantic")
     assert sem["consulted"] is False and sem["share"] == 0.0

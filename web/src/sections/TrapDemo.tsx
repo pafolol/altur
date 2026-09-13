@@ -1,9 +1,12 @@
 import { useState, type CSSProperties } from 'react'
-import { calls, signalNames, type Mode } from '../data/calls'
+import { calls, signalNames, type Mode, type Speaker } from '../data/calls'
 import { demo } from '../data/copy'
 import { Html } from '../lib/Html'
 
 const modes = Object.keys(demo.buttons) as Mode[]
+
+/** Displayed speaker label; the Speaker value itself also drives the .agent/.caller class. */
+const speakerLabels: Record<Speaker, string> = { AGENT: 'AGENTE', CALLER: 'LLAMANTE' }
 
 export function TrapDemo() {
   const [mode, setMode] = useState<Mode>('human')
@@ -26,7 +29,7 @@ export function TrapDemo() {
           <div className="script" key={mode}>
             {d.turns.map((t, i) => (
               <div className={'turn ' + t.who.toLowerCase()} key={i}>
-                <b>{t.who}</b>
+                <b>{speakerLabels[t.who]}</b>
                 <div>
                   <i>{t.text}</i>
                   {t.note && <span className="note">{t.note}</span>}

@@ -5,23 +5,23 @@
  */
 export const acronym = [
   {
-    word: 'Intelligent',
-    text: 'Not one classifier with an opinion. Three independent readers of the same call — the sound, the timing, the sense. Two of them decide every call; the third is asked only when they cannot.',
+    word: 'Inteligente',
+    text: 'No es un clasificador con una opinión. Son tres lectores independientes de la misma llamada: el sonido, los tiempos, el sentido. Dos de ellos deciden cada llamada; al tercero solo se le pregunta cuando los otros no pueden.',
   },
   {
-    word: 'System',
-    text: 'Built to sit inside a contact center that already exists. 8&nbsp;kHz stereo in over the line the bank already has, one JSON verdict out. Nothing for the customer to install or remember.',
+    word: 'Sistema',
+    text: 'Hecho para vivir dentro de un centro de contacto que ya existe. Entra estéreo de 8&nbsp;kHz por la línea que el banco ya tiene, sale un veredicto en JSON. Nada que el cliente tenga que instalar o recordar.',
   },
   {
-    word: 'Identifying',
-    text: 'It never asks who you are. It asks whether anyone is there at all — a far easier question to answer honestly, and the only one that still holds when the voice is a perfect copy.',
+    word: 'Identifica',
+    text: 'Nunca pregunta quién es quien llama. Pregunta si hay alguien ahí, una pregunta mucho más fácil de responder con honestidad, y la única que sigue en pie cuando la voz es una copia perfecta.',
   },
   {
     word: 'Synthetic',
-    text: 'Cloned voices leak in three places: in what the voice is made of, in when it speaks and yields, and in answers that arrive too complete, too formal and without a single filler.',
+    text: 'Las voces clonadas se delatan en tres lugares: en de qué está hecha la voz, en cuándo habla y cuándo cede, y en respuestas que llegan demasiado completas, demasiado formales y sin una sola muletilla.',
   },
   {
-    word: 'Interactions',
-    text: 'The unit of evidence is the exchange, not the clip. A voice alone can be faked convincingly. A conversation — with its overlap, its backtracking, its dead air — still cannot.',
+    word: 'Interacciones',
+    text: 'La unidad de evidencia es el intercambio, no el fragmento suelto. Una voz sola se puede falsificar de forma convincente. Una conversación — con sus traslapes, sus retrocesos, sus silencios muertos — todavía no.',
   },
 ]

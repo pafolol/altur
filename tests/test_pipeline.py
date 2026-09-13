@@ -163,7 +163,7 @@ def test_demo_page_and_details():
     server.app.state.primary, server.app.state.classifier = "specialist", "mlp"
     client = TestClient(server.app)
     r = client.get("/")
-    assert r.status_code == 200 and "Line" in r.text and "Ask the detector" in r.text
+    assert r.status_code == 200 and "Line" in r.text and "Preguntar al detector" in r.text
     stereo, sr = synthetic_call()
     body = client.post("/detect", json={"audio": base64.b64encode(wav_bytes(stereo, sr)).decode()}).json()
     for key in ("synthetic_probability", "chunk_scores", "chunk_spans", "model_display", "calibration", "threshold", "n_speech_regions"):

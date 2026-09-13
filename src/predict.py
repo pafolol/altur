@@ -151,7 +151,7 @@ class AcousticDetector:
                   "n_speech_regions": len(regions), "n_chunks": len(chunks),
                   "speech_s": float(sum(e - s for s, e in regions))}
         if not chunks:
-            result.update({"score": 0.0, "synthetic_probability": 0.5, "chunk_scores": [], "warning": "no caller speech found",
+            result.update({"score": 0.0, "synthetic_probability": 0.5, "chunk_scores": [], "warning": "no se detectó voz del llamante",
                            "timings": t})
             return result
         t0 = time.perf_counter()

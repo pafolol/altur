@@ -27,17 +27,17 @@ export type Call = {
 export type Mode = 'human' | 'synthetic'
 
 /** Bar labels, same order as `scores`. */
-export const signalNames = ['Acoustic', 'Behaviour', 'Semantic'] as const
+export const signalNames = ['Acústica', 'Conversación', 'Semántica'] as const
 
 export const calls: Record<Mode, Call> = {
   human: {
     id: 'call_569ffb0869eb',
-    meta: 'call_569ffb0869eb · held-out set · 01:05 → 01:46 · channel 0 isolated',
+    meta: 'call_569ffb0869eb · conjunto retenido · 01:05 → 01:46 · canal 0 aislado',
     turns: [
       {
         who: 'CALLER',
         text: 'Eh, simplemente quiero actualizarlo porque, eh, cambié de compañía. Entonces, al cambiar de compañía perdí, ah, mi nú-- mi número anterior. Entonces, quisiera actualizarlo con el número que tengo actualmente.',
-        note: 'Three fillers and a restarted word in one answer. The transcriber’s confidence dips on every one of them.',
+        note: 'Tres muletillas y una palabra reiniciada en una sola respuesta. La confianza del transcriptor baja en cada una de ellas.',
       },
       {
         who: 'AGENT',
@@ -46,7 +46,7 @@ export const calls: Record<Mode, Call> = {
       {
         who: 'CALLER',
         text: 'Fue con mi cuenta.',
-        note: 'Four words. Answers the question that was asked, and stops.',
+        note: 'Cuatro palabras. Responde la pregunta que le hicieron, y se detiene.',
       },
       {
         who: 'AGENT',
@@ -55,7 +55,7 @@ export const calls: Record<Mode, Call> = {
       {
         who: 'CALLER',
         text: 'Eh, sí, termina en cinco, nueve. Mhm.',
-        note: 'Asked for the full number, gives the last two digits. The behaviour layer still read her timing as machine-like, 0.96, and was wrong. The acoustic layer said 0.00, the pair landed at 52%, under the 80% gate, and the verifier agreed with the acoustic layer at 0.05.',
+        note: 'Le piden el número completo y da los últimos dos dígitos. Aun así, la capa de conversación leyó sus tiempos como los de una máquina, 0.96, y se equivocó. La capa acústica dijo 0.00, el par quedó en 52%, debajo del umbral de 80%, y el verificador coincidió con la capa acústica en 0.05.',
       },
     ],
     scores: [0.0, 0.964, 0.046],
@@ -63,7 +63,7 @@ export const calls: Record<Mode, Call> = {
   },
   synthetic: {
     id: 'call_0847d7417bb1',
-    meta: 'call_0847d7417bb1 · held-out set · 00:34 → 01:17 · channel 0 isolated',
+    meta: 'call_0847d7417bb1 · conjunto retenido · 00:34 → 01:17 · canal 0 aislado',
     turns: [
       {
         who: 'AGENT',
@@ -72,12 +72,12 @@ export const calls: Record<Mode, Call> = {
       {
         who: 'CALLER',
         text: 'No, no, es 93, no 92. 4470-8193.',
-        note: 'Corrects the planted error digit-perfect and restates the whole number, unprompted.',
+        note: 'Corrige el error sembrado sin fallar un dígito y repite el número completo, sin que se lo pidan.',
       },
       {
         who: 'CALLER',
         text: 'Sí, el primero de septiembre pagué 2.600 pesos. Solo hice un pago, pero en el estado de cuenta me aparece dos veces la misma cantidad el mismo día. Por eso llamé.',
-        note: 'The agent cuts in eleven seconds into this turn. The caller keeps talking for nine more. No filler, no false start, transcribed with near-certainty on every word.',
+        note: 'El agente interrumpe a los once segundos de este turno. El llamante sigue hablando nueve más. Sin muletillas, sin arranques en falso, transcrito con casi total certeza en cada palabra.',
       },
       {
         who: 'AGENT',
@@ -86,7 +86,7 @@ export const calls: Record<Mode, Call> = {
       {
         who: 'CALLER',
         text: 'Sobre la Nómina Plus.',
-        note: 'Picks a product it never mentioned, without a pause. The primaries landed at 72%, under the 80% gate; the verifier was asked and said 0.95.',
+        note: 'Elige un producto que nunca mencionó, sin una sola pausa. Las primarias quedaron en 72%, debajo del umbral de 80%; se consultó al verificador y dijo 0.95.',
       },
     ],
     scores: [1.0, 0.435, 0.952],

@@ -58,14 +58,14 @@ export function Admin() {
             </select>
           </label>
           <button type="button" className="btn" onClick={load} disabled={loading}>{loading ? t.refreshing : t.refresh}</button>
-          <a className="btn" href="/demo/">Latency</a><a className="btn ghost" href="/">{t.backToSite}</a>
+          <a className="btn" href="/demo/">Latencia</a><a className="btn ghost" href="/">{t.backToSite}</a>
         </div>
       </header>
 
       {error && <p className="error" role="alert">{error}</p>}
 
       <main className={loading && calls.length ? 'stale' : undefined}>
-        <section className="kpis" aria-label="Key figures">
+        <section className="kpis" aria-label="Cifras clave">
           <Tile label={t.tiles.calls} value={String(summary.calls)} />
           <Tile label={t.tiles.synthetic} value={String(summary.synthetic)} note={`${pct(summary.synthetic, summary.calls)} ${t.tiles.ofCalls}`} tone="synthetic" />
           <Tile label={t.tiles.abstained} value={String(summary.abstained)} note={`${pct(summary.abstained, summary.calls)} ${t.tiles.ofCalls}`} tone="abstained" />

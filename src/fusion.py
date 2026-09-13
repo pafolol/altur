@@ -278,18 +278,18 @@ def combine(results, cfg, weights_by_key=None):
 
     if total <= 0:
         fused, used = 0.5, []
-        note = ("every layer abstained" if rows and all(r.abstained for r in rows)
-                else "no layer carries weight" if rows else "no layer is loaded")
+        note = ("todas las capas se abstuvieron" if rows and all(r.abstained for r in rows)
+                else "ninguna capa tiene peso" if rows else "ninguna capa está cargada")
     elif not gate_on:
         note = ""
     elif settled:
-        note = (f"the primaries settled it at {primary_confidence:.0%} confidence "
+        note = (f"las primarias la resolvieron con {primary_confidence:.0%} de confianza "
                 f"(>= {cfg.verify_threshold:.0%}); "
-                + ", ".join(c["display"] for c in verifiers) + " not consulted")
+                + ", ".join(c["display"] for c in verifiers) + " no consultada")
     else:
-        note = (f"the primaries reached only {primary_confidence:.0%} confidence "
+        note = (f"las primarias solo alcanzaron {primary_confidence:.0%} de confianza "
                 f"(< {cfg.verify_threshold:.0%}); "
-                + ", ".join(c["display"] for c in verifiers) + " consulted to break the tie")
+                + ", ".join(c["display"] for c in verifiers) + " consultada para desempatar")
 
     if used:
         is_synthetic = bool(fused >= cfg.threshold)
@@ -423,8 +423,8 @@ class AcousticLayer(Layer):
         robust_v2         V2, the same backbone with a classifier that also saw telephone-channel audio
     """
     key = "acoustic"
-    display = "Acoustic V1 (specialist)"
-    description = "Frozen Wav2Vec2 Spanish layer 5 + MLP on the caller's voice, Platt-calibrated."
+    display = "Acústica V1 (especialista)"
+    description = "Wav2Vec2 Spanish congelado, capa 5 + MLP sobre la voz del llamante, calibrado con Platt."
     default_weight = 0.50
     role = "primary"
 
@@ -470,7 +470,7 @@ class AcousticLayer(Layer):
         return {"model_dir": self.model_dir, "layer": meta.get("layer"),
                 "vad": meta.get("vad", config.VAD_METHOD),
                 "trained_on": meta.get("train_sets", ["altur_original"]),
-                "signal": "the caller's voice (timbre, articulation, codec/vocoder traces)"}
+                "signal": "la voz del llamante (timbre, articulación, huellas de códec o vocoder)"}
 
 
 class BehaviourLayer(Layer):
@@ -483,8 +483,8 @@ class BehaviourLayer(Layer):
     fewer than two interaction events - a caller who never interacts leaves nothing to time.
     """
     key = "behaviour"
-    display = "Behaviour (conversation timing)"
-    description = "Separated-channel Silero VAD -> turn-taking timing -> 24 features -> calibrated logistic."
+    display = "Conversación (tiempos de la llamada)"
+    description = "Silero VAD por canal -> tiempos de los turnos -> 24 características -> logística calibrada."
     default_weight = 0.50
     role = "primary"
 
@@ -518,7 +518,7 @@ class BehaviourLayer(Layer):
         d = r.get("diagnostics", {})
         return LayerResult(
             self.key, self.display, float(r["synthetic_probability"]), float(r["quality_score"]), abstained,
-            "insufficient evidence: fewer than two interaction events" if abstained else "",
+            "evidencia insuficiente: menos de dos eventos de interacción" if abstained else "",
             details={"event_count": r["event_count"], "behavior_confidence": round(float(r["behavior_confidence"]), 4),
                      "interruptions": d.get("interruption_count"), "barge_ins": d.get("barge_in_count"),
                      "responses": d.get("response_count"), "vad_stability": round(float(d.get("vad_stability", 0)), 3),
@@ -532,7 +532,7 @@ class BehaviourLayer(Layer):
         meta = json.loads(self.model_path.read_text())
         return {"root": str(self.root), "n_features": len(meta["feature_names"]),
                 "calibration": meta["calibration"]["method"], "vad_config": meta["metadata"]["vad_config"],
-                "signal": "when the caller speaks, yields, interrupts and answers - not how they sound"}
+                "signal": "cuándo habla, cede, interrumpe y responde el llamante, no cómo suena"}
 
 
 class SemanticLayer(Layer):
@@ -561,8 +561,8 @@ class SemanticLayer(Layer):
     weights - it never blocks a verdict.
     """
     key = "semantic"
-    display = "Semantic (what the caller says)"
-    description = "Scribe transcript -> text features + a 7-dimension Gemini rubric -> calibrated logistic."
+    display = "Contenido (lo que dice el llamante)"
+    description = "Transcripción de Scribe -> características de texto + rúbrica Gemini de 7 dimensiones -> logística calibrada."
     default_weight = 0.15
     role = "verifier"
 
@@ -672,7 +672,7 @@ class SemanticLayer(Layer):
 
     def info(self):
         d = {"url": self.url, "timeout_s": self.timeout, "transport": "http",
-             "signal": "the words themselves - what the caller volunteers, repeats, repairs and grounds",
+             "signal": "las palabras mismas: lo que el llamante ofrece, repite, corrige y aterriza",
              "held_out_scores": len(self._oof()), "root": str(self.root)}
         if self._health:
             d["service"] = self._health
@@ -718,7 +718,7 @@ class LocalSemanticLayer(SemanticLayer):
 
     def info(self):
         return {"transport": "in_process", "timeout_s": self.timeout,
-                "signal": "the words themselves - what the caller volunteers, repeats, repairs and grounds",
+                "signal": "las palabras mismas: lo que el llamante ofrece, repite, corrige y aterriza",
                 "held_out_scores": len(self._oof()), "root": str(self.root)}
 
 
@@ -740,8 +740,8 @@ def build_layers(acoustic_model="wav2vec2_spanish", include_unavailable=False, s
 
 
 def _acoustic_display(model_dir):
-    return {"wav2vec2_spanish": "Acoustic V1 (specialist)",
-            "robust_v2": "Acoustic V2 (phone-hardened)"}.get(model_dir, f"Acoustic ({model_dir})")
+    return {"wav2vec2_spanish": "Acústica V1 (especialista)",
+            "robust_v2": "Acústica V2 (endurecida para teléfono)"}.get(model_dir, f"Acústica ({model_dir})")
 
 
 # ============================================================================= the detector
@@ -838,7 +838,7 @@ class FusionDetector:
             else:
                 out.append(LayerResult(
                     l.key, l.display, 0.5, 0.0, False,
-                    "not consulted: the primary layers settled this call on their own", scored=False))
+                    "no consultada: las capas primarias resolvieron esta llamada por su cuenta", scored=False))
         # Keep the registry's order, so every column, fader and row lines up with /layers.
         order = {l.key: i for i, l in enumerate(self.layers)}
         return sorted(out, key=lambda r: order.get(r.key, len(order)))

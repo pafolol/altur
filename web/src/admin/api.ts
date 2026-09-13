@@ -64,7 +64,7 @@ export interface IsisiApi {
 function rng(seed: number) {
   return () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 }
 }
-const QUEUES = ['collections', 'cards', 'onboarding', 'support']
+const QUEUES = ['cobranza', 'tarjetas', 'onboarding', 'soporte']
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 function makeCalls(now: number): Call[] {

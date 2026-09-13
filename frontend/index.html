@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Line Inspector — Altur acoustic detector</title>
+<title>Line Inspector — detector acústico de Altur</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,800;1,9..144,300&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -181,116 +181,116 @@
 <div class="wrap">
   <header>
     <div>
-      <div class="eyebrow">Altur · HackMTY 2026 · acoustic branch</div>
+      <div class="eyebrow">Altur · HackMTY 2026 · rama acústica</div>
       <h1>Line <em>Inspector</em></h1>
-      <p class="sub">Put a caller on the line: record from your microphone or upload a call. The model only ever receives an 8 kHz stereo WAV — it is never told where the audio came from. Then tell the page what it really was, and keep score.</p>
+      <p class="sub">Un llamante en la línea: se graba desde el micrófono o se sube una llamada. El modelo solo recibe un WAV estéreo de 8 kHz; nunca se le dice de dónde salió el audio. Después se le indica a la página qué era en realidad y se lleva el marcador.</p>
     </div>
-    <div class="status" id="status"><span class="dot"></span>checking the detector…</div>
+    <div class="status" id="status"><span class="dot"></span>verificando el detector…</div>
   </header>
 
   <main>
     <section class="panel">
-      <div class="num">01 · INTAKE</div>
-      <h2>Put a caller on the line</h2>
-      <p class="hint">Both paths produce the same thing: caller channel → resample to 8 kHz → stereo WAV (agent channel silent) → <code>POST /detect</code>.</p>
+      <div class="num">01 · RECEPCIÓN</div>
+      <h2>Un llamante en la línea</h2>
+      <p class="hint">Las dos rutas producen lo mismo: canal del llamante → remuestreo a 8 kHz → WAV estéreo (canal del agente en silencio) → <code>POST /detect</code>.</p>
       <div class="intake">
         <div class="card">
-          <h3>Record</h3>
-          <p>Raw microphone audio (browser noise suppression and auto-gain off, like a phone line). Speak a few sentences; 8–20 s is plenty.</p>
+          <h3>Grabar</h3>
+          <p>Audio crudo del micrófono (sin supresión de ruido ni ganancia automática del navegador, como una línea telefónica). Bastan unas cuantas frases; de 8 a 20 s es suficiente.</p>
           <canvas class="scope" id="scope" width="600" height="70"></canvas>
           <div style="display:flex;gap:10px;align-items:center;">
-            <button class="rec" id="recBtn">● Start recording</button>
+            <button class="rec" id="recBtn">● Iniciar grabación</button>
             <span class="timer" id="timer">0.0 s</span>
           </div>
         </div>
         <div class="card" id="drop">
-          <h3>Upload</h3>
-          <p>WAV, MP3, M4A, OGG, WebM… A dataset call (stereo 8 kHz) is used as-is: channel 0 caller, channel 1 agent. Drop a file here or pick one.</p>
-          <label><input type="file" id="file" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.flac"><button type="button" onclick="document.getElementById('file').click()">Choose a file</button></label>
+          <h3>Subir</h3>
+          <p>WAV, MP3, M4A, OGG, WebM… Una llamada del conjunto de datos (estéreo 8 kHz) se usa tal cual: canal 0 llamante, canal 1 agente. Arrastrar un archivo aquí o elegir uno.</p>
+          <label><input type="file" id="file" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.flac"><button type="button" onclick="document.getElementById('file').click()">Elegir archivo</button></label>
           <p id="fileName" style="flex:0;color:var(--paper-dim)"></p>
         </div>
       </div>
 
       <div class="opts">
         <label class="opt"><input type="checkbox" id="pstn" checked>
-          <span><b>Simulate a telephone line</b> (300–3400 Hz band-pass + G.711 μ-law), applied identically to recordings and uploads that are not already phone audio. The detector was trained on phone calls; clean wideband audio tends to look synthetic to it (report, Part 8c). Untick to send the audio as-is.</span></label>
+          <span><b>Simular una línea telefónica</b> (paso banda de 300–3400 Hz + G.711 μ-law), aplicada igual a las grabaciones y a los archivos subidos que no sean ya audio telefónico. El detector se entrenó con llamadas telefónicas; el audio limpio de banda ancha tiende a parecerle sintético (reporte, parte 8c). Desmarcar para enviar el audio tal cual.</span></label>
         <label class="opt"><input type="checkbox" id="autoSkip" checked>
-          <span><b>Skip the simulation for 8 kHz stereo files</b> — a real call from the dataset already went through a phone line.</span></label>
+          <span><b>Omitir la simulación en archivos estéreo de 8 kHz</b>: una llamada real del conjunto de datos ya pasó por una línea telefónica.</span></label>
         <div class="endpoint"><span>endpoint</span><input id="endpoint" value=""></div>
       </div>
 
       <div class="stage">
-        <div class="row"><b id="stageTitle">Nothing on the line yet</b><span class="meta" id="stageMeta"></span></div>
+        <div class="row"><b id="stageTitle">Todavía no hay nada en la línea</b><span class="meta" id="stageMeta"></span></div>
         <canvas class="wave" id="wave" width="900" height="90"></canvas>
         <audio id="player" controls></audio>
-        <button class="send primary" id="sendBtn" disabled>Ask the detector</button>
+        <button class="send primary" id="sendBtn" disabled>Preguntar al detector</button>
         <div class="log" id="log"></div>
       </div>
     </section>
 
     <section class="panel">
-      <div class="num">02 · VERDICT</div>
+      <div class="num">02 · VEREDICTO</div>
       <div class="verdict" id="verdict">
-        <div class="empty">The verdict lands here.<br>Record or upload something and press <b>Ask the detector</b>.</div>
+        <div class="empty">El veredicto aparece aquí.<br>Hay que grabar o subir algo y presionar <b>Preguntar al detector</b>.</div>
       </div>
 
       <div class="explain" id="explain">
-        <h2>How it decided</h2>
+        <h2>Cómo lo decidió</h2>
         <div class="kv" id="kv"></div>
         <div class="prose" id="prose"></div>
         <div class="strip" id="strip"></div>
-        <div class="legend"><span>← time in the call</span><span>bar height = how synthetic that chunk sounded</span></div>
+        <div class="legend"><span>← tiempo en la llamada</span><span>altura = qué tan sintético sonó el fragmento</span></div>
         <ol class="steps" id="steps"></ol>
         <div class="caveat" id="caveat"></div>
 
         <div class="truth" id="truth">
-          <span>What was it really?</span>
-          <button class="h" id="truthH">a human</button>
-          <button class="s" id="truthS">synthetic</button>
+          <span>¿Qué era en realidad?</span>
+          <button class="h" id="truthH">Human</button>
+          <button class="s" id="truthS">Synthetic</button>
           <span id="truthMsg"></span>
         </div>
         <div class="board">
-          <div><small>tested</small><span id="bTested">0</span></div>
-          <div><small>correct</small><span id="bCorrect">0</span></div>
-          <div><small>accuracy</small><span id="bAcc">–</span></div>
+          <div><small>probadas</small><span id="bTested">0</span></div>
+          <div><small>correctas</small><span id="bCorrect">0</span></div>
+          <div><small>exactitud</small><span id="bAcc">–</span></div>
         </div>
-        <table id="history"><thead><tr><th>#</th><th>source</th><th>verdict</th><th>conf.</th><th>truth</th><th></th></tr></thead><tbody></tbody></table>
+        <table id="history"><thead><tr><th>#</th><th>origen</th><th>veredicto</th><th>conf.</th><th>verdad</th><th></th></tr></thead><tbody></tbody></table>
       </div>
     </section>
 
     <section class="panel">
-      <div class="num">03 &middot; SIDE BY SIDE</div>
-      <h2>The specialist and the phone-hardened model, on the same audio</h2>
-      <p class="hint">The specialist was fitted on the Altur recordings, where the caller channel is digitally silent between turns and the synthetic callers happen to be louder. A real telephone line erases both of those cues. Robust V2 is the same frozen backbone with a classifier that also trained on those calls after a line. Stage some audio above, tick the line simulation, and ask them both.</p>
-      <button class="primary" id="abBtn" disabled>Ask both models</button>
+      <div class="num">03 &middot; LADO A LADO</div>
+      <h2>El especialista y el modelo endurecido para teléfono, con el mismo audio</h2>
+      <p class="hint">El especialista se ajustó con las grabaciones de Altur, donde el canal del llamante queda en silencio digital entre turnos y los llamantes sintéticos resultan ser más fuertes. Una línea telefónica real borra las dos pistas. Robust V2 es el mismo backbone congelado, con un clasificador que también se entrenó con esas llamadas después de pasar por una línea. Basta con preparar audio arriba, marcar la simulación de línea y preguntarles a los dos.</p>
+      <button class="primary" id="abBtn" disabled>Preguntar a ambos modelos</button>
       <div class="ab" id="abCards"></div>
       <div class="abnote" id="abNote"></div>
     </section>
 
     <section class="panel deck">
-      <div class="num">03 · TEST DECK</div>
-      <h2>Listen to the held-out calls, then let it decide</h2>
-      <p class="hint">The 71 validation calls were never used to train the model (speaker-disjoint split from the organisers). Pick a call, listen, then ask - the detector receives the WAV exactly as it would from the judges. The true label stays hidden until the verdict is in.</p>
+      <div class="num">03 · MAZO DE PRUEBA</div>
+      <h2>Escuchar las llamadas retenidas y dejar que decida</h2>
+      <p class="hint">Las 71 llamadas de validación nunca se usaron para entrenar el modelo (partición sin hablantes compartidos, hecha por los organizadores). Elegir una llamada, escucharla y preguntar: el detector recibe el WAV igual que lo recibiría de los jueces. La etiqueta verdadera queda oculta hasta que llega el veredicto.</p>
       <div class="top">
-        <button class="primary" id="deckLoad">Load the 71 held-out calls</button>
-        <label style="font-size:12px;color:var(--muted)">listen for
-          <select id="listenFor"><option value="15">15 s</option><option value="30" selected>30 s</option><option value="60">60 s</option><option value="0">the whole call</option></select>
-          before the verdict (auto mode)</label>
+        <button class="primary" id="deckLoad">Cargar las 71 llamadas retenidas</button>
+        <label style="font-size:12px;color:var(--muted)">escuchar
+          <select id="listenFor"><option value="15">15 s</option><option value="30" selected>30 s</option><option value="60">60 s</option><option value="0">toda la llamada</option></select>
+          antes del veredicto (modo auto)</label>
         <span class="meta" id="deckMeta" style="color:var(--muted);font-size:12px"></span>
       </div>
       <div class="tiles" id="tiles"></div>
       <div class="now" id="now" hidden>
         <div><div class="title" id="nowTitle"></div><div class="meta" id="nowMeta"></div></div>
-        <div class="truth-tag" id="nowTruth">truth hidden</div>
+        <div class="truth-tag" id="nowTruth">verdad oculta</div>
       </div>
       <audio id="deckPlayer" controls hidden></audio>
       <div class="deckbtns" id="deckBtns" hidden>
-        <button id="deckPrev">&#9664; previous</button>
-        <button id="deckPlay">&#9654; play</button>
-        <button id="deckNext">next &#9654;</button>
-        <button id="deckRandom">random</button>
-        <button class="primary" id="deckAsk">Ask the detector on this call</button>
-        <button class="auto" id="deckAuto">&#9654;&#9654; auto: listen &rarr; verdict &rarr; next</button>
+        <button id="deckPrev">&#9664; anterior</button>
+        <button id="deckPlay">&#9654; reproducir</button>
+        <button id="deckNext">siguiente &#9654;</button>
+        <button id="deckRandom">al azar</button>
+        <button class="primary" id="deckAsk">Preguntar al detector por esta llamada</button>
+        <button class="auto" id="deckAuto">&#9654;&#9654; auto: escuchar &rarr; veredicto &rarr; siguiente</button>
       </div>
       <div class="deckstats" id="deckStats"></div>
     </section>
@@ -312,9 +312,9 @@
     const base = endpointInput.value.replace(/\/detect\/?$/, "");
     try {
       const r = await fetch(base + "/health"); const j = await r.json();
-      $("status").innerHTML = `<span class="dot ok"></span>detector online<br><b>${j.model}</b> on ${j.device}`;
+      $("status").innerHTML = `<span class="dot ok"></span>detector en línea<br><b>${j.model}</b> en ${j.device}`;
     } catch (e) {
-      $("status").innerHTML = `<span class="dot bad"></span>detector unreachable at ${base}<br>start it: <b>python src/server.py --port 8000</b>`;
+      $("status").innerHTML = `<span class="dot bad"></span>no se pudo contactar al detector en ${base}<br>iniciarlo: <b>python src/server.py --port 8000</b>`;
     }
   }
   health();
@@ -333,9 +333,9 @@
       proc.onaudioprocess = (e) => { const d = e.inputBuffer.getChannelData(0); chunks.push(new Float32Array(d)); n += d.length; $("timer").textContent = (n / ctx.sampleRate).toFixed(1) + " s"; };
       src.connect(analyser); analyser.connect(proc); proc.connect(ctx.destination);
       rec = { stream, ctx, src, proc, analyser, chunks, get n() { return n; } };
-      $("recBtn").textContent = "■ Stop"; $("recBtn").classList.add("live");
+      $("recBtn").textContent = "■ Detener"; $("recBtn").classList.add("live");
       drawScope();
-    } catch (e) { log("microphone: " + e.message, "err"); }
+    } catch (e) { log("micrófono: " + e.message, "err"); }
   });
   function stopRecording() {
     const r = rec; rec = null;
@@ -344,9 +344,9 @@
     const pcm = new Float32Array(total); let o = 0; for (const c of r.chunks) { pcm.set(c, o); o += c.length; }
     const buf = r.ctx.createBuffer(1, Math.max(total, 1), r.ctx.sampleRate); buf.copyToChannel(pcm, 0);
     r.ctx.close();
-    $("recBtn").textContent = "● Start recording"; $("recBtn").classList.remove("live");
-    if (total / buf.sampleRate < 1) { log("recording too short", "err"); return; }
-    stage(buf, "recorded", `microphone, ${(total / buf.sampleRate).toFixed(1)} s @ ${buf.sampleRate} Hz`);
+    $("recBtn").textContent = "● Iniciar grabación"; $("recBtn").classList.remove("live");
+    if (total / buf.sampleRate < 1) { log("grabación demasiado corta", "err"); return; }
+    stage(buf, "grabado", `micrófono, ${(total / buf.sampleRate).toFixed(1)} s @ ${buf.sampleRate} Hz`);
   }
   function drawScope() {
     const c = $("scope"), g = c.getContext("2d");
@@ -375,8 +375,8 @@
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const buf = await ctx.decodeAudioData(ab.slice(0)); ctx.close();
       buf._origSr = info ? info.sampleRate : buf.sampleRate; buf._origCh = info ? info.channels : buf.numberOfChannels;
-      stage(buf, "uploaded", `${file.name}, ${buf.duration.toFixed(1)} s, ${buf._origCh} ch @ ${buf._origSr} Hz`);
-    } catch (e) { log("could not decode " + file.name + ": " + e.message, "err"); }
+      stage(buf, "subido", `${file.name}, ${buf.duration.toFixed(1)} s, ${buf._origCh} ch @ ${buf._origSr} Hz`);
+    } catch (e) { log("no se pudo decodificar " + file.name + ": " + e.message, "err"); }
   }
   function wavInfo(ab) {
     const v = new DataView(ab); if (ab.byteLength < 44) return null;
@@ -389,11 +389,11 @@
   // ------------------------------------------------------------------ staging: the ONE path both sources take
   async function stage(buf, kind, meta) {
     state.buffer = buf; state.sourceKind = kind; state.sourceName = meta;
-    $("stageTitle").textContent = "On the line"; $("stageMeta").textContent = meta;
+    $("stageTitle").textContent = "En la línea"; $("stageMeta").textContent = meta;
     await buildWav();
     $("sendBtn").disabled = false; if ($("abBtn")) $("abBtn").disabled = false;
     $("explain").classList.remove("on");
-    $("verdict").innerHTML = `<div class="empty">Ready. Press <b>Ask the detector</b>.<br>The model will receive an 8 kHz stereo WAV and nothing else.</div>`;
+    $("verdict").innerHTML = `<div class="empty">Listo. Hay que presionar <b>Preguntar al detector</b>.<br>El modelo recibirá un WAV estéreo de 8 kHz y nada más.</div>`;
   }
   async function buildWav() {
     const buf = state.buffer;
@@ -421,7 +421,7 @@
     state.simulated = simulate;
     $("player").src = URL.createObjectURL(state.wavBlob);
     drawWave(caller);
-    log(`prepared ${(caller.length / TARGET_SR).toFixed(1)} s stereo 8 kHz WAV (${(state.wavBlob.size / 1024).toFixed(0)} KB)${simulate ? ", telephone line simulated" : ", sent as-is"}`);
+    log(`WAV estéreo de 8 kHz listo: ${(caller.length / TARGET_SR).toFixed(1)} s (${(state.wavBlob.size / 1024).toFixed(0)} KB)${simulate ? ", línea telefónica simulada" : ", enviado tal cual"}`);
   }
   $("pstn").addEventListener("change", () => state.buffer && buildWav());
   $("autoSkip").addEventListener("change", () => state.buffer && buildWav());
@@ -456,8 +456,8 @@
   // ------------------------------------------------------------------ ask the detector
   $("sendBtn").addEventListener("click", async () => {
     if (!state.wavBlob) return;
-    const btn = $("sendBtn"); btn.disabled = true; btn.classList.add("busy"); btn.textContent = "Listening…";
-    $("verdict").innerHTML = `<div class="empty">Segmenting the caller channel, embedding every chunk, scoring…</div>`;
+    const btn = $("sendBtn"); btn.disabled = true; btn.classList.add("busy"); btn.textContent = "Escuchando…";
+    $("verdict").innerHTML = `<div class="empty">Segmentando el canal del llamante, generando embeddings de cada fragmento, puntuando…</div>`;
     try {
       const b64 = await blobToBase64(state.wavBlob);
       const t0 = performance.now();
@@ -466,8 +466,8 @@
       if (j.error && j.is_synthetic === undefined) throw new Error(j.error);
       state.last = { response: j, roundtrip: rt, source: state.sourceKind, name: state.sourceName, truth: null };
       showVerdict(j, rt);
-    } catch (e) { $("verdict").innerHTML = `<div class="empty err">The detector did not answer: ${e.message}</div>`; log(e.message, "err"); }
-    btn.disabled = false; btn.classList.remove("busy"); btn.textContent = "Ask the detector";
+    } catch (e) { $("verdict").innerHTML = `<div class="empty err">El detector no respondió: ${e.message}</div>`; log(e.message, "err"); }
+    btn.disabled = false; btn.classList.remove("busy"); btn.textContent = "Preguntar al detector";
   });
   const blobToBase64 = (b) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(",")[1]); fr.onerror = rej; fr.readAsDataURL(b); });
 
@@ -478,7 +478,7 @@
     $("verdict").innerHTML = `
       <div>
         <div class="stamp ${cls}">${syn ? "SYNTHETIC" : "HUMAN"}</div>
-        <div class="conf">confidence in this verdict <b>${(j.confidence * 100).toFixed(1)}%</b></div>
+        <div class="conf">confianza en este veredicto <b>${(j.confidence * 100).toFixed(1)}%</b></div>
         <div class="meter"><div class="mid"></div><div class="fill ${cls}" id="fill"></div></div>
         <div class="scale"><span>HUMAN 0.0</span><span>p(synthetic) = ${p.toFixed(3)}</span><span>1.0 SYNTHETIC</span></div>
       </div>`;
@@ -486,21 +486,21 @@
 
     const scores = d.chunk_scores || [], spans = d.chunk_spans || [];
     const raw = d.raw_score ?? 0, absr = Math.abs(raw);
-    const strength = absr > 3 ? "strong" : absr > 1 ? "moderate" : "borderline";
+    const strength = absr > 3 ? "fuerte" : absr > 1 ? "moderada" : "al límite";
     const nSyn = scores.filter(s => s >= 0).length;
     $("kv").innerHTML = [
-      ["speech found", `${(d.speech_s ?? 0).toFixed(1)} s`], ["speech regions", d.n_speech_regions ?? "–"], ["chunks scored", d.n_chunks ?? scores.length],
-      ["raw score", `${raw >= 0 ? "+" : ""}${raw.toFixed(2)}`], ["model time", `${d.latency_ms ?? "–"} ms`], ["round trip", `${rt.toFixed(0)} ms`],
+      ["voz detectada", `${(d.speech_s ?? 0).toFixed(1)} s`], ["regiones de voz", d.n_speech_regions ?? "–"], ["fragmentos puntuados", d.n_chunks ?? scores.length],
+      ["puntaje crudo", `${raw >= 0 ? "+" : ""}${raw.toFixed(2)}`], ["tiempo del modelo", `${d.latency_ms ?? "–"} ms`], ["ida y vuelta", `${rt.toFixed(0)} ms`],
     ].map(([k, v]) => `<div><small>${k}</small><span>${v}</span></div>`).join("");
     $("prose").innerHTML = (d.n_chunks ? `
-      The detector found <b>${(d.speech_s ?? 0).toFixed(1)} s of caller speech</b> in ${d.n_speech_regions ?? "?"} region${d.n_speech_regions === 1 ? "" : "s"} and cut it into
-      <b>${d.n_chunks} chunk${d.n_chunks === 1 ? "" : "s"}</b> of at most 4 s. Each chunk went through <b>${d.model_display || d.model}</b>, which returns a
-      log-odds score: positive means "sounds synthetic", negative "sounds human". <b>${nSyn} of ${scores.length}</b> chunks leaned synthetic.
-      The average is <b>${raw >= 0 ? "+" : ""}${raw.toFixed(2)}</b>, a <b>${strength}</b> signal (|score| above 3 is strong, 1–3 moderate, below 1 borderline).
-      ${d.calibration && d.calibration !== "none" ? `A ${d.calibration}-scaling calibrator fitted on perturbed validation calls` : "A sigmoid"} turns that into
-      <b>p(synthetic) = ${p.toFixed(3)}</b>; the verdict is <b>${syn ? "SYNTHETIC" : "HUMAN"}</b> because it is ${syn ? "at or above" : "below"} ${d.threshold ?? 0.5},
-      and the confidence is the probability that this verdict is right: <b>${(j.confidence * 100).toFixed(1)}%</b>.` :
-      `No caller speech was found in the recording, so the model answered with an undecided 0.5 - it has nothing to judge. Try speaking louder or closer to the microphone.`);
+      El detector encontró <b>${(d.speech_s ?? 0).toFixed(1)} s de voz del llamante</b> en ${d.n_speech_regions ?? "?"} regi${d.n_speech_regions === 1 ? "ón" : "ones"} y la cortó en
+      <b>${d.n_chunks} fragmento${d.n_chunks === 1 ? "" : "s"}</b> de 4 s como máximo. Cada fragmento pasó por <b>${d.model_display || d.model}</b>, que devuelve un
+      puntaje log-odds: positivo significa "suena sintético"; negativo, "suena humano". <b>${nSyn} de ${scores.length}</b> fragmentos se inclinaron a sintético.
+      El promedio es <b>${raw >= 0 ? "+" : ""}${raw.toFixed(2)}</b>, una señal <b>${strength}</b> (|puntaje| arriba de 3 es fuerte; de 1 a 3, moderada; abajo de 1, al límite).
+      ${d.calibration && d.calibration !== "none" ? `Un calibrador de escalamiento ${d.calibration} ajustado con llamadas de validación perturbadas` : "Una sigmoide"} lo convierte en
+      <b>p(synthetic) = ${p.toFixed(3)}</b>; el veredicto es <b>${syn ? "SYNTHETIC" : "HUMAN"}</b> porque está ${syn ? "en o por arriba de" : "por debajo de"} ${d.threshold ?? 0.5},
+      y la confianza es la probabilidad de que este veredicto sea correcto: <b>${(j.confidence * 100).toFixed(1)}%</b>.` :
+      `No se encontró voz del llamante en la grabación, así que el modelo respondió con un 0.5 indeciso: no tiene nada que juzgar. Conviene hablar más fuerte o más cerca del micrófono.`);
 
     const strip = $("strip"); strip.innerHTML = "";
     const lim = Math.max(3, ...scores.map(Math.abs));
@@ -512,13 +512,13 @@
       strip.appendChild(el);
     });
     $("steps").innerHTML = [
-      `the page sent a stereo 8 kHz WAV${state.simulated ? " with a simulated telephone line" : ""} — no filename, no label, no hint of the source`,
-      `server: channel 0 (caller) → ${d.vad === "silero" ? "Silero neural voice-activity detection (survives a high line noise floor)" : "energy voice-activity detection 15 dB above the noise floor"} → speech regions`,
-      "each region cut into ≤ 4 s chunks, every chunk scaled to the same loudness (so volume cannot be a cue), resampled to 16 kHz",
-      `frozen ${d.model_display || d.model} → one 768-number embedding per chunk → small MLP → chunk log-odds`,
-      "mean of the chunk log-odds → calibrated probability → verdict at 0.5 → confidence = max(p, 1 − p)",
+      `la página envió un WAV estéreo de 8 kHz${state.simulated ? " con una línea telefónica simulada" : ""}: sin nombre de archivo, sin etiqueta, sin pista del origen`,
+      `servidor: canal 0 (llamante) → ${d.vad === "silero" ? "detección neuronal de actividad de voz Silero (aguanta un piso de ruido alto en la línea)" : "detección de actividad de voz por energía, 15 dB arriba del piso de ruido"} → regiones de voz`,
+      "cada región se corta en fragmentos de ≤ 4 s, cada fragmento se escala al mismo volumen (para que el volumen no sea una pista) y se remuestrea a 16 kHz",
+      `${d.model_display || d.model} congelado → un embedding de 768 números por fragmento → un MLP pequeño → log-odds del fragmento`,
+      "promedio de los log-odds de los fragmentos → probabilidad calibrada → veredicto en 0.5 → confianza = max(p, 1 − p)",
     ].map((t, i) => `<li><i>${String(i + 1).padStart(2, "0")}</i><span>${t}</span></li>`).join("");
-    $("caveat").innerHTML = `<b>Read it with care.</b> The model was trained on 8 kHz bank calls. On its own dataset it makes no mistakes; on new engines and speakers through a phone line it is right about 88% of the time (report, Part 8c). Clean, wide-band studio or laptop audio without the line simulation tends to look <i>synthetic</i> to it, because in its training data the synthetic callers were the clean ones. A borderline score means exactly that: borderline.`;
+    $("caveat").innerHTML = `<b>Hay que leerlo con cuidado.</b> El modelo se entrenó con llamadas bancarias de 8 kHz. En su propio conjunto de datos no se equivoca; con motores y hablantes nuevos a través de una línea telefónica acierta cerca del 88% de las veces (reporte, parte 8c). El audio limpio de banda ancha, de estudio o de laptop, sin la simulación de línea, tiende a parecerle <i>sintético</i>, porque en sus datos de entrenamiento los llamantes sintéticos eran los limpios. Un puntaje al límite significa exactamente eso: al límite.`;
     $("explain").classList.add("on");
     $("truthMsg").textContent = ""; $("truthH").disabled = false; $("truthS").disabled = false;
   }
@@ -533,14 +533,14 @@
     } catch (e) { /* the server may have only one model; the panel says so when asked */ }
   })();
 
-  const AB_TITLES = { specialist: "Altur specialist", robust_v2: "Robust V2" };
+  const AB_TITLES = { specialist: "Especialista Altur", robust_v2: "Robust V2" };
   const AB_SUBS = {
-    specialist: "frozen Wav2Vec2 Spanish + MLP, trained on the Altur recordings only",
-    robust_v2: "same frozen backbone, classifier also trained on those calls after a telephone line",
+    specialist: "Wav2Vec2 en español congelado + MLP, entrenado solo con las grabaciones de Altur",
+    robust_v2: "el mismo backbone congelado; el clasificador también se entrenó con esas llamadas tras pasar por una línea telefónica",
   };
 
   $("abBtn").addEventListener("click", async () => {
-    const btn = $("abBtn"); btn.disabled = true; btn.textContent = "Asking both\u2026";
+    const btn = $("abBtn"); btn.disabled = true; btn.textContent = "Preguntando a ambos\u2026";
     $("abCards").innerHTML = ""; $("abNote").textContent = "";
     try {
       const b64 = await blobToBase64(await buildWav());
@@ -550,15 +550,15 @@
       })).json();
       renderAB(j, performance.now() - t0);
     } catch (e) {
-      $("abNote").innerHTML = '<span style="color:var(--synth)">Could not reach /detect_all: ' + e.message +
-        '. Start the server with <code>python src/server.py --preload-all</code>.</span>';
+      $("abNote").innerHTML = '<span style="color:var(--synth)">No se pudo contactar /detect_all: ' + e.message +
+        '. Iniciar el servidor con <code>python src/server.py --preload-all</code>.</span>';
     }
-    btn.disabled = false; btn.textContent = "Ask both models";
+    btn.disabled = false; btn.textContent = "Preguntar a ambos modelos";
   });
 
   function renderAB(j, rt) {
     const models = j.models || {}, keys = Object.keys(models);
-    if (!keys.length) { $("abNote").textContent = "The server did not return any model."; return; }
+    if (!keys.length) { $("abNote").textContent = "El servidor no devolvió ningún modelo."; return; }
     $("abCards").innerHTML = keys.map(k => {
       const m = models[k];
       if (m.error) return '<div class="abcard"><div class="who">' + (AB_TITLES[k] || k) +
@@ -567,29 +567,29 @@
       const p = d.synthetic_probability !== undefined ? d.synthetic_probability : (syn ? m.confidence : 1 - m.confidence);
       const info = modelInfo[k] || {};
       return '<div class="abcard">' +
-        (k === j.primary ? '<span class="abtag">answers /detect</span>' : "") +
+        (k === j.primary ? '<span class="abtag">responde /detect</span>' : "") +
         '<div class="who">' + (AB_TITLES[k] || k) + "</div>" +
         '<div class="sub">' + (AB_SUBS[k] || "") + "</div>" +
         '<div class="big ' + cls + '">' + (syn ? "SYNTHETIC" : "HUMAN") + "</div>" +
-        '<div class="pval">p(synthetic) = ' + p.toFixed(3) + " \u00b7 confidence " + (m.confidence * 100).toFixed(1) + "%</div>" +
+        '<div class="pval">p(synthetic) = ' + p.toFixed(3) + " \u00b7 confianza " + (m.confidence * 100).toFixed(1) + "%</div>" +
         '<div class="bar"><i class="' + cls + '" data-w="' + (p * 100).toFixed(1) + '"></i></div>' +
-        '<div class="foot">' + (d.n_chunks || 0) + " chunk" + (d.n_chunks === 1 ? "" : "s") +
-        " from " + (d.speech_s || 0).toFixed(1) + " s of caller speech \u00b7 " + (d.vad || info.vad || "?") +
-        " segmentation \u00b7 layer " + (info.layer !== undefined ? info.layer : "?") + "<br>raw score " +
+        '<div class="foot">' + (d.n_chunks || 0) + " fragmento" + (d.n_chunks === 1 ? "" : "s") +
+        " de " + (d.speech_s || 0).toFixed(1) + " s de voz del llamante \u00b7 segmentaci\u00f3n " + (d.vad || info.vad || "?") +
+        " \u00b7 capa " + (info.layer !== undefined ? info.layer : "?") + "<br>puntaje crudo " +
         ((d.raw_score || 0) >= 0 ? "+" : "") + (d.raw_score || 0).toFixed(2) + " \u00b7 " + (d.latency_ms || "?") + " ms</div></div>";
     }).join("");
     requestAnimationFrame(() => document.querySelectorAll(".abcard .bar i").forEach(el => { el.style.width = el.dataset.w + "%"; }));
 
     const ok = keys.filter(k => !models[k].error);
-    const verdicts = ok.map(k => (AB_TITLES[k] || k) + " says <b>" + (models[k].is_synthetic ? "synthetic" : "human") + "</b>");
+    const verdicts = ok.map(k => (AB_TITLES[k] || k) + " dice <b>" + (models[k].is_synthetic ? "synthetic" : "human") + "</b>");
     const disagree = new Set(ok.map(k => models[k].is_synthetic)).size > 1;
     const blind = ok.filter(k => (models[k].details || {}).n_chunks === 0);
-    $("abNote").innerHTML = verdicts.join(" \u00b7 ") + " \u00b7 round trip " + rt.toFixed(0) + " ms." +
-      (disagree ? " <b>They disagree.</b> That is the point of this panel: whichever one is wrong here is the one the telephone line broke."
-                : " They agree on this clip.") +
+    $("abNote").innerHTML = verdicts.join(" \u00b7 ") + " \u00b7 ida y vuelta " + rt.toFixed(0) + " ms." +
+      (disagree ? " <b>No coinciden.</b> Ese es el punto de este panel: el que se equivoque aqu\u00ed es el que la l\u00ednea telef\u00f3nica rompi\u00f3."
+                : " Coinciden en este clip.") +
       (blind.length ? ' <span style="color:var(--synth)">' + blind.map(k => AB_TITLES[k] || k).join(", ") +
-        " found no caller speech at all and fell back to 0.5 \u2014 the segmenter gave up before the model was reached.</span>" : "") +
-      " Neither model was told the source, the filename or the label.";
+        " no encontr\u00f3 nada de voz del llamante y cay\u00f3 a 0.5: el segmentador se rindi\u00f3 antes de llegar al modelo.</span>" : "") +
+      " A ninguno de los dos modelos se le dijo el origen, el nombre del archivo ni la etiqueta.";
   }
 
   // ------------------------------------------------------------------ scoreboard (local only; never sent to the model)
@@ -601,7 +601,7 @@
     L.truth = t; const verdict = L.response.is_synthetic ? "synthetic" : "human"; L.correct = verdict === t;
     state.history.push({ source: L.source, verdict, conf: L.response.confidence, truth: t, correct: L.correct, name: L.name });
     localStorage.setItem("li_history", JSON.stringify(state.history.slice(-200)));
-    $("truthMsg").innerHTML = L.correct ? `<span style="color:var(--human)">correct</span>` : `<span style="color:var(--synth)">wrong</span>`;
+    $("truthMsg").innerHTML = L.correct ? `<span style="color:var(--human)">correcto</span>` : `<span style="color:var(--synth)">incorrecto</span>`;
     $("truthH").disabled = true; $("truthS").disabled = true;
     renderBoard();
   }
@@ -619,16 +619,16 @@
   // ------------------------------------------------------------------ test deck: the held-out validation calls
   const deck = { calls: [], i: -1, results: {}, auto: false };
   const base = () => endpointInput.value.replace(/\/detect\/?$/, "");
-  const AUTO_LABEL = "\u25B6\u25B6 auto: listen \u2192 verdict \u2192 next";
+  const AUTO_LABEL = "\u25B6\u25B6 auto: escuchar \u2192 veredicto \u2192 siguiente";
   $("deckLoad").addEventListener("click", loadDeck);
   async function loadDeck() {
     try {
       const r = await fetch(base() + "/validation"); deck.calls = await r.json();
       deck.results = JSON.parse(localStorage.getItem("li_deck") || "{}");
-      $("deckMeta").textContent = `${deck.calls.length} calls, ${(deck.calls.reduce((a, c) => a + c.duration_s, 0) / 60).toFixed(0)} min of audio`;
+      $("deckMeta").textContent = `${deck.calls.length} llamadas, ${(deck.calls.reduce((a, c) => a + c.duration_s, 0) / 60).toFixed(0)} min de audio`;
       renderTiles(); $("now").hidden = false; $("deckPlayer").hidden = false; $("deckBtns").hidden = false;
       select(0);
-    } catch (e) { log("could not load the validation deck: " + e.message, "err"); }
+    } catch (e) { log("no se pudo cargar el mazo de validación: " + e.message, "err"); }
   }
   function renderTiles() {
     const t = $("tiles"); t.innerHTML = "";
@@ -639,17 +639,17 @@
       el.addEventListener("click", () => select(k)); t.appendChild(el);
     });
     const done = Object.keys(deck.results).filter(id => deck.calls.some(c => c.anon_id === id)), ok = done.filter(id => deck.results[id].correct).length;
-    $("deckStats").innerHTML = `<span>judged <b>${done.length}</b> / ${deck.calls.length}</span><span>correct <b>${ok}</b></span><span>accuracy on judged <b>${done.length ? (100 * ok / done.length).toFixed(0) + "%" : "-"}</b></span><span>${done.length ? '<a href="#" id="deckReset" style="color:var(--muted)">reset deck</a>' : ""}</span>`;
+    $("deckStats").innerHTML = `<span>evaluadas <b>${done.length}</b> / ${deck.calls.length}</span><span>correctas <b>${ok}</b></span><span>exactitud en evaluadas <b>${done.length ? (100 * ok / done.length).toFixed(0) + "%" : "-"}</b></span><span>${done.length ? '<a href="#" id="deckReset" style="color:var(--muted)">reiniciar mazo</a>' : ""}</span>`;
     const rs = $("deckReset"); if (rs) rs.addEventListener("click", (e) => { e.preventDefault(); deck.results = {}; localStorage.removeItem("li_deck"); renderTiles(); });
   }
   function select(k) {
     deck.i = (k + deck.calls.length) % deck.calls.length;
     const c = deck.calls[deck.i], r = deck.results[c.anon_id];
-    $("nowTitle").textContent = `Call ${deck.i + 1} of ${deck.calls.length}`;
-    $("nowMeta").textContent = `${c.anon_id}, ${Math.floor(c.duration_s / 60)}:${String(Math.round(c.duration_s % 60)).padStart(2, "0")}, stereo 8 kHz, channel 0 = caller`;
+    $("nowTitle").textContent = `Llamada ${deck.i + 1} de ${deck.calls.length}`;
+    $("nowMeta").textContent = `${c.anon_id}, ${Math.floor(c.duration_s / 60)}:${String(Math.round(c.duration_s % 60)).padStart(2, "0")}, estéreo 8 kHz, canal 0 = llamante`;
     const tag = $("nowTruth");
-    if (r) { tag.textContent = `truth: ${c.label}, verdict ${r.verdict} ${r.correct ? "\u2713" : "\u2717"}`; tag.className = "truth-tag " + c.label; }
-    else { tag.textContent = "truth hidden until the verdict"; tag.className = "truth-tag"; }
+    if (r) { tag.textContent = `verdad: ${c.label}, veredicto ${r.verdict} ${r.correct ? "\u2713" : "\u2717"}`; tag.className = "truth-tag " + c.label; }
+    else { tag.textContent = "verdad oculta hasta el veredicto"; tag.className = "truth-tag"; }
     const pl = $("deckPlayer"); pl.src = `${base()}/validation/${c.anon_id}/audio`; pl.load();
     renderTiles();
   }
@@ -657,14 +657,14 @@
   $("deckNext").addEventListener("click", () => select(deck.i + 1));
   $("deckRandom").addEventListener("click", () => select(Math.floor(Math.random() * deck.calls.length)));
   $("deckPlay").addEventListener("click", () => { const pl = $("deckPlayer"); pl.paused ? pl.play() : pl.pause(); });
-  $("deckPlayer").addEventListener("play", () => $("deckPlay").textContent = "\u275A\u275A pause");
-  $("deckPlayer").addEventListener("pause", () => $("deckPlay").textContent = "\u25B6 play");
+  $("deckPlayer").addEventListener("play", () => $("deckPlay").textContent = "\u275A\u275A pausa");
+  $("deckPlayer").addEventListener("pause", () => $("deckPlay").textContent = "\u25B6 reproducir");
   $("deckAsk").addEventListener("click", () => askDeck());
 
   async function askDeck() {
     const c = deck.calls[deck.i]; if (!c) return;
-    $("deckAsk").disabled = true; $("deckAsk").textContent = "Listening\u2026";
-    $("verdict").innerHTML = `<div class="empty">Call ${deck.i + 1}: segmenting, embedding, scoring\u2026</div>`;
+    $("deckAsk").disabled = true; $("deckAsk").textContent = "Escuchando\u2026";
+    $("verdict").innerHTML = `<div class="empty">Llamada ${deck.i + 1}: segmentando, generando embeddings, puntuando\u2026</div>`;
     try {
       // the very same path as any other audio: fetch the WAV bytes, base64 them, POST /detect. Nothing else is sent.
       const wav = await (await fetch(`${base()}/validation/${c.anon_id}/audio`)).blob();
@@ -672,7 +672,7 @@
       const t0 = performance.now();
       const j = await (await fetch(endpointInput.value, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audio: b64 }) })).json();
       const rt = performance.now() - t0;
-      state.last = { response: j, roundtrip: rt, source: `held-out call ${deck.i + 1}`, name: c.anon_id, truth: null };
+      state.last = { response: j, roundtrip: rt, source: `llamada retenida ${deck.i + 1}`, name: c.anon_id, truth: null };
       state.simulated = false;
       showVerdict(j, rt);
       const verdict = j.is_synthetic ? "synthetic" : "human";
@@ -681,14 +681,14 @@
       setTruth(c.label);   // reveal now that the verdict is in, and count it on the scoreboard
       select(deck.i);
       document.querySelector(".verdict").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    } catch (e) { $("verdict").innerHTML = `<div class="empty err">The detector did not answer: ${e.message}</div>`; }
-    $("deckAsk").disabled = false; $("deckAsk").textContent = "Ask the detector on this call";
+    } catch (e) { $("verdict").innerHTML = `<div class="empty err">El detector no respondió: ${e.message}</div>`; }
+    $("deckAsk").disabled = false; $("deckAsk").textContent = "Preguntar al detector por esta llamada";
   }
 
   // auto mode: play the call for N seconds (or all of it), ask, reveal, move on - until stopped or the deck ends
   $("deckAuto").addEventListener("click", async () => {
     if (deck.auto) { deck.auto = false; $("deckAuto").classList.remove("live"); $("deckAuto").textContent = AUTO_LABEL; $("deckPlayer").pause(); return; }
-    deck.auto = true; $("deckAuto").classList.add("live"); $("deckAuto").textContent = "\u25A0 stop auto";
+    deck.auto = true; $("deckAuto").classList.add("live"); $("deckAuto").textContent = "\u25A0 detener auto";
     let start = deck.i;
     for (let n = 0; n < deck.calls.length && deck.auto; n++) {
       select((start + n) % deck.calls.length);

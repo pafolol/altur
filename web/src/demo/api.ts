@@ -157,7 +157,14 @@ export interface TwilioJob {
 }
 
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(`${BASE}${path}`, init)
+  // A rejected fetch carries the BROWSER's message ("Failed to fetch"), the one user-visible string
+  // this app does not author. Translate it here, where every request already passes through.
+  let r: Response
+  try {
+    r = await fetch(`${BASE}${path}`, init)
+  } catch {
+    throw new Error('No se pudo contactar al servicio de detección')
+  }
   const j = await r.json().catch(() => ({}))
   if (!r.ok || j?.error) throw new Error(j?.error || `${path} → HTTP ${r.status}`)
   return j as T

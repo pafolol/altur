@@ -24,7 +24,13 @@ export const configured = BASE !== ''
 
 /** The server always answers /detect, even on failure, so a non-2xx here is a real transport problem. */
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(`${BASE}${path}`, { headers: { 'Content-Type': 'application/json' }, ...init })
+  let r: Response
+  try {
+    r = await fetch(`${BASE}${path}`, { headers: { 'Content-Type': 'application/json' }, ...init })
+  } catch {
+    // The browser's own "Failed to fetch" is the only user-visible string this file does not author.
+    throw new Error('No se pudo contactar al servicio de detección')
+  }
   if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`)
   return (await r.json()) as T
 }

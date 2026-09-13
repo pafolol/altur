@@ -183,7 +183,7 @@ class TwilioDemo:
                                               from_=self.from_number, to=to)
         except TwilioRestException as exc:
             raise RuntimeError(f"Twilio rejected the call (code {exc.code}): {exc.msg}") from exc
-        job = CallJob(call.sid, to, state="ringing", detail="dialling")
+        job = CallJob(call.sid, to, state="ringing", detail="marcando")
         with self._lock:
             self.jobs[call.sid] = job
         threading.Thread(target=self._run, args=(job, max_seconds), daemon=True).start()
@@ -229,7 +229,7 @@ class TwilioDemo:
         try:
             self.warm()                       # the phone is ringing; the load is free here. See warm().
             recording = self._await_recording(job, max_seconds)
-            job.state, job.detail = "scoring", f"scoring {job.duration_s:.0f} s with {self.ACOUSTIC_MODEL}"
+            job.state, job.detail = "scoring", f"analizando {job.duration_s:.0f} s con {self.ACOUSTIC_MODEL}"
             wav = mono_to_stereo_wav(self._download(recording.sid))
             job.wav = wav
             try:
@@ -266,9 +266,9 @@ class TwilioDemo:
             call = client.calls(job.call_sid).fetch()
             job.call_status = call.status
             if call.status in ("ringing", "queued"):
-                job.state, job.detail = "ringing", "waiting for an answer"
+                job.state, job.detail = "ringing", "esperando respuesta"
             elif call.status == "in-progress":
-                job.state, job.detail = "recording", "the call is live"
+                job.state, job.detail = "recording", "la llamada está en curso"
             elif call.status in ("busy", "no-answer", "failed", "canceled"):
                 raise RuntimeError(f"the call ended without a recording: {call.status}")
             recordings = client.recordings.list(call_sid=job.call_sid, limit=1)
@@ -278,9 +278,9 @@ class TwilioDemo:
                     job.recording_sid = rec.sid
                     job.duration_s = float(rec.duration or 0)
                     return rec
-                job.state, job.detail = "recording", "finishing the recording"
+                job.state, job.detail = "recording", "terminando la grabación"
             elif call.status == "completed":
-                job.detail = "call ended, waiting for the recording to appear"
+                job.detail = "la llamada terminó, esperando la grabación"
             time.sleep(POLL_INTERVAL_S)
         raise TimeoutError("no recording arrived before the deadline")
 

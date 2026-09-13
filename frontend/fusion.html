@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fusion Console — Altur synthetic caller detector</title>
+<title>Consola de fusión — detector de llamantes sintéticos de Altur</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0f14'/%3E%3Cpath d='M4 8h10M4 24h10M14 8c6 0 6 8 10 8M14 24c6 0 6-8 10-8' stroke='%238ee3ff' stroke-width='2.5' fill='none'/%3E%3Ccircle cx='25' cy='16' r='4' fill='%23f2b64b'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,800;1,9..144,300&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -193,32 +193,34 @@
 
   <header>
     <div>
-      <div class="eyebrow">Altur · HackMTY 2026 · fusion layer</div>
-      <h1>Fusion <em>Console</em></h1>
+      <div class="eyebrow">Altur · HackMTY 2026 · capa de fusión</div>
+      <h1>Consola <em>de fusión</em></h1>
       <p class="sub">
-        Independent detectors listen to the same call and vote. The <b>acoustic</b> layer judges how the caller
-        sounds; the <b>behaviour</b> layer never hears a voice at all — it times the conversation; the
-        <b>semantic</b> layer reads what was actually said. Set how much each vote is worth, run the 71 held-out
-        calls, and watch every system's own score and the decision they add up to.
-        <br><a href="/demo">how early it detects →</a> · <a href="/">the single-call inspector</a>
+        Detectores independientes escuchan la misma llamada y votan. La capa <b>acústica</b> juzga cómo suena
+        el llamante; la capa de <b>conversación</b> nunca oye una voz — mide los tiempos de la conversación; la
+        capa <b>semántica</b> lee lo que realmente se dijo. Define cuánto vale cada voto, corre las 71 llamadas
+        retenidas y observa el puntaje propio de cada sistema y la decisión que suman entre todos.
+        <br><a href="/demo">qué tan pronto detecta →</a> · <a href="/">el inspector de una llamada</a>
       </p>
     </div>
-    <div class="status" id="status"><span class="dot"></span>connecting…</div>
+    <div class="status" id="status"><span class="dot"></span>conectando…</div>
   </header>
 
   <!-- =============================================================== 01 the mix -->
   <section class="panel">
-    <span class="num">01 — the mix</span>
-    <h2>What each vote is worth</h2>
+    <span class="num">01 — la mezcla</span>
+    <h2>Cuánto vale cada voto</h2>
     <p class="hint">
-      Two stages, not one. The <b>primary</b> layers — acoustic and behaviour, <b>50 / 50</b> — decide every call.
-      Only when they fail to settle it between them (joint confidence under the gate on the right) is the
-      <b>verifier</b> asked, and it is the one that costs a paid ASR call, a paid LLM call and a couple of seconds
-      of network. On these 71 calls the primaries settle <b>66</b> and the verifier is asked <b>5</b> times.
-      <br>The faders are raw weights and only their ratio matters, so the big number is the share each layer
-      actually holds on the calls it votes on. A layer that is not answering, or has no evidence, hands its share
-      to the others. Every change is sent to the server's combiner, so what you see here is exactly what
-      <code>POST /detect</code> answers — including for the judges. <b>reset</b> puts every knob back.
+      Dos etapas, no una. Las capas <b>primarias</b> — acústica y conversación, <b>50 / 50</b> — deciden cada
+      llamada. Solo cuando no logran resolverla entre ellas (confianza conjunta por debajo del gate de la derecha)
+      se consulta al <b>verificador</b>, que es el que cuesta una petición de ASR de pago, una petición de LLM de
+      pago y un par de segundos de red. En estas 71 llamadas las primarias resuelven <b>66</b> y al verificador se
+      le consulta <b>5</b> veces.
+      <br>Los faders son pesos crudos y solo importa su proporción, así que el número grande es la parte que cada
+      capa realmente tiene en las llamadas en las que vota. Una capa sin respuesta, o sin evidencia, entrega su
+      parte a las demás. Cada cambio se envía al combinador del servidor, así que lo que se ve aquí es exactamente
+      lo que responde <code>POST /detect</code> — incluso para los jueces. <b>restablecer</b> regresa todas las
+      perillas a su lugar.
     </p>
     <div class="desk">
       <div>
@@ -227,43 +229,43 @@
         <div class="mixnote" id="mixnote"></div>
       </div>
       <div class="knobs">
-        <h3>How the votes combine</h3>
+        <h3>Cómo se combinan los votos</h3>
         <div class="knob">
-          <label for="mode">combine</label>
+          <label for="mode">combinar</label>
           <select id="mode">
-            <option value="weighted_mean">average the probabilities</option>
-            <option value="logit_mean">average the log-odds</option>
+            <option value="weighted_mean">promediar las probabilidades</option>
+            <option value="logit_mean">promediar los log-odds</option>
           </select>
           <span class="exp" id="modeExp"></span>
         </div>
         <div class="knob">
-          <label for="abstain">when a layer has no evidence</label>
+          <label for="abstain">cuando una capa no tiene evidencia</label>
           <select id="abstain">
-            <option value="renormalise">drop it, split its weight</option>
-            <option value="neutral">keep it in at 0.5</option>
+            <option value="renormalise">quitarla y repartir su peso</option>
+            <option value="neutral">dejarla dentro en 0.5</option>
           </select>
           <span class="exp" id="abstainExp"></span>
         </div>
         <div class="knob">
-          <label for="thr">decision threshold <span id="thrVal" style="color:var(--paper)"></span></label>
+          <label for="thr">umbral de decisión <span id="thrVal" style="color:var(--paper)"></span></label>
           <input type="range" id="thr" min="0.05" max="0.95" step="0.01" value="0.5">
         </div>
         <div class="knob">
-          <label for="vthr">ask the verifier below <span id="vthrVal" style="color:var(--amber)"></span> confidence</label>
+          <label for="vthr">consultar al verificador por debajo de <span id="vthrVal" style="color:var(--amber)"></span> de confianza</label>
           <input type="range" id="vthr" min="0.5" max="1" step="0.01" value="0.8">
           <span class="exp" id="vthrExp"></span>
         </div>
         <div class="knob check">
           <input type="checkbox" id="useVerifiers" checked>
-          <label for="useVerifiers">use the two-stage gate (off = every layer votes on every call)</label>
+          <label for="useVerifiers">usar el gate de dos etapas (apagado = todas las capas votan en cada llamada)</label>
         </div>
         <div class="knob check">
           <input type="checkbox" id="quality">
-          <label for="quality">scale each weight by how much evidence that layer actually had on the call</label>
+          <label for="quality">escalar cada peso según cuánta evidencia tuvo esa capa en la llamada</label>
         </div>
         <div class="presets">
-          <button class="tiny" data-preset="defaults">reset: 50 / 35 / 15</button>
-          <button class="tiny" data-preset="equal">even split</button>
+          <button class="tiny" data-preset="defaults">restablecer: 50 / 35 / 15</button>
+          <button class="tiny" data-preset="equal">reparto parejo</button>
           <span id="soloPresets"></span>
         </div>
       </div>
@@ -272,25 +274,26 @@
 
   <!-- =============================================================== 02 the batch -->
   <section class="panel">
-    <span class="num">02 — the held-out calls</span>
-    <h2>Every system's score, then the verdict they agree on</h2>
+    <span class="num">02 — las llamadas retenidas</span>
+    <h2>El puntaje de cada sistema y el veredicto en el que coinciden</h2>
     <p class="hint">
-      The 71 validation calls, speaker-disjoint from everything either layer trained on. Each call is scored once
-      per layer and the scores are cached, so moving a fader afterwards re-decides all 71 instantly without a model
-      running. Rows the fusion gets wrong are flagged red. <span class="kbd">hide the truth</span> blanks the labels
-      if you would rather guess along.
+      Las 71 llamadas de validación, con hablantes disjuntos de todo aquello con lo que se entrenó cualquiera de
+      las capas. Cada llamada se puntúa una vez por capa y los puntajes quedan en caché, así que mover un fader
+      después vuelve a decidir las 71 al instante sin correr ningún modelo. Las filas en las que la fusión se
+      equivoca se marcan en rojo. <span class="kbd">ocultar la verdad</span> borra las etiquetas para quien
+      prefiera adivinar.
     </p>
 
     <div class="bar">
-      <button class="primary" id="run">Evaluate the selected calls</button>
-      <button id="selAll">select all 71</button>
-      <button id="selNone">none</button>
-      <button id="selWrong">only the misses</button>
+      <button class="primary" id="run">Evaluar las llamadas seleccionadas</button>
+      <button id="selAll">seleccionar las 71</button>
+      <button id="selNone">ninguna</button>
+      <button id="selWrong">solo los errores</button>
       <span class="spacer"></span>
-      <label class="count"><input type="checkbox" id="hideTruth"> hide the truth</label>
+      <label class="count"><input type="checkbox" id="hideTruth"> ocultar la verdad</label>
       <span class="count" id="counts"></span>
-      <button class="tiny" id="rescore" title="ignore the cache and run the models again">re-score</button>
-      <button class="tiny" id="csv">export CSV</button>
+      <button class="tiny" id="rescore" title="ignorar el caché y volver a correr los modelos">recalcular</button>
+      <button class="tiny" id="csv">exportar CSV</button>
     </div>
     <div class="progress"><i id="progress"></i></div>
 
@@ -299,7 +302,7 @@
     <div class="tablewrap">
       <table>
         <thead><tr id="head"></tr></thead>
-        <tbody id="rows"><tr><td class="empty" colspan="9">Loading the held-out calls…</td></tr></tbody>
+        <tbody id="rows"><tr><td class="empty" colspan="9">Cargando las llamadas retenidas…</td></tr></tbody>
       </table>
     </div>
     <audio id="player" style="display:none"></audio>
@@ -307,15 +310,15 @@
 
   <!-- =============================================================== 03 the live call -->
   <section class="panel">
-    <span class="num">03 — a real phone call</span>
-    <h2>Dial a number and score whoever answers</h2>
+    <span class="num">03 — una llamada telefónica real</span>
+    <h2>Marcar un número y puntuar a quien conteste</h2>
     <p class="hint">
-      Everything above is fed a file. This places an actual call through Twilio, records what the person
-      says, and scores the recording — the only path here where the audio has really been through a
-      telephone network. That is why it uses <b>Robust V2</b> rather than V1: down a real line V1 falls to
-      77.5 % and V2 holds at 100 %, because the recording-pipeline cues V1 keys on do not survive a codec.
-      <br>A Twilio recording is <b>mono</b>, so there is no agent channel and the behaviour layer correctly
-      abstains — the breakdown below shows it rather than hiding it.
+      Todo lo de arriba recibe un archivo. Esto hace una llamada real a través de Twilio, graba lo que dice la
+      persona y puntúa la grabación — la única ruta aquí donde el audio pasó de verdad por una red telefónica.
+      Por eso usa <b>Robust V2</b> y no V1: en una línea real V1 cae a 77.5 % y V2 se mantiene en 100 %, porque
+      las pistas del pipeline de grabación en las que se apoya V1 no sobreviven a un códec.
+      <br>Una grabación de Twilio es <b>mono</b>, así que no hay canal del agente y la capa de conversación se
+      abstiene correctamente — el desglose de abajo lo muestra en vez de ocultarlo.
     </p>
 
     <div id="twUnconfigured" class="unconfigured" hidden></div>
@@ -324,18 +327,18 @@
       <div class="dial">
         <input type="tel" id="twTo" placeholder="+52 81 1234 5678" autocomplete="tel">
         <select id="twSeconds">
-          <option value="15">record 15 s</option>
-          <option value="30" selected>record 30 s</option>
-          <option value="45">record 45 s</option>
+          <option value="15">grabar 15 s</option>
+          <option value="30" selected>grabar 30 s</option>
+          <option value="45">grabar 45 s</option>
         </select>
-        <button class="callbtn" id="twCall">Call and analyse</button>
+        <button class="callbtn" id="twCall">Llamar y analizar</button>
         <span class="count" id="twMeta"></span>
       </div>
       <div class="steps2" id="twSteps">
-        <div data-step="ringing">ringing</div>
-        <div data-step="recording">recording</div>
-        <div data-step="scoring">scoring · robust v2</div>
-        <div data-step="done">verdict</div>
+        <div data-step="ringing">sonando</div>
+        <div data-step="recording">grabando</div>
+        <div data-step="scoring">puntuando · robust v2</div>
+        <div data-step="done">veredicto</div>
       </div>
       <div class="callout" id="twResult" hidden></div>
     </div>
@@ -369,8 +372,8 @@
       const j = await (await fetch(BASE + "/layers")).json();
       S.layers = j.layers;
       S.cfg = j.config;
-      $("status").innerHTML = `<span class="dot ok"></span><b>${j.layers.length} layers</b> loaded`
-        + `<br>acoustic slot: <b>${j.acoustic_model}</b>`
+      $("status").innerHTML = `<span class="dot ok"></span><b>${j.layers.length} capas</b> cargadas`
+        + `<br>modelo acústico: <b>${j.acoustic_model}</b>`
         + `<br><span style="color:var(--muted)">${BASE}</span>`;
       $("mode").value = S.cfg.mode;
       $("abstain").value = S.cfg.on_abstain;
@@ -383,8 +386,8 @@
       explain();
       await loadCalls();
     } catch (e) {
-      $("status").innerHTML = `<span class="dot bad"></span>cannot reach the server<br><span style="color:var(--muted)">${e.message}</span>`;
-      $("rows").innerHTML = `<tr><td class="empty" colspan="9">No server at <b>${BASE}</b>.<br>Start it with <code>python src/server.py</code> and reload.</td></tr>`;
+      $("status").innerHTML = `<span class="dot bad"></span>no se puede contactar al servidor<br><span style="color:var(--muted)">${e.message}</span>`;
+      $("rows").innerHTML = `<tr><td class="empty" colspan="9">No hay servidor en <b>${BASE}</b>.<br>Inícialo con <code>python src/server.py</code> y recarga la página.</td></tr>`;
     }
   }
 
@@ -395,8 +398,8 @@
       const c = CHAN[i % CHAN.length];
       const bits = [];
       if (l.signal) bits.push(l.signal);
-      if (l.model_dir) bits.push(`<b>${l.model_dir}</b>, layer ${l.layer}, ${l.vad} VAD`);
-      if (l.n_features) bits.push(`<b>${l.n_features} timing features</b>, ${l.calibration}`);
+      if (l.model_dir) bits.push(`<b>${l.model_dir}</b>, capa ${l.layer}, VAD ${l.vad}`);
+      if (l.n_features) bits.push(`<b>${l.n_features} características de temporización</b>, ${l.calibration}`);
       const gone = !l.available;
       const verifier = l.role === "verifier";
       return `<div class="strip${gone ? " gone" : ""}${verifier ? " verifier" : ""}" data-key="${l.key}" style="--chan:${c}">
@@ -404,12 +407,12 @@
           <div class="who">
             <span class="name">${l.display}</span>
             <span class="key">${l.key}</span>
-            <span class="rolebadge ${l.role}">${verifier ? "verifier" : "primary"}</span>
-            ${gone ? '<span class="key" style="color:var(--amber);border-color:var(--amber)">not answering</span>' : ""}
+            <span class="rolebadge ${l.role}">${verifier ? "verificador" : "primaria"}</span>
+            ${gone ? '<span class="key" style="color:var(--amber);border-color:var(--amber)">sin respuesta</span>' : ""}
           </div>
-          <p class="desc">${verifier ? `<span style="color:var(--amber)">Only consulted when the primary layers do not settle a call.</span> ` : ""}${l.description}${bits.length ? "<br>" + bits.join(" · ") : ""}
-            ${gone ? `<br><span style="color:var(--amber)">not answering: it abstains on every call and its
-              share is handed to the other layers. ${l.load_error || (l.url ? "nothing at " + l.url : "")}</span>` : ""}</p>
+          <p class="desc">${verifier ? `<span style="color:var(--amber)">Solo se consulta cuando las capas primarias no resuelven una llamada.</span> ` : ""}${l.description}${bits.length ? "<br>" + bits.join(" · ") : ""}
+            ${gone ? `<br><span style="color:var(--amber)">sin respuesta: se abstiene en todas las llamadas y su
+              parte pasa a las demás capas. ${l.load_error || (l.url ? "no hay nada en " + l.url : "")}</span>` : ""}</p>
         </div>
         <div class="fader">
           <div class="readout"><span class="share" id="share-${l.key}">–</span><span class="raw" id="raw-${l.key}"></span></div>
@@ -419,7 +422,7 @@
     }).join("");
     S.layers.forEach((l) => $("w-" + l.key).addEventListener("input", onFader));
     $("soloPresets").innerHTML = S.layers.map((l) =>
-      `<button class="tiny" data-preset="${l.key}">${l.key} only</button>`).join(" ");
+      `<button class="tiny" data-preset="${l.key}">solo ${l.key}</button>`).join(" ");
     paintMix();
   }
 
@@ -443,49 +446,49 @@
       return l.role === "verifier" ? w(l) / total : (primTotal > 0 ? w(l) / primTotal : 0);
     };
     S.layers.forEach((l) => {
-      $("share-" + l.key).textContent = total > 0 ? pct(shareOf(l)) : "off";
-      $("raw-" + l.key).textContent = "weight " + w(l).toFixed(2)
-        + (gateOn && l.role === "verifier" ? " · when asked" : "");
+      $("share-" + l.key).textContent = total > 0 ? pct(shareOf(l)) : "apagada";
+      $("raw-" + l.key).textContent = "peso " + w(l).toFixed(2)
+        + (gateOn && l.role === "verifier" ? " · cuando se consulta" : "");
       const slider = $("w-" + l.key);
       slider.style.setProperty("--pct", (w(l) * 100) + "%");
       slider.closest(".strip").classList.toggle("off", w(l) <= 0);
     });
     $("mixbar").innerHTML = total <= 0
-      ? '<i style="flex:1;background:var(--line);color:var(--paper-dim)">every layer is turned off</i>'
+      ? '<i style="flex:1;background:var(--line);color:var(--paper-dim)">todas las capas están apagadas</i>'
       : S.layers.map((l, i) => {
           const share = shareOf(l);
           if (share <= 0) return "";
           const dashed = gateOn && l.role === "verifier";
           return `<i style="flex:${share};background:${CHAN[i % CHAN.length]}${dashed ? ";opacity:.55" : ""}" `
-            + `title="${l.display}${dashed ? " — only on an escalation" : ""}">`
+            + `title="${l.display}${dashed ? " — solo en una escalación" : ""}">`
             + `${share > .12 ? l.key + " " + pct(share) : ""}</i>`;
         }).join("");
     const on = S.layers.filter((l) => (S.cfg.weights[l.key] ?? 0) > 0);
     const prim = on.filter((l) => l.role !== "verifier");
     const ver = on.filter((l) => l.role === "verifier");
     const gate = $("useVerifiers").checked && ver.length;
-    $("mixnote").textContent = total <= 0 ? "Nothing votes: every call comes back as a non-flag at confidence 0.5."
-      : on.length === 1 ? `Only ${on[0].display} decides — this is the single-model system, not a fusion.`
-      : !gate ? `${on.length} layers vote on every call.`
-      : `${prim.length} primary layer${prim.length === 1 ? " decides" : "s decide"} every call; `
-        + `${ver.map((l) => l.key).join(", ")} only when they do not settle it.`;
+    $("mixnote").textContent = total <= 0 ? "Nada vota: cada llamada regresa sin marca con confianza 0.5."
+      : on.length === 1 ? `Solo decide ${on[0].display} — este es el sistema de un solo modelo, no una fusión.`
+      : !gate ? `${on.length} capas votan en cada llamada.`
+      : `${prim.length} capa${prim.length === 1 ? " primaria decide" : "s primarias deciden"} cada llamada; `
+        + `${ver.map((l) => l.key).join(", ")} solo cuando no la resuelven.`;
   }
 
   function explain() {
     $("modeExp").textContent = $("mode").value === "logit_mean"
-      ? "Log-odds: two layers that agree reinforce each other, so the fused score lands further from 0.5 than either input."
-      : "The literal reading of a 50 / 50 split: the fused score is the weighted mean of the probabilities.";
+      ? "Log-odds: dos capas que coinciden se refuerzan entre sí, así que el puntaje fusionado queda más lejos de 0.5 que cualquiera de las entradas."
+      : "La lectura literal de un reparto 50 / 50: el puntaje fusionado es la media ponderada de las probabilidades.";
     $("abstainExp").textContent = $("abstain").value === "neutral"
-      ? "A layer with nothing to go on still votes 0.5, pulling every verdict toward the middle."
-      : "A layer with nothing to go on is removed from the vote and the others share its weight.";
+      ? "Una capa sin nada en qué basarse igual vota 0.5, jalando cada veredicto hacia el centro."
+      : "Una capa sin nada en qué basarse se saca de la votación y las demás se reparten su peso.";
     $("thrVal").textContent = parseFloat($("thr").value).toFixed(2);
     const v = parseFloat($("vthr").value);
     $("vthrVal").textContent = pct(v);
     const nv = S.layers.filter((l) => l.role === "verifier").map((l) => l.key).join(", ");
-    $("vthrExp").textContent = !nv ? "No verifier layer is registered."
-      : !$("useVerifiers").checked ? `Gate off: ${nv} votes on every call like any other layer.`
-      : `A call the primary layers jointly call at ${pct(v)} confidence or better never reaches ${nv} — `
-        + "which is the one that costs a paid API request and a couple of seconds.";
+    $("vthrExp").textContent = !nv ? "No hay ninguna capa verificadora registrada."
+      : !$("useVerifiers").checked ? `Gate apagado: ${nv} vota en cada llamada como cualquier otra capa.`
+      : `Una llamada que las capas primarias resuelven juntas con ${pct(v)} de confianza o más nunca llega a ${nv} — `
+        + "que es la que cuesta una petición de API de pago y un par de segundos.";
   }
 
   let pushTimer = null;
@@ -538,9 +541,9 @@
 
   // ------------------------------------------------------------------ 02 the calls
   function renderHead() {
-    $("head").innerHTML = '<th style="width:28px"></th><th>#</th><th>call</th><th>truth</th>'
+    $("head").innerHTML = '<th style="width:28px"></th><th>#</th><th>llamada</th><th>verdad</th>'
       + S.layers.map((l, i) => `<th class="chan" style="--chan:${CHAN[i % CHAN.length]}">${l.display}</th>`).join("")
-      + '<th style="border-left:1px solid var(--line)">fused</th><th>verdict</th><th>conf.</th><th></th>';
+      + '<th style="border-left:1px solid var(--line)">fusión</th><th>veredicto</th><th>conf.</th><th></th>';
   }
 
   async function loadCalls() {
@@ -581,7 +584,7 @@
     renderScores();
     const sel = S.calls.filter((c) => c.selected).length;
     const done = S.calls.filter((c) => c.layers).length;
-    $("counts").textContent = `${sel} selected · ${done}/${S.calls.length} scored`;
+    $("counts").textContent = `${sel} seleccionadas · ${done}/${S.calls.length} puntuadas`;
     $("run").disabled = S.running || sel === 0;
   }
 
@@ -590,13 +593,13 @@
     const c = colourOf(layerKey);
     // Three different kinds of "no number": never asked, asked but had no evidence, or turned off.
     if (l.scored === false || (contrib && contrib.consulted === false && contrib.role === "verifier"))
-      return `<td><div class="pcell skip" title="${(l.reason || "the primary layers settled this call").replace(/"/g, "")}">`
-        + '<div class="track"><i></i><span class="mid"></span></div><span class="v">not asked</span></div></td>';
-    if (l.abstained) return `<td><div class="pcell abst" title="${l.reason || "no evidence"}">`
+      return `<td><div class="pcell skip" title="${(l.reason || "las capas primarias resolvieron esta llamada").replace(/"/g, "")}">`
+        + '<div class="track"><i></i><span class="mid"></span></div><span class="v">no consultada</span></div></td>';
+    if (l.abstained) return `<td><div class="pcell abst" title="${l.reason || "sin evidencia"}">`
       + '<div class="track"><i></i><span class="mid"></span></div><span class="v">abst.</span></div></td>';
     const p = l.probability;
     const col = p >= 0.5 ? "var(--synth)" : "var(--human)";
-    return `<td><div class="pcell" title="quality ${l.quality.toFixed(2)} · ${l.latency_ms.toFixed(0)} ms">`
+    return `<td><div class="pcell" title="calidad ${l.quality.toFixed(2)} · ${l.latency_ms.toFixed(0)} ms">`
       + `<div class="track"><i style="width:${(p * 100).toFixed(1)}%;background:${col}"></i><span class="mid"></span></div>`
       + `<span class="v" style="color:${col}">${p.toFixed(3)}</span></div></td>`;
   }
@@ -618,7 +621,7 @@
         ${S.layers.map((l) => pcell((c.layers || []).find((x) => x.key === l.key), l.key,
                                     (f && f.layers || []).find((x) => x.key === l.key))).join("")}
         <td class="fusedcell" style="border-left:1px solid var(--line);color:${fusedCol}">${f ? f.synthetic_probability.toFixed(3) : "–"}</td>
-        <td>${f ? `<span class="tag ${f.is_synthetic ? "synthetic" : "human"}">${f.is_synthetic ? "synthetic" : "human"}</span>` : '<span class="tag muted">not scored</span>'}</td>
+        <td>${f ? `<span class="tag ${f.is_synthetic ? "synthetic" : "human"}">${f.is_synthetic ? "synthetic" : "human"}</span>` : '<span class="tag muted">sin puntuar</span>'}</td>
         <td style="color:var(--muted)">${f ? f.confidence.toFixed(3) : "–"}</td>
         <td class="${blur}">${mark}</td>
       </tr>`;
@@ -664,11 +667,11 @@
       const s = soloAccuracy(l.key, thr);
       const silent = s.n > 0 && s.answered === 0;
       return `<div class="score" style="--chan:${CHAN[i % CHAN.length]}${silent ? ";opacity:.6" : ""}">
-        <div class="lbl">${l.key} alone</div>
+        <div class="lbl">${l.key} sola</div>
         <div class="big">${s.acc === null ? "–" : pct(s.acc)}</div>
         <div class="det">${silent
-            ? `<b>no answer</b> on any of ${s.n} calls<br>${l.available ? "abstained" : "service not answering"}`
-            : `<b>${s.ok}</b>/${s.answered} correct${s.abst ? ` · ${s.abst} abstained` : ""}`}</div>
+            ? `<b>sin respuesta</b> en ninguna de las ${s.n} llamadas<br>${l.available ? "se abstuvo" : "servicio sin respuesta"}`
+            : `<b>${s.ok}</b>/${s.answered} correctas${s.abst ? ` · ${s.abst} abstenciones` : ""}`}</div>
       </div>`;
     });
     let tn = 0, fp = 0, fn = 0, tp = 0, brier = 0, undecided = 0;
@@ -681,18 +684,19 @@
     const n = scored.length;
     const acc = n ? (tp + tn) / n : null;
     cards.push(`<div class="score fused">
-      <div class="lbl">fused verdict</div>
+      <div class="lbl">veredicto fusionado</div>
       <div class="big">${acc === null ? "–" : pct(acc)}</div>
-      <div class="det"><b>${tp + tn}</b>/${n} calls · Brier ${n ? (brier / n).toFixed(3) : "–"}
-        <br>${fp} false alarm${fp === 1 ? "" : "s"} · ${fn} missed${undecided ? ` · ${undecided} undecided` : ""}</div>
+      <div class="det"><b>${tp + tn}</b>/${n} llamadas · Brier ${n ? (brier / n).toFixed(3) : "–"}
+        <br>${fp} ${fp === 1 ? "falsa alarma" : "falsas alarmas"} · ${fn} ${fn === 1 ? "omitida" : "omitidas"}${undecided ? ` · ${undecided} sin decidir` : ""}</div>
     </div>`);
     $("scores").innerHTML = cards.join("");
-    $("footer").innerHTML = n === 0 ? "Nothing scored yet."
-      : `Scored ${n} of ${S.calls.length} held-out calls · combine <b>${$("mode").value}</b> ·
-         threshold ${thr.toFixed(2)} · weights ${S.layers.map((l) => `${l.key} ${(S.cfg.weights[l.key] ?? 0).toFixed(2)}`).join(", ")}.
-         <br>The validation split is speaker-disjoint from training, but it was looked at while both layers were
-         developed — a weighting that happens to be perfect here is a description of these 71 calls, not a promise
-         about the hidden test set. The default even split is the setting that assumes nothing.`;
+    $("footer").innerHTML = n === 0 ? "Todavía no hay nada puntuado."
+      : `Puntuadas ${n} de ${S.calls.length} llamadas retenidas · combinación <b>${$("mode").value}</b> ·
+         umbral ${thr.toFixed(2)} · pesos ${S.layers.map((l) => `${l.key} ${(S.cfg.weights[l.key] ?? 0).toFixed(2)}`).join(", ")}.
+         <br>La partición de validación tiene hablantes disjuntos del entrenamiento, pero se revisó mientras se
+         desarrollaban ambas capas — un peso que resulta perfecto aquí es una descripción de estas 71 llamadas, no
+         una promesa sobre el conjunto de prueba oculto. El reparto parejo por defecto es la configuración que no
+         asume nada.`;
   }
 
   // ------------------------------------------------------------------ running the batch
@@ -701,7 +705,7 @@
     if (!todo.length) { await recombine(); return; }
     S.running = true;
     $("run").classList.add("busy");
-    $("run").textContent = "scoring…";
+    $("run").textContent = "puntuando…";
     render();
     for (let i = 0; i < todo.length; i++) {
       const c = todo[i];
@@ -714,12 +718,12 @@
         c.layers = null;
       }
       $("progress").style.width = pct((i + 1) / todo.length);
-      $("run").textContent = `scoring… ${i + 1}/${todo.length}`;
+      $("run").textContent = `puntuando… ${i + 1}/${todo.length}`;
       if (i % 3 === 2 || i === todo.length - 1) render();
     }
     S.running = false;
     $("run").classList.remove("busy");
-    $("run").textContent = "Evaluate the selected calls";
+    $("run").textContent = "Evaluar las llamadas seleccionadas";
     $("progress").style.width = "0";
     await recombine();
   }
@@ -770,13 +774,13 @@
     if (!ready) {
       const missing = (cfg.missing || []).map((m) => `<code>${m}</code>`).join(", ");
       $("twUnconfigured").innerHTML = !cfg.model_available
-        ? `The <code>${cfg.acoustic_model}</code> model is not on disk, so a live call could not be scored.`
-        : `Live calling is off: set ${missing || "the Twilio variables"} and restart the server. `
-          + `Everything else on this page works without it.`;
+        ? `El modelo <code>${cfg.acoustic_model}</code> no está en disco, así que una llamada en vivo no se podría puntuar.`
+        : `Las llamadas en vivo están apagadas: configura ${missing || "las variables de Twilio"} y reinicia el servidor. `
+          + `Todo lo demás en esta página funciona sin eso.`;
       return;
     }
     $("twTo").value = "";
-    $("twMeta").textContent = `from ${cfg.from} · scored with ${cfg.acoustic_model}`;
+    $("twMeta").textContent = `desde ${cfg.from} · puntuada con ${cfg.acoustic_model}`;
   }
 
   function twStep(state) {
@@ -792,29 +796,29 @@
     box.hidden = false;
     if (job.state === "failed") {
       twStep("");
-      box.innerHTML = `<div class="callerr"><b>The call did not produce a verdict.</b><br>${job.error}</div>`;
+      box.innerHTML = `<div class="callerr"><b>La llamada no produjo un veredicto.</b><br>${job.error}</div>`;
       return;
     }
     if (job.state !== "done") {
       twStep(job.state);
       box.innerHTML = `<div class="sub2">${job.detail || job.state} · ${job.elapsed_s.toFixed(0)} s`
-        + `${job.call_status ? " · twilio says <b>" + job.call_status + "</b>" : ""}</div>`;
+        + `${job.call_status ? " · twilio dice <b>" + job.call_status + "</b>" : ""}</div>`;
       return;
     }
     twStep("done");
     const v = job.verdict;
     const cls = v.is_synthetic ? "synthetic" : "human";
     const rows = v.layers.map((l) => {
-      const state = !l.scored ? "not asked"
-        : l.abstained ? `abstained — ${l.reason || "no evidence"}`
+      const state = !l.scored ? "no consultada"
+        : l.abstained ? `se abstuvo — ${l.reason || "sin evidencia"}`
         : `p = ${l.probability.toFixed(3)}`;
       return `<div style="display:flex;gap:10px;justify-content:space-between;padding:3px 0">`
         + `<span style="color:var(--paper-dim)">${l.display}</span>`
         + `<span class="mono" style="color:${l.abstained || !l.scored ? "var(--muted)" : (l.probability >= .5 ? "var(--synth)" : "var(--human)")}">${state}</span></div>`;
     }).join("");
     box.innerHTML = `<div class="big ${cls}">${v.is_synthetic ? "SYNTHETIC" : "HUMAN"}</div>`
-      + `<div class="sub2">confidence ${v.confidence.toFixed(3)} · fused p ${v.synthetic_probability.toFixed(3)} · `
-      + `${job.duration_s.toFixed(0)} s recorded from ${job.to} · acoustic model <b>${v.acoustic_model}</b></div>`
+      + `<div class="sub2">confianza ${v.confidence.toFixed(3)} · p fusionada ${v.synthetic_probability.toFixed(3)} · `
+      + `${job.duration_s.toFixed(0)} s grabados desde ${job.to} · modelo acústico <b>${v.acoustic_model}</b></div>`
       + `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px;font-size:12px">${rows}</div>`
       + (v.note ? `<div class="sub2">${v.note}</div>` : "");
   }
@@ -827,7 +831,7 @@
     if (job.state === "done" || job.state === "failed") {
       clearInterval(twPoll); twPoll = null;
       $("twCall").disabled = false; $("twCall").classList.remove("busy");
-      $("twCall").textContent = "Call and analyse";
+      $("twCall").textContent = "Llamar y analizar";
       if (job.state === "done") loadCalls();       // the demo call joins the held-out table's server cache
     }
   }
@@ -836,9 +840,9 @@
     const to = $("twTo").value.trim();
     if (!to) { $("twTo").focus(); return; }
     const b = $("twCall");
-    b.disabled = true; b.classList.add("busy"); b.textContent = "calling…";
+    b.disabled = true; b.classList.add("busy"); b.textContent = "llamando…";
     $("twResult").hidden = false;
-    $("twResult").innerHTML = '<div class="sub2">placing the call…</div>';
+    $("twResult").innerHTML = '<div class="sub2">haciendo la llamada…</div>';
     try {
       const r = await fetch(BASE + "/twilio/call", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -850,7 +854,7 @@
       twPoll = setInterval(() => twTick(job.call_sid), 1500);
     } catch (e) {
       $("twResult").innerHTML = `<div class="callerr">${e.message}</div>`;
-      b.disabled = false; b.classList.remove("busy"); b.textContent = "Call and analyse";
+      b.disabled = false; b.classList.remove("busy"); b.textContent = "Llamar y analizar";
     }
   });
 

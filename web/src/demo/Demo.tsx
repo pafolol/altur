@@ -162,40 +162,40 @@ export function Demo() {
   return (
     <div className="demo-shell">
       <header className="top">
-        <a className="brand" href="/" aria-label="ISISI home"><b>ISISI</b></a>
-        <span className="product-name">VOICE DETECTION</span>
+        <a className="brand" href="/" aria-label="Inicio ISISI"><b>ISISI</b></a>
+        <span className="product-name">DETECCIÓN DE VOZ</span>
         <div className="controls">
-          <a className="nav-link" href="/">Back</a>
+          <a className="nav-link" href="/">Volver</a>
         </div>
       </header>
 
-      {!configured && <div className="error">Detection service unavailable.</div>}
+      {!configured && <div className="error">Servicio de detección no disponible.</div>}
       {error && <div className="error">{error}</div>}
 
       <main>
         <section className="mode-panel">
-          <div className="seg" aria-label="Demo mode">
-            <button aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Live</button>
-            <button aria-pressed={mode === 'prerecorded'} onClick={() => setMode('prerecorded')}>Upload</button>
+          <div className="seg" aria-label="Modo de demostración">
+            <button aria-pressed={mode === 'live'} onClick={() => setMode('live')}>En vivo</button>
+            <button aria-pressed={mode === 'prerecorded'} onClick={() => setMode('prerecorded')}>Subir</button>
           </div>
           {mode === 'live' ? (
             <div className="live-controls">
-              <div className="mode-state">{capture === 'waiting' ? 'Listening' : capture === 'recording' ? 'Listening' : capture === 'analysing' ? 'Analyzing' : 'Microphone'}</div>
+              <div className="mode-state">{capture === 'waiting' ? 'Escuchando' : capture === 'recording' ? 'Escuchando' : capture === 'analysing' ? 'Analizando' : 'Micrófono'}</div>
               <div className="capture-action">
-                {capture === 'idle' || capture === 'analysing' ? <button className="btn primary record" onClick={startLive} disabled={!configured || capture === 'analysing'}><span />{capture === 'analysing' ? 'Analyzing' : 'Start'}</button>
-                  : <button className="btn record stop" onClick={() => captureStop.current?.()}><span />Stop</button>}
+                {capture === 'idle' || capture === 'analysing' ? <button className="btn primary record" onClick={startLive} disabled={!configured || capture === 'analysing'}><span />{capture === 'analysing' ? 'Analizando' : 'Iniciar'}</button>
+                  : <button className="btn record stop" onClick={() => captureStop.current?.()}><span />Detener</button>}
                 <div className="capture-meter"><i style={{ width: `${Math.max(meter, captureProgress) * 100}%` }} /></div>
-                <span className="mono small">{capture === 'recording' ? `${(captureProgress * 5).toFixed(1)} / 5.0 s` : capture === 'waiting' ? 'Listening' : ''}</span>
+                <span className="mono small">{capture === 'recording' ? `${(captureProgress * 5).toFixed(1)} / 5.0 s` : capture === 'waiting' ? 'Escuchando' : ''}</span>
               </div>
             </div>
           ) : (
             <div className="upload-controls">
-              <div className="file-name">{fileName || 'WAV audio'}</div>
+              <div className="file-name">{fileName || 'Audio WAV'}</div>
               <div className="row">
-                <label className="btn primary upload">{busy ? 'Analyzing' : 'Choose WAV'}<input type="file" accept="audio/wav,.wav" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; if (file) { setFileName(file.name); void analyseBlob(file) } }} /></label>
+                <label className="btn primary upload">{busy ? 'Analizando' : 'Elegir WAV'}<input type="file" accept="audio/wav,.wav" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; if (file) { setFileName(file.name); void analyseBlob(file) } }} /></label>
                 <button className="btn quiet" onClick={() => setShowBase64((value) => !value)}>Base64</button>
               </div>
-              {showBase64 && <div className="base64-box"><textarea value={base64} onChange={(e) => setBase64(e.target.value)} placeholder="Paste WAV base64" /><button className="btn primary" disabled={busy || !base64.trim()} onClick={analyseText}>Analyze</button></div>}
+              {showBase64 && <div className="base64-box"><textarea value={base64} onChange={(e) => setBase64(e.target.value)} placeholder="Pega el WAV en base64" /><button className="btn primary" disabled={busy || !base64.trim()} onClick={analyseText}>Analizar</button></div>}
             </div>
           )}
           <CallerCta
@@ -210,13 +210,13 @@ export function Demo() {
         <CallStage scene={scene} final={final} time={time} playing={playing} liveSpeaking={liveSpeaking} meter={meter} capture={capture} phone={phone} />
 
         {audioUrl && <section className="transport-card">
-          <button className="play" aria-label={playing ? 'Pause' : 'Play'} onClick={() => { const audio = audioRef.current; if (!audio) return; playing ? audio.pause() : void audio.play() }}>{playing ? 'Ⅱ' : '▶'}</button>
-          <div className="track"><Waveform values={scene?.envelope ?? []} progress={scene ? time / scene.duration_s : 0} /><input aria-label="Playback position" type="range" min="0" max={scene?.duration_s ?? audioRef.current?.duration ?? 5} step="0.01" value={time} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value); setTime(Number(e.target.value)) }} /></div>
+          <button className="play" aria-label={playing ? 'Pausar' : 'Reproducir'} onClick={() => { const audio = audioRef.current; if (!audio) return; playing ? audio.pause() : void audio.play() }}>{playing ? 'Ⅱ' : '▶'}</button>
+          <div className="track"><Waveform values={scene?.envelope ?? []} progress={scene ? time / scene.duration_s : 0} /><input aria-label="Posición de reproducción" type="range" min="0" max={scene?.duration_s ?? audioRef.current?.duration ?? 5} step="0.01" value={time} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value); setTime(Number(e.target.value)) }} /></div>
           <span className="mono small">{clock(time)} / {clock(scene?.duration_s ?? audioRef.current?.duration ?? 5)}</span>
           <audio ref={audioRef} src={audioUrl} onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />
         </section>}
       </main>
-      <footer><span>ISISI</span><span>Voice authenticity</span></footer>
+      <footer><span>ISISI</span><span>Autenticidad de voz</span></footer>
     </div>
   )
 }
@@ -236,17 +236,17 @@ function CallStage({ scene, final, time, playing, liveSpeaking, meter, capture, 
   const confidence = probability == null ? null : synthetic ? probability : 1 - probability
   const listening = !!phone || capture === 'waiting' || capture === 'recording' || (!!scene && time < scene.duration_s)
   const tone = probability == null ? '' : synthetic ? 'synthetic' : 'human'
-  const state = phone?.label ?? (capture === 'analysing' ? 'Analyzing' : listening ? 'Listening' : 'Ready')
+  const state = phone?.label ?? (capture === 'analysing' ? 'Analizando' : listening ? 'Escuchando' : 'Listo')
 
   return <section className={`stage ${tone}`}>
     <div className="stage-in">
       <Person kind="caller" speaking={callerSpeaking} level={callerLevel} verdict={tone || undefined}
-              stateLabel={phone?.live ? 'On the call' : undefined} />
+              stateLabel={phone?.live ? 'En la llamada' : undefined} />
       <div className="system">
         <div className={`wire ${listening ? 'busy' : ''}`} />
         <div className={`verdict ${tone}`} aria-live="polite">
           {probability == null ? <><div className={`status-mark ${listening ? 'active' : ''}`} /><div className="waiting">{state}</div></>
-            : <><div className="word">{synthetic ? 'Synthetic' : 'Human'}</div><div className="confidence"><b>{pct(confidence)}</b> confidence</div></>}
+            : <><div className="word">{synthetic ? 'Synthetic' : 'Human'}</div><div className="confidence"><b>{pct(confidence)}</b> de confianza</div></>}
           {capture === 'recording' && <LiveWave level={meter} />}
         </div>
       </div>
@@ -264,17 +264,17 @@ function Person({ kind, speaking, level, verdict, stateLabel }: { kind: 'agent' 
   return <div className={`who ${kind} ${speaking ? 'speaking' : ''} ${verdict ?? ''}`}>
     <div className="avatar" style={{ transform, boxShadow: shadow }}>
       <div className="ring" />
-      {kind === 'agent' ? <AgentIcon /> : <img src={CALLER_IMAGE_URL} alt="Caller" />}
+      {kind === 'agent' ? <AgentIcon /> : <img src={CALLER_IMAGE_URL} alt="Llamante" />}
     </div>
-    <div className="name">{kind === 'agent' ? 'Altur Agent' : 'Caller'}</div>
-    <div className="state">{stateLabel ?? (speaking ? 'Speaking' : '')}</div>
+    <div className="name">{kind === 'agent' ? 'Agente Altur' : 'Llamante'}</div>
+    <div className="state">{stateLabel ?? (speaking ? 'Hablando' : '')}</div>
   </div>
 }
 
 function AgentIcon() { return <svg viewBox="0 0 80 80" fill="none" aria-hidden><rect x="13" y="19" width="54" height="45" rx="16" stroke="currentColor" strokeWidth="3"/><path d="M40 19V10M31 48h18M27 36h.1M53 36h.1" stroke="currentColor" strokeWidth="5" strokeLinecap="round"/><circle cx="40" cy="8" r="4" fill="currentColor"/></svg> }
 
 function AnalysisDetails({ final, scene }: { final: Scene['final']; scene: Scene | null }) {
-  const labels: Record<string, string> = { acoustic: 'Voice', behaviour: 'Conversation', semantic: 'Content' }
+  const labels: Record<string, string> = { acoustic: 'Voz', behaviour: 'Conversación', semantic: 'Contenido' }
   const layers = final.layers.filter((layer) => layer.scored && ['acoustic', 'behaviour'].includes(layer.key))
   const duration = scene?.duration_s ?? 5
   // The fusion metrics only exist when the fusion prefixes were walked; a live phone call skips them (they
@@ -285,11 +285,11 @@ function AnalysisDetails({ final, scene }: { final: Scene['final']; scene: Scene
   return <div className="analysis-details">
     <div className="audio-facts">
       <span><small>Audio</small><b>{duration.toFixed(1)} s</b></span>
-      <span><small>Caller speech</small><b>{speech.toFixed(1)} s</b></span>
+      <span><small>Voz del llamante</small><b>{speech.toFixed(1)} s</b></span>
     </div>
     <div className="signal-facts">
       {layers.map((layer) => {
-        if (layer.abstained) return <span key={layer.key}><small>{labels[layer.key] ?? layer.display}</small><b className="neutral">No signal</b></span>
+        if (layer.abstained) return <span key={layer.key}><small>{labels[layer.key] ?? layer.display}</small><b className="neutral">Sin señal</b></span>
         const synthetic = layer.probability >= .5
         return <span key={layer.key}><small>{labels[layer.key] ?? layer.display}</small><b className={synthetic ? 'synthetic' : 'human'}>{synthetic ? 'Synthetic' : 'Human'} · {pct(synthetic ? layer.probability : 1 - layer.probability)}</b></span>
       })}
@@ -314,9 +314,9 @@ function LiveWave({ level }: { level: number }) {
 function InstantResult({ final, latencyMs }: { final: Scene['final']; latencyMs: number | null }) {
   const tone = final.is_synthetic ? 'synthetic' : 'human'
   return <section className={`instant-result ${tone}`} aria-live="polite">
-    <div className="instant-verdict"><span>Result</span><strong>{final.is_synthetic ? 'Synthetic' : 'Human'}</strong></div>
-    <div className="instant-stat"><span>Confidence</span><b>{pct(final.confidence)}</b></div>
-    <div className="instant-stat"><span>Voice latency</span><b>{latencyMs == null ? '--' : `${Math.round(latencyMs)} ms`}</b></div>
+    <div className="instant-verdict"><span>Resultado</span><strong>{final.is_synthetic ? 'Synthetic' : 'Human'}</strong></div>
+    <div className="instant-stat"><span>Confianza</span><b>{pct(final.confidence)}</b></div>
+    <div className="instant-stat"><span>Latencia de voz</span><b>{latencyMs == null ? '--' : `${Math.round(latencyMs)} ms`}</b></div>
   </section>
 }
 
@@ -332,12 +332,12 @@ function InstantResult({ final, latencyMs }: { final: Scene['final']; latencyMs:
 // API for the recording, so there is no webhook, no tunnel and no public URL to fail on stage.
 
 const PHONE_PHASE: Record<TwilioJob['state'], { label: string; live: boolean }> = {
-  queued: { label: 'Calling you', live: false },
-  ringing: { label: 'Ringing', live: false },
-  recording: { label: 'Speak now', live: true },
-  scoring: { label: 'Analyzing', live: false },
-  done: { label: 'Analyzing', live: false },      // held until the scene it explains is in hand
-  failed: { label: 'Call failed', live: false },
+  queued: { label: 'Te estamos llamando', live: false },
+  ringing: { label: 'Sonando', live: false },
+  recording: { label: 'Habla ahora', live: true },
+  scoring: { label: 'Analizando', live: false },
+  done: { label: 'Analizando', live: false },      // held until the scene it explains is in hand
+  failed: { label: 'La llamada falló', live: false },
 }
 
 function PhoneIcon() {
@@ -372,7 +372,7 @@ function CallerCta({ onScene, onPhase, onStart, onError }: {
   useEffect(() => {
     if (!job) return
     if (job.state === 'failed') {
-      onError(job.error || 'the call ended without a recording'); onPhase(null); setJob(null); return
+      onError(job.error || 'la llamada terminó sin grabación'); onPhase(null); setJob(null); return
     }
     onPhase(PHONE_PHASE[job.state])
     if (job.state !== 'done') return
@@ -391,21 +391,21 @@ function CallerCta({ onScene, onPhase, onStart, onError }: {
     finally { setStarting(false) }
   }
 
-  const unavailable = !configured ? 'Detection service unavailable'
+  const unavailable = !configured ? 'Servicio de detección no disponible'
     : config === null ? ''
-    : !config.configured ? `Needs ${config.missing.join(', ')}`
-    : !config.has_default_to ? 'Needs TWILIO_TO_NUMBER'
+    : !config.configured ? `Falta ${config.missing.join(', ')}`
+    : !config.has_default_to ? 'Falta TWILIO_TO_NUMBER'
     : ''
   const busy = starting || !!job
-  const label = job ? PHONE_PHASE[job.state].label : starting ? 'Calling you' : 'Try being the caller'
+  const label = job ? PHONE_PHASE[job.state].label : starting ? 'Te estamos llamando' : 'Sé tú el llamante'
 
   return <div className="caller-cta">
     <button className={`btn caller${busy ? ' busy' : ''}`} onClick={start} disabled={!!unavailable || busy}
-            title={unavailable || `Altur phones ${config?.default_to ?? 'you'} and scores your own voice`}>
+            title={unavailable || `Altur te llama a ${config?.default_to ?? 'tu número'} y analiza tu propia voz`}>
       <PhoneIcon />{label}
     </button>
     <span className="caller-note">
-      {unavailable || (busy ? `Calling ${config?.default_to ?? ''}` : 'We call you · Robust V2')}
+      {unavailable || (busy ? `Llamando a ${config?.default_to ?? ''}` : 'Te llamamos · Robust V2')}
     </span>
   </div>
 }
