@@ -28,6 +28,37 @@ PREDICTIONS_DIR = OUTPUTS_DIR / "predictions"
 REPORTS_DIR = PROJECT_ROOT / "reports"
 EXPERIMENT_LOG = REPORTS_DIR / "EXPERIMENT_LOG.md"
 
+
+# ----------------------------------------------------------------------------- .env
+def load_env(path=PROJECT_ROOT / ".env"):
+    """
+    Read KEY=VALUE lines from the repository's .env, if there is one.
+
+    No dependency, on purpose - this is the same few lines the semantic module uses, and adding
+    python-dotenv to run a demo is not a trade worth making. `setdefault` means a real environment
+    variable always wins over the file, so `set SEMANTIC_URL=... && python src/server.py` still
+    overrides whatever the file says.
+
+    The file holds credentials (Twilio, and any service URL you do not want to retype) and is
+    git-ignored. `.env.example` lists every variable that does anything.
+    """
+    if not path.exists():
+        return {}
+    loaded = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+            loaded[key] = value
+    return loaded
+
+
+load_env()
+
 # Hugging Face cache inside the project (keeps the models next to the code and off the C: drive).
 os.environ.setdefault("HF_HOME", str(PROJECT_ROOT / ".cache" / "huggingface"))
 

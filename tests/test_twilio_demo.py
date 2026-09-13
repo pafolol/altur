@@ -232,3 +232,32 @@ def test_the_demo_call_is_logged_exactly_once():
     assert job.logged is False
     job.logged = True
     assert job.to_dict()["logged"] is True
+
+
+# --------------------------------------------------------------------------- the .env loader
+
+
+def test_load_env_reads_pairs_and_skips_comments_and_junk(tmp_path, monkeypatch):
+    import config
+    for k in ("A_KEY", "B_KEY", "QUOTED"):
+        monkeypatch.delenv(k, raising=False)
+    f = tmp_path / ".env"
+    f.write_text('# a comment\nA_KEY=one\n\nnot a pair\nB_KEY = two \nQUOTED="three"\n', encoding="utf-8")
+    loaded = config.load_env(f)
+    assert loaded == {"A_KEY": "one", "B_KEY": "two", "QUOTED": "three"}
+    import os
+    assert os.environ["A_KEY"] == "one" and os.environ["QUOTED"] == "three"
+
+
+def test_a_real_environment_variable_always_beats_the_file(tmp_path, monkeypatch):
+    """So `set X=... && python src/server.py` still overrides whatever the file says."""
+    import config, os
+    monkeypatch.setenv("OVERRIDE_ME", "from-the-shell")
+    (tmp_path / ".env").write_text("OVERRIDE_ME=from-the-file\n", encoding="utf-8")
+    config.load_env(tmp_path / ".env")
+    assert os.environ["OVERRIDE_ME"] == "from-the-shell"
+
+
+def test_a_missing_env_file_is_not_an_error(tmp_path):
+    import config
+    assert config.load_env(tmp_path / "nope.env") == {}
