@@ -23,8 +23,8 @@ body{
 ::selection{background:var(--color-glint);color:var(--color-abyss)}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--color-glint);outline-offset:4px;border-radius:3px}
-h1,h2,h3{color:var(--color-foam);font-family:var(--font-display);font-weight:400;text-transform:uppercase;
-  letter-spacing:0;line-height:1}
+h1,h2,h3{color:var(--color-foam);font-family:var(--font-display);font-weight:700;text-transform:uppercase;
+  letter-spacing:-.022em;line-height:.98}
 h1{font-size:clamp(2.2rem,6.2vw,4.6rem)}
 h2{font-size:clamp(1.75rem,4.2vw,3.1rem)}
 h3{font-size:1.2rem;letter-spacing:.01em}
@@ -132,7 +132,7 @@ html:not(.reduced-motion) .stage:has(.tapzone:not([disabled]):active) .lock3d{tr
 .name .stick{display:grid;place-items:center}
 .stagebox{position:relative;z-index:2;width:100%;padding:0 var(--gut);text-align:center}
 .wordmark{display:flex;justify-content:center;align-items:baseline;gap:clamp(3px,.9vw,14px);
-  font-family:var(--font-display);font-size:clamp(3.4rem,15vw,12.5rem);font-weight:400;letter-spacing:0;line-height:.9;
+  font-family:var(--font-display);font-size:clamp(3.4rem,15vw,12.5rem);font-weight:800;letter-spacing:-.035em;line-height:.88;
   color:rgba(230,240,251,.14);will-change:transform}
 /* each letter rises as the hand-off scroll lands (1.1s after the tap), staggered 70ms; each is a jump to its word */
 .wordmark button{display:block;cursor:pointer;transform-origin:50% 100%;transition:color .5s,text-shadow .5s;
@@ -280,4 +280,42 @@ html.reduced-motion .meaning{height:auto}
 html.reduced-motion .mean{position:relative;opacity:1;transform:none;margin-bottom:34px}
 html.reduced-motion .wordmark button{color:var(--color-foam)}
 html.reduced-motion .hint,html.reduced-motion .taphint{display:none}
+}
+
+/* ---------------------------------------------------------------- the carrier chart
+   Horizontal grouped bars: the category labels are long Spanish phrases, which vertical bars
+   cannot hold. Thin marks, rounded data-ends, a 2px gap between the pair, a recessive track,
+   a legend, and the value printed on every bar so identity never depends on colour alone.
+   The same numbers are repeated in a screen-reader table. */
+.chart{margin:clamp(44px,7vh,78px) 0 0;padding:0;border:0}
+.chart-legend{display:flex;flex-wrap:wrap;gap:10px 26px;margin:0 0 clamp(26px,3.4vh,40px);
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:var(--color-body)}
+.chart-legend span{display:inline-flex;align-items:center;gap:9px}
+.chart-legend i{width:11px;height:11px;border-radius:3px;flex:none}
+
+.chart-rows{display:grid;gap:clamp(20px,2.6vh,30px)}
+.chart-row{display:grid;grid-template-columns:minmax(190px,22ch) 1fr;gap:clamp(14px,2vw,30px);align-items:center}
+.chart-label b{display:block;font-family:var(--font-sans);font-size:.98rem;font-weight:600;
+  color:var(--color-foam);line-height:1.25}
+.chart-label span{display:block;margin-top:3px;font-family:var(--font-mono);font-size:10px;
+  letter-spacing:.05em;color:var(--color-dim)}
+
+.chart-bars{display:grid;gap:2px}
+.chart-bar{display:flex;align-items:center;gap:10px;height:18px;
+  background:linear-gradient(to right,var(--color-edge),var(--color-edge)) left/100% 1px no-repeat}
+.chart-bar i{display:block;height:100%;border-radius:0 4px 4px 0;min-width:2px;
+  transition:width .9s cubic-bezier(.05,.7,.2,1)}
+.chart-bar b{font-family:var(--font-mono);font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+
+.chart-note{margin-top:clamp(28px,3.6vh,44px);max-width:70ch;font-size:.95rem;color:var(--color-dim)}
+.chart-note b{color:var(--color-body);font-weight:600}
+
+/* the table view the chart owes a screen reader, kept out of the visual layout */
+.chart-table{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+@media (max-width:620px){
+  .chart-row{grid-template-columns:1fr;gap:9px}
+  .chart-label b{font-size:.92rem}
 }

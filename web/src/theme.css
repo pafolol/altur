@@ -9,10 +9,12 @@
   --color-glint: #7FC4FF;  /* the system's colour: light, detection, the burst */
   --color-edge: rgba(191, 217, 242, .13);
 
-  /* Titles and anything that asks for attention: a serif in caps at leading 1 (mijares.mx).
+  /* Titles and anything that asks for attention: a GEOMETRIC sans in caps at leading 1 -
+     Jost is the Futura revival, so single-storey a, circular o, and real punch at display
+     sizes. Set it heavy and tight; at weight 400 a geometric face reads timid, not confident.
      Labels: mono, the way that site sets its parentheticals. Running text: a neutral
      grotesque in the Apple register. */
-  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-display: 'Jost', 'Futura', 'Century Gothic', system-ui, sans-serif;
   --font-sans: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
   --font-mono: 'DM Mono', ui-monospace, monospace;
 }

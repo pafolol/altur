@@ -6,6 +6,7 @@ import { ActLock } from './scenes/ActLock'
 import { ActName } from './scenes/ActName'
 import { Signals } from './sections/Signals'
 import { TrapDemo } from './sections/TrapDemo'
+import { Carrier } from './sections/Carrier'
 import { Pipeline } from './sections/Pipeline'
 import { Endpoint } from './sections/Endpoint'
 import { Closing } from './sections/Closing'
@@ -33,6 +34,8 @@ export default function App() {
             <Signals />
             <div className="rule" />
             <TrapDemo />
+            <div className="rule" />
+            <Carrier />
             <div className="rule" />
             <Pipeline />
             <div className="rule" />
