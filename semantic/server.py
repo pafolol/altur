@@ -20,9 +20,14 @@ import sklearn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-import config, asr, features, rubric
-from model import vector, CONFIG, provenance
-from vad import vad, SR
+try:
+    from . import config, asr, features, rubric
+    from .model import vector, CONFIG, provenance
+    from .vad import vad, SR
+except ImportError:  # standalone `uvicorn server:app` run from semantic/
+    import config, asr, features, rubric
+    from model import vector, CONFIG, provenance
+    from vad import vad, SR
 
 BUDGET_S = float(os.environ.get("BUDGET_S", 2.8))      # deadline for the network calls (Scribe, Gemini)
 HARD_S = float(os.environ.get("HARD_S", 3.0))          # backstop: the pipeline must have degraded by BUDGET_S; this only catches bugs
@@ -36,7 +41,17 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)   # one JSON line per request, not one per upstream call
 config.require_keys()
 _pkl = pathlib.Path(__file__).parent / "model.pkl"
-MODELS = pickle.load(open(_pkl, "rb"))
+
+
+class _ModelUnpickler(pickle.Unpickler):
+    """Read NumPy 2 model artifacts in the NumPy 1 runtime still used by some demo machines."""
+
+    def find_class(self, module, name):
+        return super().find_class(module.replace("numpy._core", "numpy.core"), name)
+
+
+with open(_pkl, "rb") as _model_file:
+    MODELS = _ModelUnpickler(_model_file).load()
 _prov = provenance()
 _mismatch = {k: (MODELS.get(k), _prov[k]) for k in ("rubric_model", "prompt_id", "scribe_model", "chunk_s", "f4", "agent", "dims") if MODELS.get(k) != _prov[k]}
 if _mismatch:

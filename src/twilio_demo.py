@@ -57,6 +57,8 @@ class CallJob:
     verdict: dict = None
     error: str = ""
     logged: bool = False           # the call log records a finished demo call exactly once
+    wav: bytes = None              # the stereo-converted recording, served back for playback
+    scene: dict = None             # the visualiser's payload for it (envelopes, regions, running verdict)
 
     def to_dict(self):
         return {"call_sid": self.call_sid, "to": _mask(self.to), "state": self.state,
@@ -129,6 +131,9 @@ class TwilioDemo:
         d = {"configured": self.configured, "missing": self.missing(),
              "acoustic_model": self.ACOUSTIC_MODEL,
              "from": _mask(self.from_number), "default_to": _mask(self.default_to),
+             # The demo's one button calls TWILIO_TO_NUMBER and asks for no number, so the page has to
+             # know whether that variable is set - `configured` alone does not say, it is optional there.
+             "has_default_to": bool(self.default_to),
              "model_available": (config.MODELS_DIR / self.ACOUSTIC_MODEL / "meta.json").exists()}
         try:
             import twilio  # noqa: F401
@@ -189,13 +194,54 @@ class TwilioDemo:
             job = self.jobs.get(call_sid)
         return job.to_dict() if job else None
 
+    def warm(self):
+        """
+        Load and exercise the live-call fusion while the phone is still ringing.
+
+        The acoustic slot here is Robust V2, which nothing else in the server uses, so without this the
+        FIRST live call pays its backbone load *after* the caller has hung up - and that load is inside
+        the layer's own measured latency, so it reaches the page as "voice latency: 7 s" and reads as the
+        model being slow when it was only cold. A ringing phone is seconds of wall clock that are being
+        spent anyway, so the load is free there.
+
+        PRIMARIES ONLY. The semantic verifier is a paid API call, and warming up is not a reason to spend
+        one on a test tone. It is never loaded here; the first call that actually needs it will load it.
+        """
+        try:
+            det = self.fusion()
+            t = np.arange(4 * SAMPLE_RATE, dtype=np.float32) / SAMPLE_RATE
+            tone = (0.18 * np.sin(2 * np.pi * 220 * t) * 32767).astype("<i2")
+            out = io.BytesIO()
+            with wave.open(out, "wb") as w:
+                w.setnchannels(2)
+                w.setsampwidth(2)
+                w.setframerate(SAMPLE_RATE)
+                w.writeframes(np.stack([tone, np.zeros_like(tone)], axis=1).tobytes())
+            wav = out.getvalue()
+            for layer in det.layers:
+                if det.config.role_of(layer) == "primary":
+                    layer.score(wav)          # never raises: Layer.score() turns a failure into an abstention
+        except Exception:
+            return                            # a warm-up that fails costs latency, never a call
+
     # ------------------------------------------------------------------ the background job
     def _run(self, job, max_seconds):
         try:
+            self.warm()                       # the phone is ringing; the load is free here. See warm().
             recording = self._await_recording(job, max_seconds)
             job.state, job.detail = "scoring", f"scoring {job.duration_s:.0f} s with {self.ACOUSTIC_MODEL}"
             wav = mono_to_stereo_wav(self._download(recording.sid))
-            result = self.fusion().score(wav)
+            job.wav = wav
+            try:
+                import latency
+                job.scene = latency.scene(self.fusion(), wav, run_fusion_prefixes=False)
+                final = job.scene["final"]
+                result = {"is_synthetic": final["is_synthetic"], "confidence": final["confidence"],
+                          "synthetic_probability": final["probability"], "note": final.get("note", ""),
+                          "layers": final["layers"]}
+            except Exception as exc:                   # the verdict stands even if the scene cannot be drawn
+                job.scene = {"error": f"{type(exc).__name__}: {exc}"}
+                result = self.fusion().score(wav)
             job.verdict = {
                 "is_synthetic": result["is_synthetic"],
                 "confidence": result["confidence"],

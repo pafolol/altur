@@ -1,11 +1,22 @@
 # The backend, wired to the real detector
 
+> ## ⚠ SUPERSEDED — this is not the backend you run
+>
+> **`python src/server.py` is the one backend.** It serves `/detect`, all three detection layers in its
+> own process (the semantic one included, imported rather than reached over HTTP), the demo, the live
+> Twilio call, the admin panel's `/api/*` and the pages. This directory is a *second* FastAPI app that
+> answers the same `/detect` from the same `src/fusion.py`, kept because it came in with the
+> `backend-esteban` merge and because its serving hygiene — the request-size limit, `/ready`, request ids,
+> the typed error contract — is worth keeping a record of. **Nothing starts it**, no documented workflow
+> needs it, and running it on port 8000 would collide with the real server. The rest of this file is how
+> it worked, unchanged.
+
 Merged from the `backend-esteban` branch. It was written as a serving shell around a detector that did
 not exist yet; the detector exists now, and **`DETECTOR_MODE=fusion` points this shell at it**.
 
 ```
 cd backend
-DETECTOR_MODE=fusion SEMANTIC_URL=http://127.0.0.1:8100/detect uvicorn app.main:app --port 8000
+DETECTOR_MODE=fusion uvicorn app.main:app --port 8001
 ```
 
 `GET /fusion` reports which detector is actually answering and what it is made of. `GET /ready` returns
@@ -50,17 +61,20 @@ mock is not a real detection), but it is why `.env.example` now ships `DETECTOR_
 
 ## Which service should judges hit?
 
-Either, now — they answer the same verdict from the same `src/fusion.py`:
+`python src/server.py`. Both answer the same verdict from the same `src/fusion.py`, but only one of them
+is the deliverable:
 
 | | `python src/server.py` | `uvicorn app.main:app` with `DETECTOR_MODE=fusion` |
 |---|---|---|
 | verdict | the real fusion | the same real fusion |
-| request size limit, `/ready`, request ids, typed errors | no | **yes** |
-| the fusion console and the inspector pages | **yes** | no |
+| the semantic verifier | **in this process** | only over HTTP, via `SEMANTIC_URL` |
+| the demo, the live Twilio call, the pages | **yes** | no |
 | the admin panel's `/api/*` and the call log | **yes** | no |
+| request size limit, `/ready`, request ids, typed errors | no | **yes** |
 
-If the judges get one URL and nothing else, this backend is the better-behaved front door. If the demo
-matters, `src/server.py` is the one with the pages. Running both is fine — they are the same detector.
+The last row is the only thing this shell still has that the real server does not, and it is why the
+directory is kept rather than deleted: those four guards are worth porting into `src/server.py` if the
+endpoint is ever exposed to anything but a judge on a LAN. Until then, nothing here runs.
 
 ## Still no database here
 

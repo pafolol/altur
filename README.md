@@ -25,7 +25,7 @@ stereo 8 kHz WAV (base64 at the API)
   |     confident?  |p - 0.5| puts it at >= 80 % -> THAT IS THE VERDICT. Stop. Nothing else is asked.
   |     unsure?     they disagree, or neither is committed -> escalate:
   |
-  +-- SEMANTIC LAYER - what the caller SAYS  (separate service, HTTP, PAID, ~2.6 s)   VERIFIER   w 0.15
+  +-- SEMANTIC LAYER - what the caller SAYS  (in this same process, PAID, ~2.6 s)     VERIFIER   w 0.15
   |     agent channel -> trap bank;  caller channel -> VAD -> ElevenLabs Scribe -> words + logprobs
   |     -> text features + a 7-dimension Gemini rubric -> logistic, Platt-calibrated -> P(synthetic)
   |
@@ -66,23 +66,26 @@ py -3.11 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-**One `.env`, at the repository root.** `copy .env.example .env` and fill in what you need. All three
-services read that same file, each with its own dependency-free loader:
+**One `.env` at the repository root, and ONE backend that reads it.** `copy .env.example .env` and fill in
+what you need.
 
-| service | run with | loader |
-| --- | --- | --- |
-| the fusion server, the pages, `/api/*` | `python src/server.py` | `config.load_env()` |
-| the semantic verifier | `uvicorn server:app` in `semantic/` | `semantic/config.py` |
-| the backend serving shell | `uvicorn app.main:app` in `backend/` | `backend/app/config.py` |
+```
+python src/server.py      :: detection, the semantic verifier, the demo, Twilio, /api/* and the pages
+```
 
-`.env.example` lists every variable and what it does. Precedence is **environment variable > a
-service-local `.env` > the root `.env`**, so a single run can still override one -
-`set SEMANTIC_URL=... && python src/server.py` - and a service can still keep its own file
-(`semantic/.env`, `backend/.env`) if you ever want its configuration separate.
+**There is no second process to start.** All three detection layers run inside that one: the semantic layer
+is imported (`LocalSemanticLayer` in `src/fusion.py`), not reached over HTTP, so there is no port 8100, no
+second interpreter and nothing to keep alive beside the server. `backend/` is a second serving shell that
+came in with the `backend-esteban` merge and is kept for lineage - it is **not** what you run, and
+`backend/INTEGRATION.md` says so at the top.
 
-All of it is optional. With no `.env` at all the fusion server runs, the semantic verifier reports
-itself unavailable and its 15 % goes to the other two layers, and the live-call panel replaces itself
-with a note naming the variables it needs.
+`.env.example` lists every variable and what it does. A real environment variable beats the file, so a
+single run can still override one. `semantic/.env` is still read, but only for variables the root `.env`
+does not already set - keep the credentials in the root file unless you have a reason not to.
+
+All of it is optional. With no `.env` at all the server runs, the semantic verifier reports itself
+unavailable and its 15 % goes to the other two layers, and the live-call button replaces itself with a note
+naming the variables it needs.
 
 The dataset stays where the challenge put it: `D:\altur\hackmty26` (manifest + turns) and
 `D:\altur\altur-challenge-audio\audio` (unzipped WAVs); paths are in `config.py`. The telephone-channel
@@ -113,30 +116,19 @@ xcopy /E /I D:/altur/hackmty26/turns          D:/altur/acoustic/behaviour/turns
 
 All three are git-ignored. The fusion itself never needs them - it is given WAV bytes like any caller.
 
-**The semantic layer** lives in `semantic/`, merged from the `fusion` branch, and runs as its **own
-service on its own interpreter**. That is not incidental: it needs an ElevenLabs key and a Gemini key, it is
-the only layer that leaves the machine, its budget is a network deadline rather than compute — and it
-requires **Python 3.12+** (it uses PEP 701 f-strings), which the 3.11 venv here cannot parse. The HTTP
-boundary is what lets the two live in one repository without one dictating the other's runtime.
+**The semantic layer** lives in `semantic/` and is imported by `src/server.py`. It uses the same process as
+the acoustic and behaviour layers; no semantic server or port 8100 is required. It still needs ElevenLabs
+and Gemini keys because those two upstream API calls are its signal, and it degrades to an abstention when
+the keys or model are unavailable.
 
 ```
-cd semantic
-set UV_PYTHON_INSTALL_DIR=%CD%\.python
-uv venv --python 3.13 .venv
-uv pip install --python .venv\Scripts\python.exe -r requirements.txt
-copy .env.example .env                     :: ELEVENLABS_API_KEY, GEMINI_API_KEY - it will not start without them
-.venv\Scripts\python.exe -m uvicorn server:app --host 127.0.0.1 --port 8100
+copy .env.example .env                     :: fill ELEVENLABS_API_KEY and GEMINI_API_KEY
+python src/server.py
 ```
 
-Then point the fusion at it — `python src/server.py --semantic-url http://127.0.0.1:8100/detect`, or set
-`SEMANTIC_URL`. Port 8100 rather than its default 8000 so it does not collide with this server.
-
-It answers `GET /health` and `POST /detect {"audio": "<base64 wav>"}` with
-`{"is_synthetic", "confidence", "score", "abstain", "reason", "used", "ms"}`. `score` is the calibrated
-P(synthetic) and is what the fusion reads; this service sets `confidence` equal to it, but a service
-following the challenge's own reading of "confidence" would return P(the verdict is right), and averaging
-that would be wrong. `used` names the path that answered — `"f4+f5"` (Scribe + rubric), `"f4"` (text
-features only, recorded at half evidence quality) or `"abstain"`.
+The local runtime returns calibrated P(synthetic) to the fusion. Its `used` detail names the path that
+answered: `"f4+f5"` (Scribe + rubric), `"f4"` (text features only, recorded at half evidence quality) or
+`"abstain"`. `--semantic-url URL` remains an explicit development override for a remote implementation.
 
 **If nothing answers, the layer abstains on every call and its 15 % goes to the other two** — the console
 greys the channel out with the reason, and no verdict is blocked or delayed waiting for it.
@@ -188,8 +180,8 @@ mklink /J D:/altur/hackmty26/audio                   D:/altur/altur-challenge-au
 | Step | Command | What it does |
 | --- | --- | --- |
 | 17 | `python src/evaluate_fusion.py` | scores the 71 held-out calls through **every** layer, sweeps the weights, writes the cache the console reads (~60 s) |
-| 18 | `python src/server.py --port 8000` | `/detect` answers with the fused verdict; `/fusion` is the console |
-| 18b | `python src/server.py --semantic-url http://127.0.0.1:8100/detect` | ... with the semantic service attached (start it first, see Setup) |
+| 18 | `python src/server.py --port 8000` | the whole backend: `/detect` answers with the fused verdict, all three layers in this one process; `/fusion` is the console |
+| 18b | `python src/server.py --semantic-url http://HOST/detect` | ... with the semantic layer answered by a remote deployment instead of in-process. A development override; nothing needs it |
 | 18c | `cd semantic && .venv/Scripts/python holdout_val.py` | train-only fit applied to val -> `scores_val_trainfit.csv` (caches only, no API calls) |
 
 Smoke tests: add `--fraction 0.05` to steps 4 and 8, `--limit 10` to step 10, `--limit 6 --skip-stress` to
@@ -201,6 +193,24 @@ behaviour module, `cd behaviour && python -m pytest tests -q` (41 tests).
 
 ```
 python src/server.py --port 8000
+```
+
+The judge sends one complete call per request using this exact JSON contract:
+
+```json
+{"call_id":"call_...","audio_base64":"<complete WAV as base64>","sample_rate":8000,"channels":2}
+```
+
+`POST /detect` returns HTTP 200 with a boolean verdict and calibrated confidence:
+
+```json
+{"is_synthetic":true,"confidence":0.99}
+```
+
+Run the official checker from the challenge repository before judging:
+
+```powershell
+python scripts\check_endpoint.py --url http://127.0.0.1:8000/detect --split val --n 20
 ```
 
 Use **`http://127.0.0.1:8000`**, not `localhost` - uvicorn binds IPv4 only, and on Windows `localhost`
@@ -226,7 +236,7 @@ python src/predict.py path\to\call.wav                    # the acoustic layer o
 python src/evaluate_fusion.py                             # the 71 held-out calls + the weight sweep
 python src/server.py --acoustic-model robust_v2           # put V2 in the acoustic slot instead of V1
 python src/server.py --weight acoustic=0.7                # start somewhere other than 50 / 35 / 15
-python src/server.py --semantic-url http://127.0.0.1:8100/detect   # attach the semantic service
+python src/server.py                                      # acoustic + behaviour + semantic, one process
 python src/client_demo.py call.wav --url http://127.0.0.1:8000/detect
 ```
 
@@ -240,7 +250,7 @@ python src/client_demo.py call.wav --url http://127.0.0.1:8000/detect
 | `GET /validation`, `/validation/{id}/score`, `/validation/scores` | the 71 held-out calls, scored server-side from disk and cached |
 | `POST /detect_all`, `GET /models` | unchanged: the two ACOUSTIC models side by side, for the inspector's A/B panel |
 | `GET /api/calls`, `/api/stats`, `/api/health` | the admin panel's `IsisiApi`, backed by the call log. `POST /detect` also takes an optional `"queue"` label |
-| `GET /twilio/config`, `POST /twilio/call`, `GET /twilio/status/{sid}` | the live-call demo: dial a number, record the answer, score it with **Robust V2**. Reports itself unconfigured rather than failing |
+| `GET /twilio/config`, `POST /twilio/call`, `GET /twilio/status/{sid}`, `/twilio/recording/{sid}`, `/twilio/analysis/{sid}` | the live-call demo: dial a number - **none given means `TWILIO_TO_NUMBER`**, which is what the demo's one button sends - record the answer, score it with **Robust V2**, then hand back the recording and its scene so the page can play the call and show the working. Reports itself unconfigured rather than failing |
 | `GET /demo/call/{id}`, `/demo/benchmark` | the latency timeline for one held-out call, and the same measurement across all 71 |
 
 From Python:
@@ -303,27 +313,36 @@ synthetic and only commits to human after 8.4 s of speech. And on **V2** two hum
 panel instead of hiding it, because it is the number that decides whether an early answer is worth acting
 on.
 
-### The live call (panel 03 on the console)
+### The live call — "Try being the caller"
 
 Everything else here is fed a file. This dials a real number through Twilio, records what the person
 says, and scores the recording — the only path where the audio has genuinely been through a telephone
 network rather than a simulation of one.
+
+**On the demo page (`/demo/` in `web/`) it is one button, at the side of the mode bar.** It asks for no
+phone number: the server dials `TWILIO_TO_NUMBER` from the project `.env`, so the person demonstrating
+picks up their own phone and becomes the caller under test. The button is the status readout while the
+call runs — *Calling you → Ringing → Speak now → Analyzing* — and when the recording lands, the finished
+call replaces the scene and plays back with the verdict, the waveform and every layer's own score, exactly
+like an uploaded one. No phone number is ever typed into the page, and none is ever sent back to it: the
+job the page polls carries only the last four digits.
 
 **It scores with Robust V2, not V1**, and that is the point rather than a detail: down a real line V1
 falls to 77.5 % while V2 holds at 100 %, because the recording-pipeline cues V1 keys on — the digitally
 silent noise floor, the loudness, the band edge — do not survive a codec. `reports/TELEPHONE_ROBUSTNESS_REPORT.pdf`
 is the whole argument, and a live call is the one place it can be demonstrated instead of simulated.
 
-Three lines in the project `.env` (see Setup), then start the server:
+Four lines in the project `.env` (see Setup), then start the server:
 
 ```
 TWILIO_ACCOUNT_SID=AC...
 TWILIO_AUTH_TOKEN=...
 TWILIO_PHONE_NUMBER=+1...            # the Twilio number it calls FROM
+TWILIO_TO_NUMBER=+52...              # the number it calls TO - what the demo's one button dials
 ```
 
 ```
-python src/server.py --port 8000     :: then open /fusion and use panel 03
+python src/server.py --port 8000     :: then open /demo/ and press "Try being the caller"
 ```
 
 ```
@@ -337,12 +356,13 @@ call carries inline TwiML with no `action`, and the recording is collected by po
 for recordings belonging to that call. Nothing has to reach in.
 
 **A Twilio recording is mono**, so there is no agent channel, and the behaviour layer correctly abstains —
-there is no interaction to time. The panel shows that rather than hiding it: a live call is decided by the
-acoustic layer, with the semantic verifier consulted only if the acoustic layer is unsure. Demo calls are
-written to the same call log as everything else, under the queue `twilio`.
+there is no interaction to time. The page shows that rather than hiding it, as **No signal** beside the
+layer's name: a live call is decided by the acoustic layer, with the semantic verifier consulted only if
+the acoustic layer is unsure. Demo calls are written to the same call log as everything else, under the
+queue `twilio`, so they appear in the admin panel beside the uploads.
 
-Without the three variables the panel replaces itself with a note naming exactly what is missing, and the
-rest of the page is unaffected. `twilio` is the only optional dependency in `requirements.txt`.
+Without those variables the button disables itself and says exactly which one is missing, and the rest of
+the page is unaffected. `twilio` is the only optional dependency in `requirements.txt`.
 
 ### Adding a third layer
 
@@ -350,7 +370,8 @@ rest of the page is unaffected. `twilio` is the only optional dependency in `req
 `_score()` returning a `LayerResult`, give it a `default_weight`, then add it to `build_layers()`. The
 endpoints, the console, the batch evaluation and the CSV export all iterate over the registry, so the new
 layer arrives in each of them with its own column, its own fader, its own preset button and its own share of
-the vote. `SemanticLayer` is the worked example: about sixty lines, and it reaches a service over HTTP.
+the vote. `LocalSemanticLayer` is the worked in-process example; `SemanticLayer` is its optional remote
+transport.
 
 A layer that raises is caught and abstains, so it can never take the verdict down with it - there is a test
 for exactly that. A layer that fails to load is not retried for 30 s, so a batch of 71 calls does not pay a
@@ -388,7 +409,7 @@ and the report cannot drift apart.
 
 ```
 config.py                       every setting (paths, segmentation, backbones, classifier, endpoint contract)
-.env / .env.example             THE project configuration: API keys, SEMANTIC_URL, TWILIO_*, backend modes
+.env / .env.example             THE project configuration: semantic API keys and TWILIO_*
 src/audio.py                    decode, caller channel, VAD, chunking, resampling, loudness normalisation
 src/dataset.py                  manifest, splits, turn files
 src/inspect_dataset.py          stage 1: dataset analysis + shortcut checks
@@ -397,7 +418,7 @@ src/train_classifier.py         stage 3: layer probe + classifiers (identical fo
 src/calibrate.py                probability calibration
 src/benchmark.py                stage 4: the controlled comparison
 src/predict.py                  acoustic inference (AcousticDetector, predict_acoustic)
-src/server.py                   the HTTP surface: /detect, /detect_layers, /fusion/*, /validation/*, both pages
+src/server.py                   the only backend: detection, demo, Twilio, admin and frontend routes
 src/build_report.py             the specialist's report
 
 src/phone_channel.py            THE TELEPHONE CHANNEL: exact G.711, ffmpeg codecs, RTP loss, drift, AGC, alignment
@@ -410,7 +431,7 @@ src/evaluate_models.py          four models x six domains, AUC-vs-threshold anal
 src/report_robust.py            the telephone-robustness report
 
 src/fusion.py                   THE FUSION LAYER: Layer, LayerResult, FusionConfig, combine(), the registry
-                                AcousticLayer (0.50) + BehaviourLayer (0.35) + SemanticLayer (0.15, over HTTP)
+                                AcousticLayer (0.50) + BehaviourLayer (0.50) + LocalSemanticLayer (verifier)
 src/evaluate_fusion.py          all 71 held-out calls through every layer + the weight sweep
 frontend/index.html             the single-call inspector (GET /)
 frontend/fusion.html            the fusion console (GET /fusion)
@@ -428,12 +449,12 @@ src/twilio_demo.py              THE LIVE-CALL DEMO: dial a number, record the an
 src/latency.py                  DETECTION LATENCY: what the model would have said after each chunk
 frontend/demo.html              the latency visualiser (GET /demo)
 
-backend/                        THE SERVING SHELL, merged from backend-esteban - now wired to the fusion
-backend/INTEGRATION.md          DETECTOR_MODE=fusion, what changed in app/, and which service to expose
-backend/app/fusion_bridge.py    the whole seam: this backend's validated audio -> src/fusion.py
+backend/                        a SECOND serving shell, merged from backend-esteban - NOT what you run
+backend/INTEGRATION.md          why it is superseded by src/server.py, and what it was for
+backend/app/fusion_bridge.py    the seam it used to reach src/fusion.py through
 
 semantic/                       THE SEMANTIC LAYER, merged from the fusion branch and not edited
-semantic/server.py              its own FastAPI service - runs on its own Python 3.13 venv, see Setup
+semantic/server.py              its FastAPI app - IMPORTED by src/fusion.py, not started as a service
 semantic/model.pkl              its fitted logistic + Platt calibration
 semantic/cache/                 Scribe transcripts + the Gemini rubric for every call (no API calls to re-run)
 semantic/scores_semantico.csv   its own out-of-fold scores, a random 5-fold over all 353 calls

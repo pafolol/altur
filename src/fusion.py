@@ -11,7 +11,7 @@ One call in, one verdict out, but the verdict is a weighted vote of independent 
          |-- confident enough (>= verify_threshold, 0.80)?  -> that IS the verdict; stop here
          |
          `-- unsure? consult the VERIFIERS and re-combine:
-             -> VERIFIER semantic  (Scribe + Gemini rubric, over HTTP, paid, ~2.6 s)     -> p, quality, abstain?   w 0.15
+             -> VERIFIER semantic  (Scribe + Gemini rubric, paid, ~2.6 s)                -> p, quality, abstain?   w 0.15
       -> threshold                                                                        -> {"is_synthetic", "confidence"}
 
 Everything that varies is data, not code:
@@ -243,7 +243,12 @@ def combine(results, cfg, weights_by_key=None):
                               "abstained": bool(r.abstained), "reason": r.reason,
                               "role": roles.get(r.key, "primary"), "scored": bool(r.scored),
                               "weight": raw, "effective_weight": effective, "share": 0.0,
-                              "consulted": bool(r.scored)})
+                              "consulted": bool(r.scored),
+                              # How long THIS layer took. It is the layer's own measurement and it has to
+                              # survive combine(), or every consumer that reads the verdict rather than the
+                              # raw LayerResults - the scene payload, the live-call verdict, the call log -
+                              # has to show a 0 it cannot stand behind.
+                              "latency_ms": round(float(r.latency_ms or 0.0), 1)})
 
     primaries = [c for c in contributions if c["role"] == "primary"]
     verifiers = [c for c in contributions if c["role"] == "verifier"]
@@ -541,9 +546,9 @@ class SemanticLayer(Layer):
            agent's own words) + F5, a 7-dimension Gemini rubric
         -> logistic regression, Platt-calibrated -> P(synthetic)
 
-    The module is reached over HTTP rather than imported, and deliberately so: it needs two third-party
-    API keys, it is the only layer that leaves the machine, and its latency is a network budget rather
-    than a model's. It already exposes exactly the contract this needs -
+    This class is the optional remote transport. The default registry uses LocalSemanticLayer below so
+    the semantic runtime lives in the primary server process. A remote deployment still exposes exactly
+    the contract this transport needs:
 
         POST /detect {"audio": "<base64 stereo 8 kHz wav>"}
           -> {"is_synthetic", "confidence", "score", "abstain", "reason", "used", "ms"}
@@ -552,8 +557,8 @@ class SemanticLayer(Layer):
     `used` says which path answered: "f4+f5" (Scribe + rubric), "f4" (text features only, the degraded
     path when the rubric times out) or "abstain".
 
-    Point it at the service with SEMANTIC_URL, or pass url=. If nothing answers, the layer abstains and
-    the fusion renormalises the remaining weights - it never blocks a verdict.
+    Pass url= to use it. If nothing answers, the layer abstains and the fusion renormalises the remaining
+    weights - it never blocks a verdict.
     """
     key = "semantic"
     display = "Semantic (what the caller says)"
@@ -564,11 +569,13 @@ class SemanticLayer(Layer):
     # The degraded path is worth less than the full one: the rubric is most of the signal.
     QUALITY_BY_PATH = {"f4+f5": 1.0, "f4": 0.5}
 
-    def __init__(self, url=None, timeout=30.0, root=None):
+    def __init__(self, url=None, timeout=10.0, root=None):
         super().__init__()
         import os
         self.url = url or os.getenv("SEMANTIC_URL", "http://127.0.0.1:8100/detect")
-        self.timeout = float(os.getenv("SEMANTIC_TIMEOUT_S", timeout))
+        # The judge has a hard 30 s budget for the entire request. Primaries run first, so a verifier
+        # must never be allowed to consume that whole budget by itself.
+        self.timeout = min(float(os.getenv("SEMANTIC_TIMEOUT_S", timeout)), 10.0)
         self.root = Path(root or config.PROJECT_ROOT / "semantic")
         self._health = None
         self._oof_cache = None
@@ -672,6 +679,49 @@ class SemanticLayer(Layer):
         return d
 
 
+class LocalSemanticLayer(SemanticLayer):
+    """Run the semantic detector in this process; no localhost service or second backend is required."""
+
+    def __init__(self, timeout=10.0, root=None):
+        super().__init__(url="local", timeout=timeout, root=root)
+        self.runtime = None
+
+    def available(self):
+        if not (self.root / "model.pkl").exists():
+            return False
+        try:
+            from semantic import config as semantic_config
+            return all(semantic_config.keys_present().values())
+        except (ImportError, SyntaxError):
+            return False
+
+    def _load(self):
+        if not self.available():
+            raise RuntimeError("local semantic model or ELEVENLABS_API_KEY/GEMINI_API_KEY is unavailable")
+        from semantic import server as semantic_server
+        self.runtime = semantic_server
+
+    def _score(self, wav_bytes):
+        import base64
+        import time
+        t0 = time.perf_counter()
+        stats = {}
+        x = self.runtime.decode(base64.b64encode(wav_bytes).decode("ascii"))
+        p, path, reason = self.runtime.score_call(x, t0 + self.runtime.BUDGET_S, stats)
+        p = float(np.clip(p, 0.0, 1.0))
+        abstained = path == "abstain"
+        return LayerResult(
+            self.key, self.display, p, 0.0 if abstained else self.QUALITY_BY_PATH.get(path, 0.5),
+            abstained, reason if abstained else "",
+            details={"used": path, "service_ms": int((time.perf_counter() - t0) * 1000),
+                     "transport": "in_process", **stats})
+
+    def info(self):
+        return {"transport": "in_process", "timeout_s": self.timeout,
+                "signal": "the words themselves - what the caller volunteers, repeats, repairs and grounds",
+                "held_out_scores": len(self._oof()), "root": str(self.root)}
+
+
 # --------------------------------------------------------------------------- the registry
 #
 # THIS is the list to extend. A new detection system becomes a full citizen of the endpoint, the page
@@ -680,10 +730,11 @@ class SemanticLayer(Layer):
 # The order here is the order of the columns, the faders and the report.
 #
 def build_layers(acoustic_model="wav2vec2_spanish", include_unavailable=False, semantic_url=None):
+    semantic = SemanticLayer(semantic_url) if semantic_url else LocalSemanticLayer()
     layers = [
         AcousticLayer(acoustic_model, display=_acoustic_display(acoustic_model)),   # primary, 0.50
         BehaviourLayer(),                                                           # primary, 0.50
-        SemanticLayer(semantic_url),                                                # verifier, 0.15
+        semantic,                                                                   # verifier, 0.15
     ]
     return [l for l in layers if include_unavailable or l.available()]
 

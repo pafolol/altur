@@ -14,8 +14,12 @@ from sklearn.metrics import roc_auc_score, accuracy_score
 from sklearn.model_selection import cross_val_predict
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-import asr, features, rubric
-from vad import read_wav, vad
+try:
+    from . import asr, features, rubric
+    from .vad import read_wav, vad
+except ImportError:  # standalone scripts run from semantic/
+    import asr, features, rubric
+    from vad import read_wav, vad
 
 ROOT = pathlib.Path(__file__).parent
 PROXY = ("words_per_turn", "n_words")     # turn-count / call-length proxies: behaviour-module territory (PLAN §1.1), see AUDIT.md

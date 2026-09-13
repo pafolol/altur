@@ -8,9 +8,12 @@ annotate(words_by_channel) -> the transcript text Gemini sees ([AGENTE t] / [CLI
 import io, json, os, pathlib, sys, threading, time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import numpy as np
-from vad import compact, to_original, write_wav, SR
-
-import config  # noqa: F401  (.env loader)
+try:
+    from .vad import compact, to_original, write_wav, SR
+    from . import config  # noqa: F401  (.env loader)
+except ImportError:  # standalone scripts run from semantic/
+    from vad import compact, to_original, write_wav, SR
+    import config  # noqa: F401  (.env loader)
 
 URL = "https://api.elevenlabs.io/v1/speech-to-text"
 MODEL = os.environ.get("SCRIBE_MODEL", "scribe_v1")   # model.pkl records the model it was trained with; changing it requires `asr.py all` + `rubric.py all` + `model.py`

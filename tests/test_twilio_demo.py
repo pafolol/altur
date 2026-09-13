@@ -104,6 +104,47 @@ def test_it_reports_exactly_which_variables_are_missing(monkeypatch):
     assert d["acoustic_model"] == "robust_v2"     # the live-call path uses the phone-hardened model
 
 
+def test_the_page_can_tell_whether_there_is_a_number_to_call(monkeypatch):
+    """
+    The demo's one button asks for no phone number, so it has to know whether TWILIO_TO_NUMBER is set.
+    `configured` cannot answer that: a destination is optional everywhere else, and the button would
+    either offer a call that must fail, or refuse one that would work.
+    """
+    for k, v in (("TWILIO_ACCOUNT_SID", "AC123"), ("TWILIO_AUTH_TOKEN", "tok"),
+                 ("TWILIO_PHONE_NUMBER", "+15550000000")):
+        monkeypatch.setenv(k, v)
+    monkeypatch.delenv("TWILIO_TO_NUMBER", raising=False)
+    assert TwilioDemo().describe()["has_default_to"] is False
+
+    monkeypatch.setenv("TWILIO_TO_NUMBER", "+5218112345678")
+    d = TwilioDemo().describe()
+    assert d["has_default_to"] is True
+    assert "8112345678" not in str(d)          # knowing there IS one is not knowing what it is
+
+
+def test_the_one_button_call_dials_the_number_from_the_env(monkeypatch):
+    """"Try being the caller" sends no destination at all - TWILIO_TO_NUMBER is the whole configuration."""
+    for k, v in (("TWILIO_ACCOUNT_SID", "AC123"), ("TWILIO_AUTH_TOKEN", "tok"),
+                 ("TWILIO_PHONE_NUMBER", "+15550000000"), ("TWILIO_TO_NUMBER", "+5218112345678")):
+        monkeypatch.setenv(k, v)
+    placed = {}
+
+    class Calls:
+        def create(self, twiml=None, from_=None, to=None):
+            placed.update(twiml=twiml, from_=from_, to=to)
+            return type("Created", (), {"sid": "CA_env"})()
+
+    d = TwilioDemo()
+    monkeypatch.setattr(d, "client", lambda: type("Client", (), {"calls": Calls()})())
+    monkeypatch.setattr(d, "_run", lambda *a, **k: None)      # no background job inside a unit test
+    job = d.start()                                           # no argument: exactly what the button sends
+
+    assert placed["to"] == "+5218112345678" and placed["from_"] == "+15550000000"
+    assert "<Record" in placed["twiml"]                       # it records the answer, it does not just talk
+    assert job.call_sid == "CA_env"
+    assert "8112345678" not in str(job.to_dict())             # and the page still never sees the number
+
+
 def test_calling_without_configuration_explains_itself_rather_than_raising_a_twilio_error(monkeypatch):
     for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"):
         monkeypatch.delenv(k, raising=False)
@@ -186,6 +227,40 @@ def demo_with(monkeypatch, client, scored=None):
                                    "role": "primary", "share": 1.0, "reason": ""}]}
     monkeypatch.setattr(d, "fusion", lambda: FakeFusion())
     return d
+
+
+def test_the_warm_up_touches_the_primaries_and_never_the_paid_verifier(monkeypatch):
+    """
+    Robust V2 is loaded while the phone rings, so its load does not land on the page as "voice latency".
+    The semantic verifier costs money per call and is deliberately left cold.
+    """
+    scored = []
+
+    class FakeLayer:
+        def __init__(self, key):
+            self.key = key
+        def score(self, wav):
+            scored.append((self.key, len(wav)))
+
+    class FakeConfig:
+        def role_of(self, layer):
+            return "verifier" if layer.key == "semantic" else "primary"
+
+    class FakeFusion:
+        layers = [FakeLayer("acoustic"), FakeLayer("behaviour"), FakeLayer("semantic")]
+        config = FakeConfig()
+
+    d = TwilioDemo()
+    monkeypatch.setattr(d, "fusion", lambda: FakeFusion())
+    d.warm()
+    assert [k for k, _ in scored] == ["acoustic", "behaviour"]
+    assert all(n > 1000 for _, n in scored)          # a real WAV, not an empty buffer
+
+
+def test_a_warm_up_that_breaks_does_not_take_the_call_down(monkeypatch):
+    d = TwilioDemo()
+    monkeypatch.setattr(d, "fusion", lambda: (_ for _ in ()).throw(RuntimeError("no model")))
+    d.warm()                                          # must simply return
 
 
 def test_a_call_runs_through_to_a_verdict(monkeypatch):

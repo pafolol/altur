@@ -49,6 +49,26 @@ def test_default_config_uses_each_layers_own_default_weight_and_role():
                       "semantic": pytest.approx(0.15 / 1.15)}
 
 
+def test_each_layers_own_latency_survives_the_combiner():
+    """
+    Everything that reads a verdict rather than the raw LayerResults - the demo's scene payload, the
+    live-call verdict, the call log - gets its per-layer timings from here. When combine() dropped them
+    the demo page reported "0 ms" for a layer that had really taken half a second.
+    """
+    a, b = L("acoustic", 0.9), L("behaviour", 0.1)
+    a.latency_ms, b.latency_ms = 482.37, 61.4
+    by = {c["key"]: c for c in combine([a, b], cfg())["layers"]}
+    assert by["acoustic"]["latency_ms"] == pytest.approx(482.4)
+    assert by["behaviour"]["latency_ms"] == pytest.approx(61.4)
+
+
+def test_a_layer_that_never_reported_a_latency_reads_zero_rather_than_breaking():
+    """combine() also takes plain dicts (the console re-tuning cached scores), which may carry no timing."""
+    out = combine([{"key": "acoustic", "display": "Acoustic", "probability": 0.9},
+                   {"key": "behaviour", "display": "Behaviour", "probability": 0.1}], cfg())
+    assert all(c["latency_ms"] == 0.0 for c in out["layers"])
+
+
 def test_a_missing_layer_leaves_its_share_to_the_others():
     """With the semantic service down the registry holds two layers; 0.50 / 0.35 becomes 59 % / 41 %."""
     det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.9, weight=0.50),
@@ -377,6 +397,44 @@ def test_semantic_layer_abstains_when_nothing_answers():
     assert r.abstained is True and r.probability == 0.5 and r.reason
     det = fusion.FusionDetector(layers=[_Fake("acoustic", 0.9, weight=0.5), layer])
     assert det.score(b"RIFF")["synthetic_probability"] == pytest.approx(0.9)
+
+
+def test_default_registry_uses_semantic_in_process():
+    layer = fusion.build_layers(include_unavailable=True)[-1]
+    assert isinstance(layer, fusion.LocalSemanticLayer)
+    assert layer.info()["transport"] == "in_process"
+
+
+def test_remote_semantic_is_only_an_explicit_override():
+    layer = fusion.build_layers(include_unavailable=True, semantic_url="http://example.test/detect")[-1]
+    assert type(layer) is fusion.SemanticLayer
+    assert layer.url == "http://example.test/detect"
+
+
+def test_local_semantic_scores_without_http(monkeypatch):
+    class Runtime:
+        BUDGET_S = 1.0
+
+        @staticmethod
+        def decode(audio):
+            assert audio
+            return "decoded"
+
+        @staticmethod
+        def score_call(audio, deadline, stats):
+            assert audio == "decoded" and deadline
+            stats["n_words"] = 12
+            return 0.82, "f4+f5", ""
+
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: pytest.fail("unexpected HTTP call"))
+    layer = fusion.LocalSemanticLayer()
+    layer.runtime = Runtime
+    layer._loaded = True
+    result = layer.score(b"RIFF")
+    assert result.probability == pytest.approx(0.82)
+    assert result.details["transport"] == "in_process"
+    assert result.details["n_words"] == 12
 
 
 # --------------------------------------------------------------------------- the verifier gate

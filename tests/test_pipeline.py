@@ -116,7 +116,9 @@ def test_endpoint_contract():
     client = TestClient(server.app)
     stereo, sr = synthetic_call()
     b64 = base64.b64encode(wav_bytes(stereo, sr)).decode()
-    r = client.post("/detect", json={"audio": b64})
+    # Exact judge contract: one complete stereo 8 kHz WAV plus its metadata.
+    r = client.post("/detect", json={"call_id": "contract_test", "audio_base64": b64,
+                                     "sample_rate": 8000, "channels": 2})
     assert r.status_code == 200
     body = r.json()
     assert isinstance(body["is_synthetic"], bool)

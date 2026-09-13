@@ -1,7 +1,8 @@
 """
 CHALLENGE ENDPOINT -  POST /detect
 
-Request body (JSON):  {"audio": "<base64 of a stereo 8 kHz WAV file>"}
+Request body (JSON):  {"call_id": "...", "audio_base64": "<base64 WAV>",
+                       "sample_rate": 8000, "channels": 2}
     Also accepted: {"wav": ...}, {"audio_base64": ...}, {"file": ...}, {"data": ...}, or a raw base64 string body,
     or multipart/form-data with a file field - the judges' exact field name is not specified in the PDF, so the
     server is permissive about it.
@@ -127,6 +128,33 @@ def score_call(wav_bytes, cfg=None):
     return verdict
 
 
+def _warmup_wav(seconds=4, sr=8000):
+    """Small in-memory stereo WAV that initializes local inference kernels before accepting traffic."""
+    import io
+    import wave
+    import numpy as np
+    t = np.arange(int(seconds * sr), dtype=np.float32) / sr
+    caller = (0.18 * np.sin(2 * np.pi * 220 * t) * 32767).astype("<i2")
+    agent = (0.12 * np.sin(2 * np.pi * 180 * t) * 32767).astype("<i2")
+    pcm = np.stack([caller, agent], axis=1)
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr); w.writeframes(pcm.tobytes())
+    return out.getvalue()
+
+
+def warmup_primaries(det):
+    """Run each local primary once; preload alone does not initialize CUDA/ONNX execution kernels."""
+    wav = _warmup_wav()
+    timings = {}
+    for layer in det.layers:
+        if det.config.role_of(layer) != "primary":
+            continue
+        result = layer.score(wav)
+        timings[layer.key] = round(result.latency_ms)
+    return timings
+
+
 # ============================================================================= detection latency
 #
 # "Synthetic, 91 %" is half an answer; the other half is WHEN. The acoustic layer scores 4 s chunks of
@@ -157,29 +185,34 @@ def _demo_detector(model):
     return DETECTORS[model]
 
 
-def analyse_for_demo(path, model="specialist", hi=None, lo=None):
-    """One call, everything the visualiser needs: audio shape, speech regions, chunks, timeline."""
-    import audio as audio_mod
-    det = _demo_detector(model)
-    stereo, sr = audio_mod.read_wav(path)
-    caller = audio_mod.get_channel(stereo, config.CALLER_CHANNEL)
-    _, spans, regions = audio_mod.caller_chunks(stereo, sr, return_regions=True, vad_method=det.vad)
-    t0 = time.perf_counter()
-    result = det.predict_wav(path)
-    inference_ms = (time.perf_counter() - t0) * 1000
-    tl = latency.timeline(result["chunk_scores"], result["chunk_spans"], result["duration_s"],
-                          det.calibration, det.aggregation, hi=hi, lo=lo, inference_ms=inference_ms)
-    return {
-        "model": model, "model_dir": det.backbone, "display": det.display, "vad": det.vad,
-        "duration_s": round(result["duration_s"], 2), "sample_rate": sr,
-        "envelope": _envelope(caller),
-        "speech_regions": [[round(a, 2), round(b, 2)] for a, b in regions],
-        "chunk_spans": [[round(a, 2), round(b, 2)] for a, b in result["chunk_spans"]],
-        "final": {"probability": round(result["synthetic_probability"], 4),
-                  "is_synthetic": bool(result["synthetic_probability"] >= config.DECISION_THRESHOLD),
-                  "raw_score": round(result["score"], 3), "speech_s": round(result["speech_s"], 2)},
-        **tl,
-    }
+def analyse_for_demo(source, hi=None, lo=None):
+    """One call through the DEPLOYED fusion - the 50 / 50 the endpoint answers with - as a scene payload."""
+    return latency.scene(get_fusion(), source, hi, lo, run_fusion_prefixes=True)
+
+
+@app.post("/demo/analyse")
+async def demo_analyse(request: Request):
+    """
+    The prerecorded mode's own audio: a WAV upload (multipart) or the same base64 JSON /detect takes.
+    Returns the scene payload for the fusion, so the page can play the call back and watch the verdict
+    form. Nothing is written to the call log - this is analysis, not a detection request.
+    """
+    content_type = request.headers.get("content-type", "")
+    wav_bytes = None
+    if content_type.startswith("multipart/form-data"):
+        form = await request.form()
+        for v in form.values():
+            if isinstance(v, (UploadFile, StarletteUploadFile)):
+                wav_bytes = await v.read()
+                break
+    else:
+        wav_bytes = await _wav_from(request)
+    if not wav_bytes:
+        return JSONResponse({"error": "send a WAV file (multipart) or {'audio': '<base64 wav>'}"}, status_code=400)
+    try:
+        return analyse_for_demo(wav_bytes)
+    except Exception as exc:
+        return JSONResponse({"error": f"{type(exc).__name__}: {exc}"}, status_code=400)
 
 
 @app.get("/demo")
@@ -196,16 +229,14 @@ def demo_calls():
 
 
 @app.get("/demo/call/{anon_id}")
-def demo_call(anon_id: str, model: str = "specialist", confident_synthetic: float = None,
-              confident_human: float = None):
+def demo_call(anon_id: str, confident_synthetic: float = None, confident_human: float = None):
+    """A held-out call through the deployed fusion. Cached: the behaviour prefixes take a few seconds."""
     call = next((c for c in _validation() if c["anon_id"] == anon_id), None)
     if call is None:
         return JSONResponse({"error": "unknown call"}, status_code=404)
-    if model not in CANDIDATES:
-        return JSONResponse({"error": f"unknown model; try {list(CANDIDATES)}"}, status_code=400)
-    key = (anon_id, model, confident_synthetic, confident_human)
+    key = (anon_id, app.state.acoustic_model, confident_synthetic, confident_human)
     if key not in DEMO_CACHE:
-        DEMO_CACHE[key] = analyse_for_demo(call["path"], model, confident_synthetic, confident_human)
+        DEMO_CACHE[key] = analyse_for_demo(call["path"], confident_synthetic, confident_human)
     # The label rides along so the page can show whether the call was really synthetic - AFTER the
     # verdict, the same way the inspector's deck does. The model never receives it.
     return DEMO_CACHE[key] | {"anon_id": anon_id, "label": call["label"], "index": call["index"]}
@@ -294,6 +325,25 @@ async def twilio_call(request: Request):
     except Exception as exc:
         return JSONResponse({"error": f"{type(exc).__name__}: {exc}"}, status_code=502)
     return job.to_dict()
+
+
+@app.get("/twilio/recording/{call_sid}")
+def twilio_recording(call_sid: str):
+    """The stereo-converted WAV of a finished demo call, so the page can play it through the scene."""
+    from fastapi.responses import Response
+    job = get_twilio().jobs.get(call_sid)
+    if job is None or not getattr(job, "wav", None):
+        return JSONResponse({"error": "no recording for that call yet"}, status_code=404)
+    return Response(content=job.wav, media_type="audio/wav")
+
+
+@app.get("/twilio/analysis/{call_sid}")
+def twilio_analysis(call_sid: str):
+    """The scene payload of a finished demo call - scored with Robust V2, as the whole live path is."""
+    job = get_twilio().jobs.get(call_sid)
+    if job is None or not getattr(job, "scene", None):
+        return JSONResponse({"error": "no analysis for that call yet"}, status_code=404)
+    return job.scene
 
 
 @app.get("/twilio/status/{call_sid}")
@@ -467,6 +517,16 @@ def _extract_base64(payload):
     return None
 
 
+def _wav_from_payload(payload):
+    """Decode any supported payload after JSON parsing; large judge bodies must only be parsed once."""
+    b64 = _extract_base64(payload)
+    if b64 is None:
+        return None
+    if b64.startswith("data:"):
+        b64 = b64.split(",", 1)[1]
+    return base64.b64decode(b64)
+
+
 async def _payload(request):
     body = await request.body()
     try:
@@ -476,12 +536,7 @@ async def _payload(request):
 
 
 async def _wav_from(request):
-    b64 = _extract_base64(await _payload(request))
-    if b64 is None:
-        return None
-    if b64.startswith("data:"):  # data URL
-        b64 = b64.split(",", 1)[1]
-    return base64.b64decode(b64)
+    return _wav_from_payload(await _payload(request))
 
 
 # ============================================================================= the contract
@@ -491,7 +546,7 @@ async def _wav_from(request):
 async def detect(request: Request):
     t0 = time.perf_counter()
     content_type = request.headers.get("content-type", "")
-    wav_bytes, queue_label = None, "api"
+    wav_bytes, queue_label, request_call_id = None, "api", None
     try:
         if content_type.startswith("multipart/form-data"):
             form = await request.form()
@@ -506,7 +561,9 @@ async def detect(request: Request):
             payload = await _payload(request)
             if isinstance(payload, dict) and isinstance(payload.get("queue"), str):
                 queue_label = payload["queue"][:40]
-            wav_bytes = await _wav_from(request)
+            if isinstance(payload, dict) and isinstance(payload.get("call_id"), str):
+                request_call_id = payload["call_id"][:80]
+            wav_bytes = _wav_from_payload(payload)
             if wav_bytes is None:
                 return JSONResponse({"error": "no base64 audio found; send JSON {'audio': '<base64 wav>'}"}, status_code=400)
         if not wav_bytes:
@@ -520,7 +577,7 @@ async def detect(request: Request):
             verdict,
             duration_s=verdict["details"].get("duration_s"),
             channels=verdict["details"].get("channels", 2),
-            queue=queue_label)
+            queue=queue_label, call_id=request_call_id)
         return verdict
     except Exception as exc:  # never leave the judges without an answer
         store.record({"is_synthetic": False, "confidence": 0.5, "decisive": False,
@@ -802,7 +859,7 @@ def main():
     parser.add_argument("--acoustic-model", default="wav2vec2_spanish",
                         help="which acoustic model sits in the fusion: wav2vec2_spanish (V1, default) or robust_v2")
     parser.add_argument("--semantic-url", default=None,
-                        help="the semantic service's /detect (default: $SEMANTIC_URL or http://127.0.0.1:8100/detect)")
+                        help="optional remote semantic /detect override (default: run semantic locally in this process)")
     parser.add_argument("--weight", action="append", default=[], metavar="KEY=W",
                         help="starting weight of one layer, e.g. --weight acoustic=0.7 (tunable live afterwards)")
     parser.add_argument("--mode", default="weighted_mean", choices=fusion.COMBINE_MODES)
@@ -825,6 +882,7 @@ def main():
     det.config = fusion.FusionConfig.from_dict({"weights": overrides, "mode": args.mode}, det.config)
     if not args.no_preload:
         det.preload()
+        print(f"[server] warm-up: {warmup_primaries(det)}")
     print("[server] fusion layers: " +
           ", ".join(f"{l.display} w={det.config.weight_of(l):.2f}"
                     f"{'' if l.available() else ' [NOT ANSWERING - abstains, its share goes to the others]'}"

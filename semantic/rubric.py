@@ -6,8 +6,11 @@ score_cached(cid, transcript)   cache/gemini/<cid>_<model>_<prompt hash>.json
 """
 import hashlib, json, os, pathlib, sys, time
 import httpx
-import config  # noqa: F401  (.env loader)
-import asr
+try:
+    from . import config, asr  # noqa: F401  (.env loader)
+except ImportError:  # standalone scripts run from semantic/
+    import config  # noqa: F401  (.env loader)
+    import asr
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 EVIDENCE = os.environ.get("RUBRIC_EVIDENCE", "0") == "1"   # quotes cost ~230 output tokens ≈ +0.6 s; fixed for train+infer
@@ -61,7 +64,8 @@ def score(transcript, timeout=3.0):
 
 
 def cache_path(cid):   # keyed by rubric model, prompt and (for non-default ASR) the ASR model the transcript came from
-    return CACHE / f"{cid}_{MODEL}_{PROMPT_ID}{"" if asr.MODEL == "scribe_v1" else "_" + asr.MODEL}.json"
+    suffix = "" if asr.MODEL == "scribe_v1" else "_" + asr.MODEL
+    return CACHE / f"{cid}_{MODEL}_{PROMPT_ID}{suffix}.json"
 
 
 def score_cached(cid, transcript):

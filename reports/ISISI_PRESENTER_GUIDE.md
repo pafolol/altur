@@ -311,10 +311,8 @@ Both are from the table above and both transcripts are in the repository's Scrib
 **Running it.**
 
 ```
-python src/server.py --port 8000                                  # the detector, primaries only
-cd semantic && uvicorn server:app --port 8100                     # the semantic service (needs API keys)
-python src/server.py --semantic-url http://127.0.0.1:8100/detect  # both
-cd web && VITE_API_URL=http://127.0.0.1:8000 npm run dev          # landing page + admin panel, LIVE
+python src/server.py --port 8000                          # THE backend: all three layers, one process
+cd web && VITE_API_URL=http://127.0.0.1:8000 npm run dev  # landing page + admin panel + /demo/, LIVE
 ```
 
 Leave `VITE_API_URL` unset and the admin panel runs on its seeded mock, badged SAMPLE, so the site demos with no backend running.

@@ -13,6 +13,7 @@ tqdm==4.70.0
 reportlab==5.0.1             # PDF report
 fastapi>=0.115               # POST /detect endpoint
 uvicorn>=0.30
+httpx==0.28.1                # semantic layer: ElevenLabs Scribe + Gemini requests
 pytest>=8.0
 silero-vad>=6.0               # neural voice-activity detection (caller-turn segmentation)
 python-multipart>=0.0.9        # multipart uploads on the endpoint
