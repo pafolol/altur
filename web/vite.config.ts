@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// two pages: the landing at / and the admin panel at /admin/
+// three pages: the landing at /, the admin panel at /admin/, the latency demo at /demo/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  build: { rollupOptions: { input: { main: 'index.html', admin: 'admin/index.html' } } },
+  build: { rollupOptions: { input: { main: 'index.html', admin: 'admin/index.html', demo: 'demo/index.html' } } },
 })

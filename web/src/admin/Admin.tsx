@@ -55,7 +55,7 @@ export function Admin() {
             </select>
           </label>
           <button type="button" className="btn" onClick={load} disabled={loading}>{loading ? t.refreshing : t.refresh}</button>
-          <a className="btn ghost" href="/">{t.backToSite}</a>
+          <a className="btn" href="/demo/">Latency</a><a className="btn ghost" href="/">{t.backToSite}</a>
         </div>
       </header>
 
