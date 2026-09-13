@@ -37,6 +37,7 @@ import _bootstrap  # noqa: F401
 import config
 import fusion
 import store
+import twilio_demo
 from predict import AcousticDetector
 
 app = FastAPI(title="Altur HackMTY 2026 - synthetic caller detector (acoustic + behaviour fusion)")
@@ -122,6 +123,61 @@ def score_call(wav_bytes, cfg=None):
     if verdict["note"]:
         verdict["details"]["warning"] = verdict["note"]
     return verdict
+
+
+# ============================================================================= the live-call demo
+#
+# Dial a real number, record what the person says, score it. The only path in this repository where the
+# audio has actually been through a telephone network, so it uses ROBUST V2 rather than V1 - see
+# src/twilio_demo.py. Unconfigured, /twilio/config says exactly which variables are missing and the
+# button on the console explains itself; nothing else in the server is affected.
+
+
+def get_twilio():
+    return twilio_demo.get_demo(app.state.semantic_url)
+
+
+@app.get("/twilio/config")
+def twilio_config():
+    return get_twilio().describe()
+
+
+@app.post("/twilio/call")
+async def twilio_call(request: Request):
+    """Body: {"to": "+52...", "seconds": 30}. Returns immediately; poll /twilio/status/{call_sid}."""
+    payload = await _payload(request)
+    payload = payload if isinstance(payload, dict) else {}
+    try:
+        job = get_twilio().start(payload.get("to"), max_seconds=int(payload.get("seconds", 30)))
+    except (RuntimeError, ValueError) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    except Exception as exc:
+        return JSONResponse({"error": f"{type(exc).__name__}: {exc}"}, status_code=502)
+    return job.to_dict()
+
+
+@app.get("/twilio/status/{call_sid}")
+def twilio_status(call_sid: str):
+    job = get_twilio().status(call_sid)
+    if job is None:
+        return JSONResponse({"error": "unknown call"}, status_code=404)
+    # Log it once, the moment it is decided, so a demo call lands in the same call log as everything else
+    # and shows up in the admin panel beside the uploads. `logged` lives on the job, so polling the status
+    # repeatedly - which the page does - cannot write the same call twice.
+    demo = get_twilio()
+    live = demo.jobs.get(call_sid)
+    if live is not None and live.state == "done" and live.verdict and not live.logged:
+        v = live.verdict
+        store.record({"is_synthetic": v["is_synthetic"], "confidence": v["confidence"], "decisive": True,
+                      "layers": v["layers"],
+                      "details": {"synthetic_probability": v["synthetic_probability"],
+                                  "latency_ms": 0, "duration_s": live.duration_s,
+                                  "layers": v["layers"]}},
+                     duration_s=live.duration_s, channels=1, queue="twilio",
+                     call_id="tw" + call_sid[-10:])
+        live.logged = True
+        job = live.to_dict()
+    return job
 
 
 # ============================================================================= the admin panel's API

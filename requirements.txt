@@ -17,6 +17,8 @@ pytest>=8.0
 silero-vad>=6.0               # neural voice-activity detection (caller-turn segmentation)
 python-multipart>=0.0.9        # multipart uploads on the endpoint
 onnxruntime==1.20.1          # the behaviour layer's Silero VAD (CPU, 8 kHz, separated channels)
+twilio==9.11.1               # OPTIONAL: the live-call demo only (src/twilio_demo.py). Everything
+                             # else works without it.
 
 # The behaviour layer (behaviour/) runs on NumPy + ONNX Runtime alone at inference time; its own
 # pinned environment is behaviour/requirements-runtime.lock. Everything above covers both layers.

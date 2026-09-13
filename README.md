@@ -221,6 +221,7 @@ python src/client_demo.py call.wav --url http://127.0.0.1:8000/detect
 | `GET /validation`, `/validation/{id}/score`, `/validation/scores` | the 71 held-out calls, scored server-side from disk and cached |
 | `POST /detect_all`, `GET /models` | unchanged: the two ACOUSTIC models side by side, for the inspector's A/B panel |
 | `GET /api/calls`, `/api/stats`, `/api/health` | the admin panel's `IsisiApi`, backed by the call log. `POST /detect` also takes an optional `"queue"` label |
+| `GET /twilio/config`, `POST /twilio/call`, `GET /twilio/status/{sid}` | the live-call demo: dial a number, record the answer, score it with **Robust V2**. Reports itself unconfigured rather than failing |
 
 From Python:
 
@@ -238,6 +239,42 @@ det.config = det.equal_config()                                                 
 
 from predict import predict_acoustic         # one layer on its own, unchanged
 ```
+
+### The live call (panel 03 on the console)
+
+Everything else here is fed a file. This dials a real number through Twilio, records what the person
+says, and scores the recording — the only path where the audio has genuinely been through a telephone
+network rather than a simulation of one.
+
+**It scores with Robust V2, not V1**, and that is the point rather than a detail: down a real line V1
+falls to 77.5 % while V2 holds at 100 %, because the recording-pipeline cues V1 keys on — the digitally
+silent noise floor, the loudness, the band edge — do not survive a codec. `reports/TELEPHONE_ROBUSTNESS_REPORT.pdf`
+is the whole argument, and a live call is the one place it can be demonstrated instead of simulated.
+
+```
+set TWILIO_ACCOUNT_SID=AC...
+set TWILIO_AUTH_TOKEN=...
+set TWILIO_PHONE_NUMBER=+1...        :: the Twilio number it calls FROM
+python src/server.py --port 8000     :: then open /fusion and use panel 03
+```
+
+```
+python src/twilio_demo.py +5218112345678      # the same thing from the terminal
+python src/twilio_demo.py --status            # what is configured and what is missing
+```
+
+**No public URL, no tunnel.** The usual way to record a Twilio call is `<Record action="https://...">`,
+which means Twilio has to reach your machine — a tunnel, and one more thing to fail on stage. Instead the
+call carries inline TwiML with no `action`, and the recording is collected by polling Twilio's REST API
+for recordings belonging to that call. Nothing has to reach in.
+
+**A Twilio recording is mono**, so there is no agent channel, and the behaviour layer correctly abstains —
+there is no interaction to time. The panel shows that rather than hiding it: a live call is decided by the
+acoustic layer, with the semantic verifier consulted only if the acoustic layer is unsure. Demo calls are
+written to the same call log as everything else, under the queue `twilio`.
+
+Without the three variables the panel replaces itself with a note naming exactly what is missing, and the
+rest of the page is unaffected. `twilio` is the only optional dependency in `requirements.txt`.
 
 ### Adding a third layer
 
@@ -318,6 +355,7 @@ web/                            THE LANDING PAGE + ADMIN PANEL, merged from the 
 web/INTEGRATION.md              how it is wired to the detector - LIVE when VITE_API_URL is set
 web/src/admin/api.live.ts       the real IsisiApi; the seeded mock is kept as the no-backend fallback
 src/store.py                    THE CALL LOG: SQLite, one row per verdict, feeds the panel's history
+src/twilio_demo.py              THE LIVE-CALL DEMO: dial a number, record the answer, score it with V2
 
 backend/                        THE SERVING SHELL, merged from backend-esteban - now wired to the fusion
 backend/INTEGRATION.md          DETECTOR_MODE=fusion, what changed in app/, and which service to expose

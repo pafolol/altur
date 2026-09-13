@@ -164,6 +164,28 @@
   .empty { padding: 40px; text-align: center; color: var(--muted); line-height: 1.8; font-size: 13px; }
   footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; line-height: 1.75; }
   .kbd { border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: var(--paper-dim); }
+
+  /* ------------------------------------------------------------ the live call */
+  .dial { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .dial input[type=tel] { font-family: var(--mono); font-size: 15px; letter-spacing: .04em; background: var(--ink); color: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 11px 13px; width: 230px; }
+  .dial input[type=tel]:focus { outline: none; border-color: var(--amber); }
+  .dial .callbtn { padding: 12px 20px; font-size: 14px; background: var(--human); border-color: var(--human); color: var(--ink); }
+  .dial .callbtn:hover:not(:disabled) { background: #7ee0a2; border-color: #7ee0a2; }
+  .dial .callbtn.busy { background: var(--amber); border-color: var(--amber); animation: pulsecall 1.4s infinite; }
+  @keyframes pulsecall { 0%,100% { box-shadow: 0 0 0 0 rgba(242,182,75,.45);} 50% { box-shadow: 0 0 0 12px rgba(242,182,75,0);} }
+  .steps2 { display: flex; gap: 0; margin-top: 18px; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+  .steps2 div { flex: 1; padding: 10px 12px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--ink); border-right: 1px solid var(--line); transition: color .2s, background .2s; }
+  .steps2 div:last-child { border-right: 0; }
+  .steps2 div.on { color: var(--ink); background: var(--amber); font-weight: 600; }
+  .steps2 div.did { color: var(--human); }
+  .callout { margin-top: 16px; background: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 16px 18px; }
+  .callout .big { font-family: var(--serif); font-weight: 800; font-size: clamp(30px, 5vw, 46px); line-height: 1; }
+  .callout .big.human { color: var(--human); }
+  .callout .big.synthetic { color: var(--synth); }
+  .callout .sub2 { color: var(--muted); font-size: 12px; margin-top: 6px; line-height: 1.6; }
+  .callerr { color: var(--synth); font-size: 12px; line-height: 1.6; }
+  .unconfigured { border: 1px dashed var(--amber); border-radius: 5px; padding: 14px 16px; color: var(--amber); font-size: 12px; line-height: 1.7; }
+  .unconfigured code { color: var(--paper); }
 </style>
 </head>
 <body>
@@ -281,6 +303,42 @@
       </table>
     </div>
     <audio id="player" style="display:none"></audio>
+  </section>
+
+  <!-- =============================================================== 03 the live call -->
+  <section class="panel">
+    <span class="num">03 — a real phone call</span>
+    <h2>Dial a number and score whoever answers</h2>
+    <p class="hint">
+      Everything above is fed a file. This places an actual call through Twilio, records what the person
+      says, and scores the recording — the only path here where the audio has really been through a
+      telephone network. That is why it uses <b>Robust V2</b> rather than V1: down a real line V1 falls to
+      77.5 % and V2 holds at 100 %, because the recording-pipeline cues V1 keys on do not survive a codec.
+      <br>A Twilio recording is <b>mono</b>, so there is no agent channel and the behaviour layer correctly
+      abstains — the breakdown below shows it rather than hiding it.
+    </p>
+
+    <div id="twUnconfigured" class="unconfigured" hidden></div>
+
+    <div id="twControls" hidden>
+      <div class="dial">
+        <input type="tel" id="twTo" placeholder="+52 81 1234 5678" autocomplete="tel">
+        <select id="twSeconds">
+          <option value="15">record 15 s</option>
+          <option value="30" selected>record 30 s</option>
+          <option value="45">record 45 s</option>
+        </select>
+        <button class="callbtn" id="twCall">Call and analyse</button>
+        <span class="count" id="twMeta"></span>
+      </div>
+      <div class="steps2" id="twSteps">
+        <div data-step="ringing">ringing</div>
+        <div data-step="recording">recording</div>
+        <div data-step="scoring">scoring · robust v2</div>
+        <div data-step="done">verdict</div>
+      </div>
+      <div class="callout" id="twResult" hidden></div>
+    </div>
   </section>
 
   <footer id="footer"></footer>
@@ -698,7 +756,106 @@
     URL.revokeObjectURL(url);
   });
 
+  // ------------------------------------------------------------------ 03 the live call
+  const TW_ORDER = ["ringing", "recording", "scoring", "done"];
+  let twPoll = null;
+
+  async function twBoot() {
+    let cfg;
+    try { cfg = await (await fetch(BASE + "/twilio/config")).json(); }
+    catch { return; }
+    const ready = cfg.configured && cfg.model_available;
+    $("twControls").hidden = !ready;
+    $("twUnconfigured").hidden = ready;
+    if (!ready) {
+      const missing = (cfg.missing || []).map((m) => `<code>${m}</code>`).join(", ");
+      $("twUnconfigured").innerHTML = !cfg.model_available
+        ? `The <code>${cfg.acoustic_model}</code> model is not on disk, so a live call could not be scored.`
+        : `Live calling is off: set ${missing || "the Twilio variables"} and restart the server. `
+          + `Everything else on this page works without it.`;
+      return;
+    }
+    $("twTo").value = "";
+    $("twMeta").textContent = `from ${cfg.from} · scored with ${cfg.acoustic_model}`;
+  }
+
+  function twStep(state) {
+    const i = TW_ORDER.indexOf(state);
+    $("twSteps").querySelectorAll("div").forEach((d, j) => {
+      d.classList.toggle("on", j === i);
+      d.classList.toggle("did", i >= 0 && j < i);
+    });
+  }
+
+  function twRender(job) {
+    const box = $("twResult");
+    box.hidden = false;
+    if (job.state === "failed") {
+      twStep("");
+      box.innerHTML = `<div class="callerr"><b>The call did not produce a verdict.</b><br>${job.error}</div>`;
+      return;
+    }
+    if (job.state !== "done") {
+      twStep(job.state);
+      box.innerHTML = `<div class="sub2">${job.detail || job.state} · ${job.elapsed_s.toFixed(0)} s`
+        + `${job.call_status ? " · twilio says <b>" + job.call_status + "</b>" : ""}</div>`;
+      return;
+    }
+    twStep("done");
+    const v = job.verdict;
+    const cls = v.is_synthetic ? "synthetic" : "human";
+    const rows = v.layers.map((l) => {
+      const state = !l.scored ? "not asked"
+        : l.abstained ? `abstained — ${l.reason || "no evidence"}`
+        : `p = ${l.probability.toFixed(3)}`;
+      return `<div style="display:flex;gap:10px;justify-content:space-between;padding:3px 0">`
+        + `<span style="color:var(--paper-dim)">${l.display}</span>`
+        + `<span class="mono" style="color:${l.abstained || !l.scored ? "var(--muted)" : (l.probability >= .5 ? "var(--synth)" : "var(--human)")}">${state}</span></div>`;
+    }).join("");
+    box.innerHTML = `<div class="big ${cls}">${v.is_synthetic ? "SYNTHETIC" : "HUMAN"}</div>`
+      + `<div class="sub2">confidence ${v.confidence.toFixed(3)} · fused p ${v.synthetic_probability.toFixed(3)} · `
+      + `${job.duration_s.toFixed(0)} s recorded from ${job.to} · acoustic model <b>${v.acoustic_model}</b></div>`
+      + `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px;font-size:12px">${rows}</div>`
+      + (v.note ? `<div class="sub2">${v.note}</div>` : "");
+  }
+
+  async function twTick(sid) {
+    let job;
+    try { job = await (await fetch(`${BASE}/twilio/status/${sid}`)).json(); }
+    catch { return; }
+    twRender(job);
+    if (job.state === "done" || job.state === "failed") {
+      clearInterval(twPoll); twPoll = null;
+      $("twCall").disabled = false; $("twCall").classList.remove("busy");
+      $("twCall").textContent = "Call and analyse";
+      if (job.state === "done") loadCalls();       // the demo call joins the held-out table's server cache
+    }
+  }
+
+  $("twCall").addEventListener("click", async () => {
+    const to = $("twTo").value.trim();
+    if (!to) { $("twTo").focus(); return; }
+    const b = $("twCall");
+    b.disabled = true; b.classList.add("busy"); b.textContent = "calling…";
+    $("twResult").hidden = false;
+    $("twResult").innerHTML = '<div class="sub2">placing the call…</div>';
+    try {
+      const r = await fetch(BASE + "/twilio/call", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to, seconds: parseInt($("twSeconds").value, 10) }),
+      });
+      const job = await r.json();
+      if (!r.ok || job.error) throw new Error(job.error || `HTTP ${r.status}`);
+      twRender(job);
+      twPoll = setInterval(() => twTick(job.call_sid), 1500);
+    } catch (e) {
+      $("twResult").innerHTML = `<div class="callerr">${e.message}</div>`;
+      b.disabled = false; b.classList.remove("busy"); b.textContent = "Call and analyse";
+    }
+  });
+
   boot();
+  twBoot();
 })();
 </script>
 </body>
