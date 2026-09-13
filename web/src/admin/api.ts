@@ -3,7 +3,7 @@
  * `IsisiApi` interface. When a backend exists, implement the same interface with
  * fetch calls and swap it in here; nothing in the components needs to change.
  */
-import { liveApi } from './api.live'
+import { configured, liveApi } from './api.live'
 
 export type Verdict = 'human' | 'synthetic' | 'abstained'
 export type Trap = 'refused' | 'answered' | 'none'
@@ -129,10 +129,10 @@ export const mockApi: IsisiApi = {
 }
 
 /* ─── the swap ─────────────────────────────────────────────────────── */
-// The live client talks to the fusion server (src/server.py). Set VITE_API_URL to use it; leave it
-// unset and the seeded mock above answers, so the page still builds and demos with no backend running.
+// The live client talks to the fusion server (src/server.py). It defaults to the deployed backend;
+// VITE_API_URL overrides it, and an explicitly empty value selects the seeded mock.
 // `api.mock` is what flips the header pill between SAMPLE and LIVE.
-export const api: IsisiApi = import.meta.env.VITE_API_URL ? liveApi : mockApi
+export const api: IsisiApi = configured ? liveApi : mockApi
 
 /* ─── derived, computed on the client from the calls list ──────────── */
 

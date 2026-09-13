@@ -4,7 +4,8 @@
  * VITE_API_URL points at it (the project .env sets it). No mock: a fabricated verdict or latency is the
  * one thing this page must never show, so without a backend it says so and stops.
  */
-export const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+const DEFAULT_API_URL = 'https://hack.pafodev.com'
+export const BASE = (import.meta.env.VITE_API_URL ?? DEFAULT_API_URL).replace(/\/$/, '')
 export const configured = BASE !== ''
 
 export interface Step {

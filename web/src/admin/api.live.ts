@@ -9,8 +9,8 @@
  *
  *     VITE_API_URL=http://127.0.0.1:8000 npm run dev
  *
- * With the variable unset the panel keeps using the seeded mock, so the landing page still builds and
- * demos with no backend running. `mock: false` here is what flips the header pill from SAMPLE to LIVE.
+ * With the variable unset it uses the deployed backend. Set it to an empty string to use the seeded mock.
+ * `mock: false` here is what flips the header pill from SAMPLE to LIVE.
  *
  * Two fields the server deliberately does not pretend to have, and the panel shows them as they are:
  *   streaming    false — the detector scores a complete call; it does not decide as audio arrives.
@@ -18,7 +18,9 @@
  */
 import type { Call, DetectResponse, Health, IsisiApi, Range, Stats } from './api'
 
-const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+const DEFAULT_API_URL = 'https://hack.pafodev.com'
+export const BASE = (import.meta.env.VITE_API_URL ?? DEFAULT_API_URL).replace(/\/$/, '')
+export const configured = BASE !== ''
 
 /** The server always answers /detect, even on failure, so a non-2xx here is a real transport problem. */
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
