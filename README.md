@@ -66,18 +66,23 @@ py -3.11 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-**Where each `.env` goes.** Three services, three files, each read by the service that needs it - and
-all three are git-ignored:
+**One `.env`, at the repository root.** `copy .env.example .env` and fill in what you need. All three
+services read that same file, each with its own dependency-free loader:
 
-| file | read by | holds |
+| service | run with | loader |
 | --- | --- | --- |
-| `.env` (repository root) | `python src/server.py`, via `config.load_env()` | `SEMANTIC_URL`, the `TWILIO_*` credentials |
-| `semantic/.env` | the semantic service, via its own `config.py` | `ELEVENLABS_API_KEY`, `GEMINI_API_KEY` |
-| `backend/.env` | nothing automatically - pass it: `uvicorn app.main:app --env-file .env` | `DETECTOR_MODE`, the limits, `SEMANTIC_URL` |
+| the fusion server, the pages, `/api/*` | `python src/server.py` | `config.load_env()` |
+| the semantic verifier | `uvicorn server:app` in `semantic/` | `semantic/config.py` |
+| the backend serving shell | `uvicorn app.main:app` in `backend/` | `backend/app/config.py` |
 
-Each has a `.env.example` beside it listing every variable that does anything, and a real environment
-variable always overrides the file. All of it is optional: with no `.env` at all the server still runs,
-the semantic verifier reports itself unavailable, and the live-call panel names what is missing.
+`.env.example` lists every variable and what it does. Precedence is **environment variable > a
+service-local `.env` > the root `.env`**, so a single run can still override one -
+`set SEMANTIC_URL=... && python src/server.py` - and a service can still keep its own file
+(`semantic/.env`, `backend/.env`) if you ever want its configuration separate.
+
+All of it is optional. With no `.env` at all the fusion server runs, the semantic verifier reports
+itself unavailable and its 15 % goes to the other two layers, and the live-call panel replaces itself
+with a note naming the variables it needs.
 
 The dataset stays where the challenge put it: `D:\altur\hackmty26` (manifest + turns) and
 `D:\altur\altur-challenge-audio\audio` (unzipped WAVs); paths are in `config.py`. The telephone-channel
@@ -264,10 +269,15 @@ falls to 77.5 % while V2 holds at 100 %, because the recording-pipeline cues V1 
 silent noise floor, the loudness, the band edge — do not survive a codec. `reports/TELEPHONE_ROBUSTNESS_REPORT.pdf`
 is the whole argument, and a live call is the one place it can be demonstrated instead of simulated.
 
+Three lines in the project `.env` (see Setup), then start the server:
+
 ```
-set TWILIO_ACCOUNT_SID=AC...
-set TWILIO_AUTH_TOKEN=...
-set TWILIO_PHONE_NUMBER=+1...        :: the Twilio number it calls FROM
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+TWILIO_PHONE_NUMBER=+1...            # the Twilio number it calls FROM
+```
+
+```
 python src/server.py --port 8000     :: then open /fusion and use panel 03
 ```
 
@@ -333,7 +343,7 @@ and the report cannot drift apart.
 
 ```
 config.py                       every setting (paths, segmentation, backbones, classifier, endpoint contract)
-.env / .env.example             SEMANTIC_URL and the TWILIO_* credentials; read by config.load_env()
+.env / .env.example             THE project configuration: API keys, SEMANTIC_URL, TWILIO_*, backend modes
 src/audio.py                    decode, caller channel, VAD, chunking, resampling, loudness normalisation
 src/dataset.py                  manifest, splits, turn files
 src/inspect_dataset.py          stage 1: dataset analysis + shortcut checks

@@ -1,5 +1,16 @@
 import os
+import pathlib
 from dataclasses import dataclass
+
+# Read a .env before any os.getenv below runs, so this backend is configured from the same single file
+# as the rest of the project instead of needing `uvicorn --env-file`. backend/.env wins if it exists,
+# then the repository root's. setdefault throughout: a real environment variable always beats the file.
+for _ENV in (pathlib.Path(__file__).resolve().parents[1] / ".env",
+             pathlib.Path(__file__).resolve().parents[2] / ".env"):
+    for _line in (_ENV.read_text(encoding="utf-8").splitlines() if _ENV.exists() else []):
+        _key, _, _value = _line.partition("=")
+        if _key.strip() and not _line.lstrip().startswith("#"):
+            os.environ.setdefault(_key.strip(), _value.strip().strip('"').strip("'"))
 
 
 def _boolean(value: str) -> bool:
