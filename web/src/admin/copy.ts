@@ -89,4 +89,16 @@ export const admin = {
     queue: 'Queue depth',
     checked: 'Checked',
   },
+  telemetry: {
+    title: 'Tiger telemetry',
+    sub: 'Every verdict, copied to Tiger Data.',
+    status: { up: 'Connected', down: 'Unreachable', off: 'Not configured' },
+    stored: 'Verdicts stored',
+    split: 'Synthetic / human',
+    confidence: 'Avg confidence',
+    latency: 'Avg latency',
+    last: 'Last event',
+    offNote: 'Set VITE_TELEMETRY_URL to read the service from here.',
+    downNote: 'The service did not answer on the configured URL.',
+  },
 }

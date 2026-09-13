@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { api, summarize, type Call, type DetectResponse, type Health, type Range, type Stats, type Verdict } from './api'
 import { admin as t } from './copy'
 import { ConfidenceHistogram, HourlyVerdicts, LatencySpark } from './charts'
+import { fetchTelemetry, telemetryConfigured, type Telemetry } from './telemetry'
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 const fmtDur = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -12,6 +13,7 @@ export function Admin() {
   const [calls, setCalls] = useState<Call[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [health, setHealth] = useState<Health | null>(null)
+  const [telemetry, setTelemetry] = useState<Telemetry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Verdict | 'all'>('all')
@@ -20,6 +22,7 @@ export function Admin() {
 
   async function load() {
     setLoading(true); setError(null)
+    fetchTelemetry().then(setTelemetry)   // never rejects, and a detector that is down must not hide it
     try {
       const [c, s, h] = await Promise.all([api.calls(range), api.stats(range), api.health()])
       setCalls(c); setStats(s); setHealth(h)
@@ -125,7 +128,10 @@ export function Admin() {
 
         <section className="tools">
           <Tester />
-          {health && <HealthCard h={health} />}
+          <div className="side">
+            {health && <HealthCard h={health} />}
+            <TelemetryCard d={telemetry} />
+          </div>
         </section>
       </main>
     </>
@@ -257,6 +263,27 @@ function HealthCard({ h }: { h: Health }) {
         <dt>{t.health.queue}</dt><dd className="mono">{h.queue_depth}</dd>
         <dt>{t.health.checked}</dt><dd className="mono">{fmtTime(h.checked_at)}</dd>
       </dl>
+    </section>
+  )
+}
+
+function TelemetryCard({ d }: { d: Telemetry | null }) {
+  const state = !telemetryConfigured ? 'off' : d ? 'up' : 'down'
+  const tone = state === 'up' ? 'good' : state === 'down' ? 'critical' : 'warning'
+  return (
+    <section className="card health">
+      <header className="chart-head"><div><h3>{t.telemetry.title}</h3><p>{t.telemetry.sub}</p></div><span className={`status status-${tone}`}><i />{t.telemetry.status[state]}</span></header>
+      {d ? (
+        <dl className="facts">
+          <dt>{t.telemetry.stored}</dt><dd className="mono">{d.stats.total_detections}</dd>
+          <dt>{t.telemetry.split}</dt><dd className="mono">{d.stats.synthetic_detections} / {d.stats.human_detections}</dd>
+          <dt>{t.telemetry.confidence}</dt><dd className="mono">{d.stats.average_confidence == null ? '—' : `${(100 * d.stats.average_confidence).toFixed(1)}%`}</dd>
+          <dt>{t.telemetry.latency}</dt><dd className="mono">{d.stats.average_latency_ms == null ? '—' : `${Math.round(d.stats.average_latency_ms)} ms`}</dd>
+          <dt>{t.telemetry.last}</dt><dd className="mono">{d.latest ? `${fmtTime(d.latest.timestamp)} · ${d.latest.call_id}` : '—'}</dd>
+        </dl>
+      ) : (
+        <p className="muted small">{state === 'off' ? t.telemetry.offNote : t.telemetry.downNote}</p>
+      )}
     </section>
   )
 }

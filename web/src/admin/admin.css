@@ -65,6 +65,7 @@ main.stale{opacity:.6}   /* refetch keeps the previous frame, dimmed */
 @media(max-width:1000px){.stream{grid-template-columns:minmax(0,1fr)}}
 .tools{display:grid;gap:14px;grid-template-columns:minmax(0,1fr) 340px}
 @media(max-width:1000px){.tools{grid-template-columns:minmax(0,1fr)}}
+.tools .side{display:grid;gap:14px;align-content:start}
 
 /* ── charts ── */
 .chart-head{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:10px}
