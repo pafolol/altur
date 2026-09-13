@@ -36,6 +36,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 import _bootstrap  # noqa: F401
 import config
 import fusion
+import latency
 import store
 import twilio_demo
 from predict import AcousticDetector
@@ -47,6 +48,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 FRONTEND_DIR = config.PROJECT_ROOT / "frontend"
 FRONTEND = FRONTEND_DIR / "index.html"
 FUSION_PAGE = FRONTEND_DIR / "fusion.html"
+DEMO_PAGE = FRONTEND_DIR / "demo.html"
 FIELDS = ("audio", "wav", "audio_base64", "file", "data", "audio_b64", "base64", "wav_base64")
 
 # The acoustic models that can sit in the acoustic slot of the fusion. /detect_all and the A/B panel of the
@@ -123,6 +125,144 @@ def score_call(wav_bytes, cfg=None):
     if verdict["note"]:
         verdict["details"]["warning"] = verdict["note"]
     return verdict
+
+
+# ============================================================================= detection latency
+#
+# "Synthetic, 91 %" is half an answer; the other half is WHEN. The acoustic layer scores 4 s chunks of
+# caller speech and aggregates their log-odds by mean, so the aggregate of the first k chunks is exactly
+# what the deployed model would have answered having heard only those k - same aggregation, same
+# calibration. src/latency.py walks that sequence; these endpoints serve it with the audio needed to draw
+# it. It is a PREFIX evaluation of a non-streaming model, not a live stream, and the page says so.
+
+DEMO_CACHE = {}
+BENCH_FILE = config.OUTPUTS_DIR / "fusion" / "latency_benchmark.json"
+
+
+def _envelope(samples, buckets=900):
+    """A peak envelope for the waveform - what the page draws, not what the model sees."""
+    import numpy as np
+    n = len(samples)
+    if n == 0:
+        return []
+    edges = np.linspace(0, n, min(buckets, n) + 1).astype(int)
+    peaks = [float(np.abs(samples[a:b]).max()) if b > a else 0.0 for a, b in zip(edges[:-1], edges[1:])]
+    top = max(peaks) or 1.0
+    return [round(v / top, 4) for v in peaks]
+
+
+def _demo_detector(model):
+    if model not in DETECTORS:
+        DETECTORS[model] = AcousticDetector(CANDIDATES[model], getattr(app.state, "classifier", "mlp"))
+    return DETECTORS[model]
+
+
+def analyse_for_demo(path, model="specialist", hi=None, lo=None):
+    """One call, everything the visualiser needs: audio shape, speech regions, chunks, timeline."""
+    import audio as audio_mod
+    det = _demo_detector(model)
+    stereo, sr = audio_mod.read_wav(path)
+    caller = audio_mod.get_channel(stereo, config.CALLER_CHANNEL)
+    _, spans, regions = audio_mod.caller_chunks(stereo, sr, return_regions=True, vad_method=det.vad)
+    t0 = time.perf_counter()
+    result = det.predict_wav(path)
+    inference_ms = (time.perf_counter() - t0) * 1000
+    tl = latency.timeline(result["chunk_scores"], result["chunk_spans"], result["duration_s"],
+                          det.calibration, det.aggregation, hi=hi, lo=lo, inference_ms=inference_ms)
+    return {
+        "model": model, "model_dir": det.backbone, "display": det.display, "vad": det.vad,
+        "duration_s": round(result["duration_s"], 2), "sample_rate": sr,
+        "envelope": _envelope(caller),
+        "speech_regions": [[round(a, 2), round(b, 2)] for a, b in regions],
+        "chunk_spans": [[round(a, 2), round(b, 2)] for a, b in result["chunk_spans"]],
+        "final": {"probability": round(result["synthetic_probability"], 4),
+                  "is_synthetic": bool(result["synthetic_probability"] >= config.DECISION_THRESHOLD),
+                  "raw_score": round(result["score"], 3), "speech_s": round(result["speech_s"], 2)},
+        **tl,
+    }
+
+
+@app.get("/demo")
+def demo_page():
+    """The latency visualiser: how early the verdict was reachable, not just what it was."""
+    if DEMO_PAGE.exists():
+        return FileResponse(str(DEMO_PAGE), media_type="text/html")
+    return JSONResponse({"error": "frontend/demo.html is missing"}, status_code=404)
+
+
+@app.get("/demo/calls")
+def demo_calls():
+    return [{k: v for k, v in c.items() if k != "path"} for c in _validation()]
+
+
+@app.get("/demo/call/{anon_id}")
+def demo_call(anon_id: str, model: str = "specialist", confident_synthetic: float = None,
+              confident_human: float = None):
+    call = next((c for c in _validation() if c["anon_id"] == anon_id), None)
+    if call is None:
+        return JSONResponse({"error": "unknown call"}, status_code=404)
+    if model not in CANDIDATES:
+        return JSONResponse({"error": f"unknown model; try {list(CANDIDATES)}"}, status_code=400)
+    key = (anon_id, model, confident_synthetic, confident_human)
+    if key not in DEMO_CACHE:
+        DEMO_CACHE[key] = analyse_for_demo(call["path"], model, confident_synthetic, confident_human)
+    # The label rides along so the page can show whether the call was really synthetic - AFTER the
+    # verdict, the same way the inspector's deck does. The model never receives it.
+    return DEMO_CACHE[key] | {"anon_id": anon_id, "label": call["label"], "index": call["index"]}
+
+
+@app.get("/demo/benchmark")
+def demo_benchmark(model: str = "specialist", refresh: bool = False):
+    """
+    Detection latency across the whole held-out split, measured rather than asserted.
+
+    ~45 s the first time (it scores 71 calls); cached on disk afterwards.
+    """
+    if model not in CANDIDATES:
+        return JSONResponse({"error": f"unknown model; try {list(CANDIDATES)}"}, status_code=400)
+    cache = {}
+    if BENCH_FILE.exists() and not refresh:
+        try:
+            cache = json.loads(BENCH_FILE.read_text())
+        except Exception:
+            cache = {}
+    if model in cache and not refresh:
+        return cache[model]
+    det = _demo_detector(model)
+    timelines, labels, notable = [], [], []
+    for c in _validation():
+        r = det.predict_wav(c["path"])
+        tl = latency.timeline(r["chunk_scores"], r["chunk_spans"], r["duration_s"],
+                              det.calibration, det.aggregation)
+        timelines.append(tl)
+        labels.append(c["label"])
+        ps = [s["probability"] for s in tl["steps"]]
+        m = tl["metrics"]
+        notable.append({
+            "anon_id": c["anon_id"], "label": c["label"], "n_chunks": len(ps),
+            # how far the running verdict travelled: 0 = certain from the first chunk
+            "spread": round(max(ps) - min(ps), 4) if ps else 0.0,
+            "first": round(ps[0], 4) if ps else None, "final": round(ps[-1], 4) if ps else None,
+            "early_agrees_with_final": m["early_agrees_with_final"],
+            "confident_after_caller_speech_sec": m["confident_detection_after_caller_speech_sec"],
+        })
+    # Which calls are worth looking at, decided by the numbers rather than by hand: the ones where the
+    # running verdict actually moved, and the ones where the early commitment did not survive the call.
+    gradual = sorted([n for n in notable if n["n_chunks"] >= 3], key=lambda n: -n["spread"])[:6]
+    disagreed = [n for n in notable if n["early_agrees_with_final"] is False]
+    flat = sum(1 for n in notable if n["spread"] < 0.02)
+    out = latency.benchmark(timelines, labels) | {
+        "notable": {"most_gradual": gradual, "early_disagreed_with_final": disagreed,
+                    "n_flat": flat, "n_total": len(notable)},
+        "model": model, "model_dir": det.backbone, "display": det.display,
+        "thresholds": {"decision": config.DECISION_THRESHOLD,
+                       "confident_synthetic": config.CONFIDENT_SYNTHETIC_THRESHOLD,
+                       "confident_human": config.CONFIDENT_HUMAN_THRESHOLD},
+        "generated": time.strftime("%Y-%m-%d %H:%M:%S")}
+    cache[model] = out
+    BENCH_FILE.parent.mkdir(parents=True, exist_ok=True)
+    BENCH_FILE.write_text(json.dumps(cache, indent=1))
+    return out
 
 
 # ============================================================================= the live-call demo

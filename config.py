@@ -140,6 +140,21 @@ CHUNK_AGGREGATION = "mean"                # default call-level aggregation of ch
 CONFIDENCE_MODE = "verdict"
 DECISION_THRESHOLD = 0.5                  # on the calibrated synthetic probability
 
+# ----------------------------------------------------------------------------- how EARLY, not just what
+# DECISION_THRESHOLD answers "which side of the fence". These two answer "is it far enough from the fence
+# to act on", which is a different question and the one the latency story needs: a call that is 0.51
+# synthetic after one chunk has not been detected, it has been guessed at.
+#
+# THESE ARE A POLICY CHOICE, NOT A FITTED VALUE, and saying so matters. They are a symmetric band around
+# the decision threshold, wide enough that crossing it is a commitment rather than noise. They are NOT
+# tuned on the validation split - tuning a "confidence" band on the same 71 calls used to report accuracy
+# would make the resulting latency numbers meaningless. src/latency.py reports, for whatever band is set
+# here, how often the first crossing turned out to agree with the final verdict; that is the honest check,
+# and it is measured rather than assumed. Raise the band and detection is later but surer; lower it and
+# the reverse. Both are live-tunable per request on /demo.
+CONFIDENT_SYNTHETIC_THRESHOLD = 0.85      # at or above this, "synthetic" is a commitment
+CONFIDENT_HUMAN_THRESHOLD = 0.15          # at or below this, "human" is a commitment
+
 # ----------------------------------------------------------------------------- fine-tuning (optional stage, best frozen model only)
 FT_BATCH_SIZE = 8
 FT_HEAD_EPOCHS = 3

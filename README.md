@@ -212,6 +212,7 @@ Two pages, one process:
 | --- | --- |
 | `GET /` | **the inspector** - record from the microphone or upload one call, get the verdict and the explanation, and put the two acoustic models side by side |
 | `GET /fusion` | **the fusion console** - set what each layer's vote is worth, run all 71 held-out calls, and read every system's own score next to the decision they add up to |
+| `GET /demo` | **detection latency** - how EARLY the verdict was reachable, not just what it was: the running verdict chunk by chunk, where it crossed the confidence band, and how long before the call ended |
 
 The console scores each call once per layer and caches the result, so moving a fader re-decides all 71 calls
 in about a millisecond without a model running. Every column, fader and card is generated from the layer
@@ -240,6 +241,7 @@ python src/client_demo.py call.wav --url http://127.0.0.1:8000/detect
 | `POST /detect_all`, `GET /models` | unchanged: the two ACOUSTIC models side by side, for the inspector's A/B panel |
 | `GET /api/calls`, `/api/stats`, `/api/health` | the admin panel's `IsisiApi`, backed by the call log. `POST /detect` also takes an optional `"queue"` label |
 | `GET /twilio/config`, `POST /twilio/call`, `GET /twilio/status/{sid}` | the live-call demo: dial a number, record the answer, score it with **Robust V2**. Reports itself unconfigured rather than failing |
+| `GET /demo/call/{id}`, `/demo/benchmark` | the latency timeline for one held-out call, and the same measurement across all 71 |
 
 From Python:
 
@@ -257,6 +259,49 @@ det.config = det.equal_config()                                                 
 
 from predict import predict_acoustic         # one layer on its own, unchanged
 ```
+
+### How early (`/demo`)
+
+Altur judges latency as *how fast the system can determine an outcome with reasonable confidence*, so
+"synthetic, 91 %" is half an answer. `/demo` gives the other half: after how much caller speech, how far
+into the call, and how long before the call would have ended anyway.
+
+**What makes it real.** The acoustic layer cuts caller speech into 4 s chunks, scores each independently,
+and aggregates the chunk log-odds by mean - so the aggregate of the first *k* chunks IS what the deployed
+model would have answered having heard only those *k*. Same `aggregate_chunk_scores()`, same Platt
+calibration, nothing re-run and nothing approximated. `src/latency.py` walks that sequence.
+
+**What it is not.** The model is not streaming: it scores a finished recording. This is a prefix
+evaluation - "what would it have concluded by second *t*" - which is the standard way to measure detection
+latency for a non-streaming model, and what the behaviour module's own `evaluate_prefixes.py` does. The
+page says so at the bottom rather than implying otherwise.
+
+**Two thresholds, defined rather than assumed.** `DECISION_THRESHOLD` answers *which side of the fence*;
+`CONFIDENT_SYNTHETIC_THRESHOLD` / `CONFIDENT_HUMAN_THRESHOLD` (0.85 / 0.15 in `config.py`) answer *is it
+far enough from the fence to act on*. They are a deliberate policy band, **not** tuned on the validation
+split - tuning a confidence band on the same 71 calls used to report accuracy would make the latency
+numbers meaningless. What is measured instead is how often the first crossing survived the whole call.
+
+On the 71 held-out calls, acoustic V1 (`python src/server.py` then press the benchmark button):
+
+| | synthetic callers | human callers |
+|---|---|---|
+| caller speech needed (median) | **2.37 s** | 2.33 s |
+| into the call (median) | **13.37 s** | 11.34 s |
+| lead time before the call ended (median) | **134.27 s** | 132.73 s |
+| detected before halfway | 100.0 % | 100.0 % |
+| early verdict survived the call | 100.0 % | 100.0 % |
+
+Read that with the same caution as every other number on this split: it is **saturated**, and the
+saturation shows up here as speed. 64 of 71 calls are decided by the first chunk,
+which is why the page finds the interesting ones for you rather than letting you hunt - the quick-pick
+buttons are the calls whose running verdict actually moved, chosen by the measurement.
+
+The honest ones to look at are those. `10aa0d1d33f0` is a human caller the model first reads at 59 %
+synthetic and only commits to human after 8.4 s of speech. And on **V2** two human calls commit to
+*synthetic* early and end up human - an early verdict that did not survive. The page flags that in its own
+panel instead of hiding it, because it is the number that decides whether an early answer is worth acting
+on.
 
 ### The live call (panel 03 on the console)
 
@@ -380,6 +425,8 @@ web/INTEGRATION.md              how it is wired to the detector - LIVE when VITE
 web/src/admin/api.live.ts       the real IsisiApi; the seeded mock is kept as the no-backend fallback
 src/store.py                    THE CALL LOG: SQLite, one row per verdict, feeds the panel's history
 src/twilio_demo.py              THE LIVE-CALL DEMO: dial a number, record the answer, score it with V2
+src/latency.py                  DETECTION LATENCY: what the model would have said after each chunk
+frontend/demo.html              the latency visualiser (GET /demo)
 
 backend/                        THE SERVING SHELL, merged from backend-esteban - now wired to the fusion
 backend/INTEGRATION.md          DETECTOR_MODE=fusion, what changed in app/, and which service to expose
